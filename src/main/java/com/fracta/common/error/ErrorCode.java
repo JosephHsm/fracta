@@ -10,6 +10,7 @@ public enum ErrorCode {
 
     VALID_INVALID_INPUT(HttpStatus.BAD_REQUEST, "입력값이 유효하지 않다"),
     VALID_AMOUNT_OVERFLOW(HttpStatus.BAD_REQUEST, "금액·수량 계산 범위를 초과했다"),
+    VALID_UNITS_RANGE(HttpStatus.BAD_REQUEST, "수량이 허용 범위를 벗어났다"),
     FUND_INSUFFICIENT_UNITS(HttpStatus.CONFLICT, "보유 수량이 부족하다");
 
     private final HttpStatus status;

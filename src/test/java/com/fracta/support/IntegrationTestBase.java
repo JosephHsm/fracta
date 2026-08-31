@@ -34,6 +34,16 @@ public abstract class IntegrationTestBase {
         REDIS.start();
     }
 
+    /**
+     * 슈퍼유저(postgres) JdbcTemplate — 권한 회수를 우회해야 하는 검증(예: 변조 시뮬레이션) 전용.
+     * 애플리케이션 코드 경로에서는 절대 사용하지 않는다.
+     */
+    protected static org.springframework.jdbc.core.JdbcTemplate adminJdbc() {
+        var ds = new org.springframework.jdbc.datasource.DriverManagerDataSource(
+                POSTGRES.getJdbcUrl(), "postgres", "postgres");
+        return new org.springframework.jdbc.core.JdbcTemplate(ds);
+    }
+
     @DynamicPropertySource
     static void containerProperties(DynamicPropertyRegistry registry) {
         registry.add("spring.datasource.url", POSTGRES::getJdbcUrl);
