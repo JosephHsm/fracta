@@ -22,6 +22,8 @@ public abstract class IntegrationTestBase {
             .withDatabaseName("fracta")
             .withUsername("postgres")
             .withPassword("postgres")
+            // 컨텍스트 여러 개 × 동시성 테스트 풀(40) — 기본 100으로는 부족하다
+            .withCommand("postgres", "-c", "max_connections=300")
             // 슈퍼유저 초기화 스크립트: vector 확장 + 비슈퍼유저 fracta 계정 생성
             .withCopyFileToContainer(MountableFile.forClasspathResource("db/init/init.sql"),
                     "/docker-entrypoint-initdb.d/00-init.sql");

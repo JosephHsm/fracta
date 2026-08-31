@@ -48,6 +48,15 @@ public class Issuance {
     @Column(name = "prospectus_file_key")
     private String prospectusFileKey;
 
+    public enum AllotmentMethod { FCFS, PRORATA }
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "allotment_method", nullable = false)
+    private AllotmentMethod allotmentMethod = AllotmentMethod.FCFS;
+
+    @Column(name = "risk_grade", nullable = false)
+    private int riskGrade = 3;
+
     @Version
     private long version;
 
@@ -80,6 +89,42 @@ public class Issuance {
         this.prospectusFileKey = fileKey;
     }
 
+    public void configureAllotment(AllotmentMethod method, int riskGrade) {
+        this.allotmentMethod = method;
+        this.riskGrade = riskGrade;
+    }
+
+    /** 잔여 수량 감소 — 반드시 락(비관적/분산) 하에서 호출한다. */
+    public void decrementRemaining(long units) {
+        if (remainingUnits < units) {
+            throw new com.fracta.common.money.InsufficientUnitsException(remainingUnits, units);
+        }
+        this.remainingUnits -= units;
+    }
+
+    public void incrementRemaining(long units) {
+        if (remainingUnits + units > totalUnits) {
+            throw new IllegalStateException("잔여 수량이 총량을 초과할 수 없다");
+        }
+        this.remainingUnits += units;
+    }
+
+    /** PRORATA 배정 확정 후 잔여 수량 확정. */
+    public void settleRemaining(long soldUnits) {
+        if (soldUnits < 0 || soldUnits > totalUnits) {
+            throw new IllegalStateException("판매 수량이 총량 범위를 벗어났다: " + soldUnits);
+        }
+        this.remainingUnits = totalUnits - soldUnits;
+    }
+
+    public AllotmentMethod allotmentMethod() {
+        return allotmentMethod;
+    }
+
+    public int riskGrade() {
+        return riskGrade;
+    }
+
     public Long id() {
         return id;
     }
@@ -110,6 +155,10 @@ public class Issuance {
 
     public Instant subscriptionStartAt() {
         return subscriptionStartAt;
+    }
+
+    public Instant subscriptionEndAt() {
+        return subscriptionEndAt;
     }
 
     public String prospectusFileKey() {

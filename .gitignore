@@ -74,6 +74,11 @@ k6-results/
 *.k6.json
 coverage/
 .jacoco/
+scripts/bench/tokens.json
+scripts/bench/result-*.json
+scripts/bench/summary.json
+scripts/bench/logs/
+scripts/bench/k6-*.log
 
 # ── 대용량 자료 ────────────────────────────
 *.pdf

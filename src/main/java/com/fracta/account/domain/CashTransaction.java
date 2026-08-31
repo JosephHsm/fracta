@@ -16,7 +16,8 @@ import jakarta.persistence.Table;
 @Table(name = "cash_transaction")
 public class CashTransaction {
 
-    public enum Type { DEPOSIT, WITHDRAW }
+    /** DEPOSIT/WITHDRAW는 외부 입출금, 나머지는 내부 이동 (INV-6에서 구분). */
+    public enum Type { DEPOSIT, WITHDRAW, MARGIN_HOLD, MARGIN_REFUND, SETTLEMENT_CREDIT }
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

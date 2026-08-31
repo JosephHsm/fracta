@@ -69,6 +69,14 @@ public class IssuanceService {
     @Transactional
     public CreateResult create(long assetId, long totalUnits, long unitPrice,
                                Instant subscriptionStartAt, Instant subscriptionEndAt) {
+        return create(assetId, totalUnits, unitPrice, subscriptionStartAt, subscriptionEndAt,
+                Issuance.AllotmentMethod.FCFS, 3);
+    }
+
+    @Transactional
+    public CreateResult create(long assetId, long totalUnits, long unitPrice,
+                               Instant subscriptionStartAt, Instant subscriptionEndAt,
+                               Issuance.AllotmentMethod allotmentMethod, int riskGrade) {
         UnderlyingAsset asset = assets.findById(assetId)
                 .orElseThrow(() -> new IllegalArgumentException("기초자산이 없다: " + assetId));
 
@@ -76,8 +84,10 @@ public class IssuanceService {
 
         List<String> warnings = premiumWarnings(asset, unitPrice);
         String symbol = allocateSymbol(asset.assetCode());
-        Issuance issuance = issuances.save(
-                new Issuance(assetId, symbol, totalUnits, unitPrice, subscriptionStartAt, subscriptionEndAt));
+        Issuance issuance = new Issuance(assetId, symbol, totalUnits, unitPrice,
+                subscriptionStartAt, subscriptionEndAt);
+        issuance.configureAllotment(allotmentMethod, riskGrade);
+        issuance = issuances.save(issuance);
         return new CreateResult(issuance.id(), symbol, warnings);
     }
 

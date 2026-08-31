@@ -43,6 +43,12 @@ security:
 issuance:
   subscription-open-scan-delay: 5000   # IS-06 청약 개시 스케줄러 주기(ms)
 
+subscription:
+  concurrency: ${SUBSCRIPTION_CONCURRENCY:atomic}   # atomic | pessimistic | redis (FSD §8.3)
+  redis-lock:
+    wait-seconds: 3     # FSD §8.3 tryLock(3, 10, SECONDS)
+    lease-seconds: 10
+
 broker:
   env: ${BROKER_ENV:mock}
   base-url: ${BROKER_BASE_URL:https://moapi.nhplug.com:8443}

@@ -38,6 +38,9 @@ dependencies {
     // 스토리지 MinIO (FSD §4.1) 공식 Java 클라이언트
     implementation("io.minio:minio:8.5.11")
 
+    // Redis 분산락 — 청약 동시성 방식 B (FSD §8.3 명시: Redisson)
+    implementation("org.redisson:redisson:3.50.0")
+
     implementation("org.flywaydb:flyway-core")
     implementation("org.flywaydb:flyway-database-postgresql")
 

@@ -9,20 +9,20 @@ import org.springframework.beans.factory.annotation.Autowired;
 
 import com.fracta.account.api.InsufficientCashException;
 import com.fracta.account.api.InvestorId;
-import com.fracta.account.application.CashInvariantService;
 import com.fracta.account.application.CashService;
 import com.fracta.common.money.Money;
+import com.fracta.subscription.application.SubscriptionInvariantService;
 import com.fracta.support.AuthTestSupport;
 import com.fracta.support.IntegrationTestBase;
 
-/** INV-6 예치금 보존: Σ cash_balance == 총입금 − 총출금. */
+/** INV-6 예치금 보존: Σ cash_balance + Σ 미결제 증거금 == 총입금 − 총출금. */
 class CashInvariantIntegrationTest extends IntegrationTestBase {
 
     @Autowired
     CashService cashService;
 
     @Autowired
-    CashInvariantService invariantService;
+    SubscriptionInvariantService invariantService;
 
     @Autowired
     AuthTestSupport auth;
@@ -52,7 +52,7 @@ class CashInvariantIntegrationTest extends IntegrationTestBase {
 
         var result = invariantService.verifyInv6();
         assertThat(result.valid())
-                .as("expected=%d actual=%d", result.expectedNet(), result.actualBalanceSum())
+                .as("%s mismatches=%s", result, result.mismatches())
                 .isTrue();
     }
 }

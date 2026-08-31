@@ -17,9 +17,12 @@ import com.fracta.common.money.Money;
 public class AccountQueryService implements AccountQueryPort {
 
     private final InvestorRepository investors;
+    private final com.fracta.account.infrastructure.CashTransactionRepository cashTransactions;
 
-    public AccountQueryService(InvestorRepository investors) {
+    public AccountQueryService(InvestorRepository investors,
+                               com.fracta.account.infrastructure.CashTransactionRepository cashTransactions) {
         this.investors = investors;
+        this.cashTransactions = cashTransactions;
     }
 
     @Override
@@ -44,5 +47,29 @@ public class AccountQueryService implements AccountQueryPort {
         return investors.findById(id.value())
                 .map(i -> i.kycStatus() == KycStatus.VERIFIED)
                 .orElse(false);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public long sumCashBalances() {
+        return investors.sumCashBalance();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public long externalNetDeposits() {
+        return cashTransactions.sumByType(com.fracta.account.domain.CashTransaction.Type.DEPOSIT)
+                - cashTransactions.sumByType(com.fracta.account.domain.CashTransaction.Type.WITHDRAW);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public java.util.List<CashPosition> cashPositions() {
+        return investors.cashPositions().stream()
+                .map(row -> new CashPosition(
+                        ((Number) row[0]).longValue(),
+                        ((Number) row[1]).longValue(),
+                        ((Number) row[2]).longValue()))
+                .toList();
     }
 }

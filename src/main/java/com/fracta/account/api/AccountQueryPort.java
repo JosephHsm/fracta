@@ -13,6 +13,18 @@ public interface AccountQueryPort {
 
     boolean isKycVerified(InvestorId id);
 
+    /** 전체 투자자 예치금 잔액 합 (INV-6 검증용). */
+    long sumCashBalances();
+
+    /** 외부 순유입 = Σ DEPOSIT − Σ WITHDRAW. 내부 이동(증거금 홀드/환불/정산)은 제외한다 (INV-6). */
+    long externalNetDeposits();
+
+    /** INV-6 위반 시 원인 추적용 — 투자자별 외부 순유입·현재 잔액. */
+    java.util.List<CashPosition> cashPositions();
+
+    record CashPosition(long investorId, long externalNet, long cashBalance) {
+    }
+
     record InvestorSummary(InvestorId id, String name, KycStatus kycStatus, RiskGrade riskGrade) {
     }
 }

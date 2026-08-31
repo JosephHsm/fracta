@@ -3,6 +3,20 @@ spring:
   jpa:
     hibernate:
       ddl-auto: none
+  datasource:
+    hikari:
+      # 동시성 계약 테스트가 50 스레드를 띄운다 — 풀이 작으면 락 대기 중 커넥션이 고갈된다.
+      maximum-pool-size: 40
+      minimum-idle: 2
+
+subscription:
+  redis-lock:
+    # 50 스레드 직렬화를 견디도록 대기 시간을 늘린다 (운영 기본값은 FSD §8.3의 3초)
+    wait-seconds: 30
+    lease-seconds: 30
 
 issuance:
   subscription-open-scan-delay: 500   # IS-06 스케줄러 검증을 빠르게
+
+security:
+  bcrypt-strength: 4   # 테스트 속도 — 다수 계정 생성 시 인코딩 비용 절감
