@@ -1,0 +1,45 @@
+spring:
+  application:
+    name: fracta
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/fracta}
+    username: ${DB_USER:fracta}
+    password: ${DB_PASSWORD:fracta}
+  jpa:
+    hibernate:
+      ddl-auto: none          # 스키마는 Flyway로만 관리
+    open-in-view: false
+  flyway:
+    enabled: true
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+  batch:
+    job:
+      enabled: false          # 배치는 선언만 (Phase 9)
+    jdbc:
+      initialize-schema: never
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health, info
+  endpoint:
+    health:
+      show-components: always
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+
+broker:
+  env: ${BROKER_ENV:mock}
+  base-url: ${BROKER_BASE_URL:https://moapi.nhplug.com:8443}
+  auth-url: ${BROKER_AUTH_URL:https://api.nhplug.com:8443}
+  account-product-code: ${BROKER_ACCOUNT_PRODUCT_CODE:03}
+  allow-live: ${BROKER_ALLOW_LIVE:false}
+
+minio:
+  endpoint: ${MINIO_ENDPOINT:http://localhost:9000}
