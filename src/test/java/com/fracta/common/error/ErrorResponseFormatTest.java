@@ -24,7 +24,7 @@ class ErrorResponseFormatTest extends IntegrationTestBase {
     @Test
     @DisplayName("도메인 예외는 FSD §7.1 실패 포맷 { error{code,message,details}, meta } 그대로 반환된다")
     void domainExceptionReturnsCommonErrorFormat() throws Exception {
-        ResponseEntity<String> response = rest.getForEntity("/api/v1/test/boom", String.class);
+        ResponseEntity<String> response = rest.getForEntity("/test-support/boom", String.class);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
 

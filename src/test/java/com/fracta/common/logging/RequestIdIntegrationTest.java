@@ -34,7 +34,7 @@ class RequestIdIntegrationTest extends IntegrationTestBase {
         appender.start();
         root.addAppender(appender);
         try {
-            ResponseEntity<String> response = rest.getForEntity("/api/v1/test/ping", String.class);
+            ResponseEntity<String> response = rest.getForEntity("/test-support/ping", String.class);
 
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
             String headerRequestId = response.getHeaders().getFirst(RequestIdFilter.HEADER_NAME);

@@ -15,7 +15,7 @@
 |---|---|---|---|---|
 | 1 | [기반](phase-01-foundation.md) | 1주 | ✅ | — |
 | 2 | [원장](phase-02-ledger.md) ★최우선 | 1주 | ✅ | 1 |
-| 3 | [계좌·발행](phase-03-account-issuance.md) | 1주 | ⬜ | 2 |
+| 3 | [계좌·발행](phase-03-account-issuance.md) | 1주 | ✅ | 2 |
 | 4 | [청약](phase-04-subscription.md) ★난이도 최고 | 1.5주 | ⬜ | 3 |
 | 5 | [증권사 연동](phase-05-broker-integration.md) | 1주 | ⬜ | 1 (병렬 가능) |
 | 6 | [유통·결제](phase-06-trading-settlement.md) | 1.5주 | ⬜ | 4, 5 |

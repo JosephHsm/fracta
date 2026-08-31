@@ -1,5 +1,8 @@
-# 통합 테스트 프로필. datasource/redis 접속 정보는 IntegrationTestBase의 Testcontainers가 주입한다.
+# 통합 테스트 프로필. datasource/redis/minio 접속 정보는 IntegrationTestBase의 Testcontainers가 주입한다.
 spring:
   jpa:
     hibernate:
       ddl-auto: none
+
+issuance:
+  subscription-open-scan-delay: 500   # IS-06 스케줄러 검증을 빠르게

@@ -29,9 +29,16 @@ public abstract class IntegrationTestBase {
     static final GenericContainer<?> REDIS = new GenericContainer<>(DockerImageName.parse("redis:7-alpine"))
             .withExposedPorts(6379);
 
+    static final GenericContainer<?> MINIO = new GenericContainer<>(DockerImageName.parse("minio/minio:latest"))
+            .withEnv("MINIO_ROOT_USER", "minioadmin")
+            .withEnv("MINIO_ROOT_PASSWORD", "minioadmin")
+            .withCommand("server", "/data")
+            .withExposedPorts(9000);
+
     static {
         POSTGRES.start();
         REDIS.start();
+        MINIO.start();
     }
 
     /**
@@ -52,5 +59,7 @@ public abstract class IntegrationTestBase {
         registry.add("spring.datasource.password", () -> "fracta");
         registry.add("spring.data.redis.host", REDIS::getHost);
         registry.add("spring.data.redis.port", () -> REDIS.getMappedPort(6379));
+        registry.add("minio.endpoint",
+                () -> "http://%s:%d".formatted(MINIO.getHost(), MINIO.getMappedPort(9000)));
     }
 }

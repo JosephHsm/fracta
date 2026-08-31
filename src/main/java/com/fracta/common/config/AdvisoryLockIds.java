@@ -8,6 +8,9 @@ public final class AdvisoryLockIds {
     /** 원장 해시체인 직렬화 (Phase 2). */
     public static final long LEDGER_CHAIN = 1001L;
 
+    /** 토큰 심볼 연번 발급 직렬화 (Phase 3). 2-키 락의 classId — objId는 자산코드 해시. */
+    public static final int TOKEN_SYMBOL_CLASS = 1002;
+
     private AdvisoryLockIds() {
     }
 }
