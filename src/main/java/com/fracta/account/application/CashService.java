@@ -16,6 +16,9 @@ import com.fracta.common.money.Money;
 @Service
 public class CashService implements com.fracta.account.api.CashPort {
 
+    /** V6 마이그레이션이 만드는 플랫폼 수수료 계정 식별자. */
+    static final String PLATFORM_FEE_EMAIL = "platform-fee@fracta.internal";
+
     private final InvestorRepository investors;
     private final CashTransactionRepository cashTransactions;
 
@@ -90,6 +93,52 @@ public class CashService implements com.fracta.account.api.CashPort {
         cashTransactions.save(new CashTransaction(
                 investorId.value(), CashTransaction.Type.SETTLEMENT_CREDIT, amount.amount(),
                 currentBalance(investorId)));
+    }
+
+    @Override
+    @Transactional
+    public void tradeDebit(InvestorId investorId, Money amount) {
+        if (amount.isZero()) {
+            return;
+        }
+        if (investors.withdraw(investorId.value(), amount.amount()) == 0) {
+            investors.findById(investorId.value())
+                    .orElseThrow(() -> new IllegalArgumentException("투자자가 없다: " + investorId.value()));
+            throw new InsufficientCashException(amount.amount());
+        }
+        cashTransactions.save(new CashTransaction(investorId.value(), CashTransaction.Type.TRADE_DEBIT,
+                amount.amount(), currentBalance(investorId)));
+    }
+
+    @Override
+    @Transactional
+    public void tradeCredit(InvestorId investorId, Money amount) {
+        if (amount.isZero()) {
+            return;
+        }
+        investors.deposit(investorId.value(), amount.amount());
+        cashTransactions.save(new CashTransaction(investorId.value(), CashTransaction.Type.TRADE_CREDIT,
+                amount.amount(), currentBalance(investorId)));
+    }
+
+    @Override
+    @Transactional
+    public void feeIncome(Money amount) {
+        if (amount.isZero()) {
+            return;
+        }
+        InvestorId platform = platformFeeAccount();
+        investors.deposit(platform.value(), amount.amount());
+        cashTransactions.save(new CashTransaction(platform.value(), CashTransaction.Type.FEE_INCOME,
+                amount.amount(), currentBalance(platform)));
+    }
+
+    /** 플랫폼 수수료 계정 (V6 마이그레이션이 생성). id는 환경마다 다르므로 이메일로 찾는다. */
+    private InvestorId platformFeeAccount() {
+        return InvestorId.of(investors.findByEmail(PLATFORM_FEE_EMAIL)
+                .orElseThrow(() -> new IllegalStateException(
+                        "플랫폼 수수료 계정이 없다: " + PLATFORM_FEE_EMAIL))
+                .id());
     }
 
     @Transactional(readOnly = true)

@@ -18,7 +18,7 @@
 | 3 | [계좌·발행](phase-03-account-issuance.md) | 1주 | ✅ | 2 |
 | 4 | [청약](phase-04-subscription.md) ★난이도 최고 | 1.5주 | ✅ | 3 |
 | 5 | [증권사 연동](phase-05-broker-integration.md) | 1주 | ✅ | 1 (병렬 가능) |
-| 6 | [유통·결제](phase-06-trading-settlement.md) | 1.5주 | ⬜ | 4, 5 |
+| 6 | [유통·결제](phase-06-trading-settlement.md) | 1.5주 | ✅ | 4, 5 |
 | 7 | [오픈 API](phase-07-openapi.md) ★차별 포인트 | 1.5주 | ⬜ | 6 |
 | 8 | [AI](phase-08-ai.md) | 1주 | ⬜ | 3 |
 | 9 | [배치](phase-09-batch.md) | 0.5주 | ⬜ | 6 |

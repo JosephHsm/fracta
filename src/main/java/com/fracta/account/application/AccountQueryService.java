@@ -64,12 +64,23 @@ public class AccountQueryService implements AccountQueryPort {
 
     @Override
     @Transactional(readOnly = true)
+    public java.util.Map<String, Long> cashFlowByType() {
+        java.util.Map<String, Long> byType = new java.util.LinkedHashMap<>();
+        for (var type : com.fracta.account.domain.CashTransaction.Type.values()) {
+            byType.put(type.name(), cashTransactions.sumByType(type));
+        }
+        return byType;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public java.util.List<CashPosition> cashPositions() {
         return investors.cashPositions().stream()
                 .map(row -> new CashPosition(
                         ((Number) row[0]).longValue(),
                         ((Number) row[1]).longValue(),
-                        ((Number) row[2]).longValue()))
+                        ((Number) row[2]).longValue(),
+                        ((Number) row[3]).longValue()))
                 .toList();
     }
 }

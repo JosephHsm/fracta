@@ -17,6 +17,8 @@ public enum ErrorCode {
     VALID_DUPLICATE_EMAIL(HttpStatus.CONFLICT, "이미 등록된 이메일이다"),
     STATE_INVALID_TRANSITION(HttpStatus.CONFLICT, "허용되지 않은 상태 전이다"),
     STATE_NOT_SUBSCRIBING(HttpStatus.CONFLICT, "청약 가능한 상태가 아니다"),
+    STATE_NOT_TRADABLE(HttpStatus.CONFLICT, "거래 가능한 종목이 아니다"),
+    STATE_NO_LIQUIDITY(HttpStatus.CONFLICT, "체결 가능한 반대편 호가가 없다"),
     STATE_LOCK_TIMEOUT(HttpStatus.CONFLICT, "처리 락 획득에 실패했다. 잠시 후 재시도하라"),
     IDEM_KEY_CONFLICT(HttpStatus.CONFLICT, "동일 멱등성 키가 다른 요청에 사용됐다"),
     FUND_INSUFFICIENT_UNITS(HttpStatus.CONFLICT, "보유 수량이 부족하다"),

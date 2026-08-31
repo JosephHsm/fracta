@@ -22,7 +22,13 @@ public interface AccountQueryPort {
     /** INV-6 위반 시 원인 추적용 — 투자자별 외부 순유입·현재 잔액. */
     java.util.List<CashPosition> cashPositions();
 
-    record CashPosition(long investorId, long externalNet, long cashBalance) {
+    /** INV-6 위반 시 원인 추적용 — 대금 이동 유형별 합계. 어느 흐름이 어긋났는지 좁힌다. */
+    java.util.Map<String, Long> cashFlowByType();
+
+    /**
+     * @param unexplained 잔액 − Σ(대금 이동 기록). 0이 아니면 기록 없이 잔액이 변한 것이다
+     */
+    record CashPosition(long investorId, long externalNet, long cashBalance, long unexplained) {
     }
 
     record InvestorSummary(InvestorId id, String name, KycStatus kycStatus, RiskGrade riskGrade) {

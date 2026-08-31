@@ -40,13 +40,23 @@ public interface InvestorRepository extends JpaRepository<Investor, Long> {
     @Query("SELECT COALESCE(SUM(i.cashBalance), 0) FROM Investor i")
     long sumCashBalance();
 
-    /** INV-6 위반 시 원인 추적용 — 투자자별 (id, 외부 순유입, 현재 잔액). */
+    /**
+     * INV-6 위반 시 원인 추적용 — 투자자별 (id, 외부 순유입, 현재 잔액, 기록으로 설명되지 않는 차액).
+     *
+     * <p>마지막 값은 {@code 잔액 − Σ(모든 대금 이동 기록)} 이다. 0이 아니면 <b>기록 없이 잔액이
+     * 변한 것</b>이라 어느 코드 경로가 장부를 빠뜨렸는지 바로 좁혀진다.
+     */
     @Query(value = """
             SELECT i.id,
                    COALESCE((SELECT SUM(CASE WHEN c.tx_type = 'DEPOSIT' THEN c.amount ELSE -c.amount END)
                              FROM cash_transaction c
                              WHERE c.investor_id = i.id AND c.tx_type IN ('DEPOSIT', 'WITHDRAW')), 0),
-                   i.cash_balance
+                   i.cash_balance,
+                   i.cash_balance - COALESCE((
+                       SELECT SUM(CASE WHEN c.tx_type IN ('DEPOSIT', 'MARGIN_REFUND',
+                                                          'SETTLEMENT_CREDIT', 'TRADE_CREDIT', 'FEE_INCOME')
+                                       THEN c.amount ELSE -c.amount END)
+                       FROM cash_transaction c WHERE c.investor_id = i.id), 0)
             FROM investor i
             """, nativeQuery = true)
     List<Object[]> cashPositions();

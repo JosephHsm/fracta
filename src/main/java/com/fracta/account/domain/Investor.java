@@ -14,7 +14,16 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 
+/**
+ * 투자자.
+ *
+ * <p>{@code @DynamicUpdate}가 반드시 필요하다. 잔액은 {@code InvestorRepository}의 원자적
+ * UPDATE로만 움직이는데, 이 엔티티를 읽어 다른 필드(예: KYC 상태)를 고치면 JPA는 기본적으로
+ * <b>행 전체</b>를 쓴다. 그러면 로드 시점의 낡은 {@code cash_balance}가 그 사이 확정된 매매 대금을
+ * 덮어써 돈이 사라진다(실제로 발생했다). 변경된 컬럼만 쓰게 해서 이 lost update를 막는다.
+ */
 @Entity
+@org.hibernate.annotations.DynamicUpdate
 @Table(name = "investor")
 public class Investor {
 

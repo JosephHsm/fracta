@@ -16,4 +16,13 @@ public interface CashPort {
 
     /** 배정 대금 발행인 귀속. */
     void settlementCredit(InvestorId investorId, Money amount);
+
+    /** 매매 대금 차감 (매수자). 잔액 부족 시 InsufficientCashException. */
+    void tradeDebit(InvestorId investorId, Money amount);
+
+    /** 매매 대금 지급 (매도자). */
+    void tradeCredit(InvestorId investorId, Money amount);
+
+    /** 수수료 수입을 플랫폼 계정에 적립한다 — 이게 없으면 INV-6이 수수료만큼 깨진다. */
+    void feeIncome(Money amount);
 }

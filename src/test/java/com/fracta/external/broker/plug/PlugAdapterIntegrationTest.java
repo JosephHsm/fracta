@@ -19,6 +19,9 @@ import com.fracta.external.broker.MarketDataPort;
 
 class PlugAdapterIntegrationTest extends PlugIntegrationTestBase {
 
+    // 어댑터는 장 시간 외에 마지막 시세를 캐시해 돌려준다(싱글턴). 테스트끼리 캐시를 공유하지 않도록
+    // 메서드마다 다른 종목코드를 쓴다.
+
     @Autowired
     MarketDataPort marketData;
 
@@ -58,7 +61,7 @@ class PlugAdapterIntegrationTest extends PlugIntegrationTestBase {
         stubToken();
         stubData("/krstock/quote/v1/currentPrice", "currentPrice-200.json");
 
-        marketData.getCurrentPrice("005930");
+        marketData.getCurrentPrice("000660");
 
         // 토큰은 authServer 로만
         authServer.verify(postRequestedFor(urlPathEqualTo("/oauth2/token")));
@@ -94,7 +97,7 @@ class PlugAdapterIntegrationTest extends PlugIntegrationTestBase {
         stubToken();
         stubData("/krstock/quote/v1/currentPrice", "error-IGW40031.json");
 
-        assertThatThrownBy(() -> marketData.getCurrentPrice("005930"))
+        assertThatThrownBy(() -> marketData.getCurrentPrice("111111"))
                 .isInstanceOf(BrokerApiException.class)
                 .satisfies(e -> assertThat(((BrokerApiException) e).category())
                         .isEqualTo(BrokerApiException.Category.BUSINESS));
@@ -109,7 +112,7 @@ class PlugAdapterIntegrationTest extends PlugIntegrationTestBase {
         tokenManager.accessToken();                       // 최초 발급을 먼저 끝내고
         long issuedBefore = tokenManager.issueCount();     // 그 이후 증가분만 본다
 
-        assertThatThrownBy(() -> marketData.getCurrentPrice("005930"))
+        assertThatThrownBy(() -> marketData.getCurrentPrice("222222"))
                 .isInstanceOf(BrokerApiException.class)
                 .satisfies(e -> assertThat(((BrokerApiException) e).category())
                         .isEqualTo(BrokerApiException.Category.RATE_LIMIT));
@@ -124,7 +127,7 @@ class PlugAdapterIntegrationTest extends PlugIntegrationTestBase {
         stubToken();
         stubData("/krstock/quote/v1/currentPrice", "error-IGW50025.json");
 
-        assertThatThrownBy(() -> marketData.getCurrentPrice("005930"))
+        assertThatThrownBy(() -> marketData.getCurrentPrice("333333"))
                 .isInstanceOf(BrokerApiException.class);
         assertThat(PlugErrorCodes.isTransient("IGW50025")).isTrue();
     }

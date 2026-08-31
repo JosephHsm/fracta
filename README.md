@@ -4,8 +4,9 @@
 
 부동산·리츠 등 실물 기반 자산을 조각 단위 **토큰증권**으로 발행하고, 투자자가 청약·매매하며, 그 전 기능을 외부 개발자에게 **Open API**로 개방하는 플랫폼.
 
-> ⚠️ **현재 상태: 설계 완료 / 구현 착수 전 (Phase 0)**
-> 이 README는 착수 시점의 골격입니다. FSD §16이 요구하는 9개 항목(성능 실측표, 트러블슈팅 로그, 데모 영상 등)은 각 Phase 진행에 따라 채워집니다.
+> **현재 상태: Phase 1~6 완료** (기반 · 원장 · 계좌/발행 · 청약 · 증권사 연동 · 유통/결제)
+> 테스트 192건 전부 통과. 실측 자료는 아래 [실측 기록](#실측-기록) 참조.
+> FSD §16이 요구하는 나머지 항목(데모 영상 등)은 이후 Phase에서 채웁니다.
 
 ---
 
@@ -16,6 +17,19 @@
 | [`docs/FSD.md`](docs/FSD.md) | 기능 사양서 (v1.1) — **단일 진실 공급원(SSOT)** |
 | [`docs/phases/README.md`](docs/phases/README.md) | Phase 11개 인덱스 및 의존 관계 |
 | [`CLAUDE.md`](CLAUDE.md) | AI 개발 에이전트용 프로젝트 규칙 |
+| [`docs/reference/plug-error-codes.md`](docs/reference/plug-error-codes.md) | namuh PLUG 게이트웨이 오류코드와 처리 정책 |
+| [`docs/appendix/risk-profile-questions.md`](docs/appendix/risk-profile-questions.md) | 투자성향 진단 8문항·배점표 |
+
+### 실측 기록
+
+추정치가 아니라 **실제로 측정한 값**만 기록합니다.
+
+| 문서 | 핵심 수치 |
+|---|---|
+| [청약 동시성 비교](docs/benchmarks/subscription-concurrency.md) | 500 VU에서 3방식 모두 배정 정합성 100%. 원자적 감소 153.9 TPS / p95 1,767ms로 최고 |
+| [증권사 호출 유량](docs/benchmarks/broker-quota.md) | 문서값 4~5건/초와 달리 **실효 한도 약 1건/초**. 지속 폴링 902회 전부 성공, 쿼터 초과 0건 |
+| [매칭·결제 처리량](docs/benchmarks/trading-matching.md) | 매칭 엔진 640,902건/초, 주문 API p95 32.7ms. 결제 포함 주문 경로는 39.8건/초 |
+| [원장 설계 노트](docs/notes/phase-02-ledger-notes.md) | 해시체인 append 약 225 tps, 1만 건 검증 87ms |
 
 ---
 
@@ -72,8 +86,8 @@ docker compose up -d          # PostgreSQL / Redis / MinIO
 | 2 | [원장](docs/phases/phase-02-ledger.md) | ✅ |
 | 3 | [계좌·발행](docs/phases/phase-03-account-issuance.md) | ✅ |
 | 4 | [청약](docs/phases/phase-04-subscription.md) | ✅ |
-| 5 | [증권사 연동](docs/phases/phase-05-broker-integration.md) | ⬜ |
-| 6 | [유통·결제](docs/phases/phase-06-trading-settlement.md) | ⬜ |
+| 5 | [증권사 연동](docs/phases/phase-05-broker-integration.md) | ✅ |
+| 6 | [유통·결제](docs/phases/phase-06-trading-settlement.md) | ✅ |
 | 7 | [오픈 API](docs/phases/phase-07-openapi.md) | ⬜ |
 | 8 | [AI](docs/phases/phase-08-ai.md) | ⬜ |
 | 9 | [배치](docs/phases/phase-09-batch.md) | ⬜ |

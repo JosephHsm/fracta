@@ -21,7 +21,11 @@ public class SubscriptionInvariantService {
     }
 
     public record Inv6Result(boolean valid, long externalNet, long cashBalanceSum, long outstandingMargin,
-                             List<String> mismatches) {
+                             List<String> mismatches, Map<String, Long> cashFlowByType) {
+
+        public long gap() {
+            return cashBalanceSum + outstandingMargin - externalNet;
+        }
     }
 
     private final SubscriptionOrderRepository orders;
@@ -56,9 +60,10 @@ public class SubscriptionInvariantService {
         long cashSum = accounts.sumCashBalances();
         long outstanding = orders.sumDepositAmountByStatus(SubscriptionOrder.Status.DEPOSITED);
         boolean valid = cashSum + outstanding == externalNet;
-        // 위반 시에만 투자자별로 분해한다 (FSD §8.1: 상세 로그). 자동 복구는 시도하지 않는다.
+        // 위반 시에만 분해한다 (FSD §8.1: 상세 로그). 자동 복구는 시도하지 않는다.
         return new Inv6Result(valid, externalNet, cashSum, outstanding,
-                valid ? List.of() : mismatchingInvestors());
+                valid ? List.of() : mismatchingInvestors(),
+                valid ? Map.of() : accounts.cashFlowByType());
     }
 
     /**
@@ -72,14 +77,12 @@ public class SubscriptionInvariantService {
                         row -> ((Number) row[0]).longValue(),
                         row -> ((Number) row[1]).longValue()));
 
+        // 기록으로 설명되지 않는 잔액 변동이 진짜 원인이다 — 그걸 먼저 보여준다
         return accounts.cashPositions().stream()
-                .filter(p -> p.cashBalance() + marginByInvestor.getOrDefault(p.investorId(), 0L)
-                        != p.externalNet())
-                .map(p -> "investor=%d 외부순유입=%d 잔액=%d 미결제증거금=%d 차이=%d".formatted(
-                        p.investorId(), p.externalNet(), p.cashBalance(),
-                        marginByInvestor.getOrDefault(p.investorId(), 0L),
-                        p.cashBalance() + marginByInvestor.getOrDefault(p.investorId(), 0L)
-                                - p.externalNet()))
+                .filter(p -> p.unexplained() != 0)
+                .map(p -> "investor=%d 잔액=%d 기록미반영=%d (외부순유입=%d 미결제증거금=%d)".formatted(
+                        p.investorId(), p.cashBalance(), p.unexplained(), p.externalNet(),
+                        marginByInvestor.getOrDefault(p.investorId(), 0L)))
                 .limit(20)
                 .toList();
     }
