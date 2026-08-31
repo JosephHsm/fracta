@@ -116,19 +116,23 @@ fracta/
 
 ## 완료 조건 체크리스트
 
-- [ ] `docker compose up -d` **한 번**으로 PG·Redis·MinIO 전부 healthy
-- [ ] `./gradlew build` 성공 (경고 0을 목표, 최소한 에러 0)
-- [ ] `GET /actuator/health` 가 `{"status":"UP"}` 반환, DB·Redis 컴포넌트 포함
-- [ ] `MoneyTest` / `UnitsTest` 통과 — 경계값 필수: `0`, `1`, `Long.MAX_VALUE`, 오버플로우, 음수 거부
-- [ ] `Money.multiply` 오버플로우 시 `AmountOverflowException` 발생 테스트 통과
-- [ ] 임의 API 호출 시 응답에 `meta.requestId` 존재, 로그에서 동일 `requestId` 검색 가능
-- [ ] 의도적 예외 발생 시 FSD §7.1 실패 포맷 그대로 반환
-- [ ] `@Auditable` 붙인 더미 메서드 호출 → `audit_log`에 before/after 기록 확인
-- [ ] 마스킹 테스트 — `password`/`secret`/`ci_hash` 필드가 `audit_log`에 평문으로 저장되지 않음
-- [ ] DB 유저로 `UPDATE audit_log` 시도 시 권한 오류 발생
-- [ ] `BrokerSafetyValidator` 테스트 — `account-product-code=01` 설정 시 컨텍스트 로딩 실패
-- [ ] Testcontainers로 PG 기동 후 `SELECT extversion FROM pg_extension WHERE extname='vector'` 성공
-- [ ] 프로젝트 의존성 트리에 **H2가 없음** (`./gradlew dependencies | grep -i h2` 결과 없음)
+- [x] `docker compose up -d` **한 번**으로 PG·Redis·MinIO 전부 healthy
+- [x] `./gradlew build` 성공 (경고 0을 목표, 최소한 에러 0)
+- [x] `GET /actuator/health` 가 `{"status":"UP"}` 반환, DB·Redis 컴포넌트 포함
+- [x] `MoneyTest` / `UnitsTest` 통과 — 경계값 필수: `0`, `1`, `Long.MAX_VALUE`, 오버플로우, 음수 거부
+- [x] `Money.multiply` 오버플로우 시 `AmountOverflowException` 발생 테스트 통과
+- [x] 임의 API 호출 시 응답에 `meta.requestId` 존재, 로그에서 동일 `requestId` 검색 가능
+- [x] 의도적 예외 발생 시 FSD §7.1 실패 포맷 그대로 반환
+- [x] `@Auditable` 붙인 더미 메서드 호출 → `audit_log`에 before/after 기록 확인
+- [x] 마스킹 테스트 — `password`/`secret`/`ci_hash` 필드가 `audit_log`에 평문으로 저장되지 않음
+- [x] DB 유저로 `UPDATE audit_log` 시도 시 권한 오류 발생
+- [x] `BrokerSafetyValidator` 테스트 — `account-product-code=01` 설정 시 컨텍스트 로딩 실패
+- [x] Testcontainers로 PG 기동 후 `SELECT extversion FROM pg_extension WHERE extname='vector'` 성공
+- [x] 프로젝트 의존성 트리에 **H2가 없음** (`./gradlew dependencies | grep -i h2` 결과 없음)
+
+> **완료 근거** (2026-08-31, 커밋 `3e4c26b`): 테스트 30건 통과.
+> `/actuator/health`·`X-Request-Id`·`audit_log` 권한 회수는 실제 기동 상태에서도 확인했다.
+> H2는 `configurations.all { exclude }`로 전이 의존성까지 차단한다.
 
 ## 흔한 실수
 
@@ -140,5 +144,5 @@ fracta/
 
 ## 다음 Phase 진입 전 확인
 
-- [ ] `Money`/`Units` API가 확정되었는가? Phase 2 이후 전체가 이걸 쓴다. 나중에 바꾸면 광범위 수정이 발생한다.
-- [ ] 패키지 경계가 FSD §3.2 의존 규칙을 표현하는가? (ArchUnit 도입은 선택이지만 권장)
+- [x] `Money`/`Units` API가 확정되었는가? Phase 2 이후 전체가 이걸 쓴다. 나중에 바꾸면 광범위 수정이 발생한다.
+- [x] 패키지 경계가 FSD §3.2 의존 규칙을 표현하는가? (ArchUnit 도입은 선택이지만 권장)

@@ -131,24 +131,27 @@ UPDATE issuance
 
 ## 완료 조건 체크리스트
 
-- [ ] **500 VU 시나리오에서 배정 총합이 정확히 발행량과 일치** (3방식 전부) — FSD §14 명시 조건
-- [ ] **3방식 측정 결과가 문서화됨** (`docs/benchmarks/subscription-concurrency.md`) — FSD §14 명시 조건
-- [ ] 비례배분 단위 테스트 — 총합 일치 (`Σaᵢ == N`)
-- [ ] 비례배분 결정론 테스트 — 동일 입력 100회 실행 → 100회 동일 결과
-- [ ] 비례배분 단수주 테스트 — `T=3, N=2, rᵢ=[1,1,1]` 같은 극단 케이스
-- [ ] 비례배분 오버플로우 테스트 — `rᵢ`, `N`이 큰 값일 때 정상 동작
-- [ ] 동률 tie-breaker 3단계 전부 테스트 (소수부 동률 → 시각 동률 → ID)
-- [ ] 초과 청약 불가 테스트 — `remaining_units` 초과 신청 시 `FUND_INSUFFICIENT_UNITS`
-- [ ] 증거금 부족 테스트 — `FUND_INSUFFICIENT_CASH`, 청약 레코드 미생성
-- [ ] 청약 취소 → 증거금 전액 환불 + `remaining_units` 복구 확인
-- [ ] 청약 기간 외 취소 시도 → `STATE_` 에러
-- [ ] 멱등성 테스트 — 동일 키 동시 100건 → 실제 처리 1건, 나머지는 동일 응답
-- [ ] 배정 확정 후 INV-1 통과 (`totalIssued == Σ balance`)
-- [ ] 배정 확정 후 INV-5 통과 (`Σ allotted_units == total_units`)
-- [ ] 배정 확정 후 INV-6 통과 (예치금 보존)
-- [ ] 배정 중 의도적 예외 발생 → **완전 롤백** (원장·잔고·예치금 전부 원복)
-- [ ] `SubscriptionInvariantTest` 통과
-- [ ] 3방식 전부 동일한 통합 테스트 스위트 통과
+- [x] **500 VU 시나리오에서 배정 총합이 정확히 발행량과 일치** (3방식 전부) — FSD §14 명시 조건
+- [x] **3방식 측정 결과가 문서화됨** (`docs/benchmarks/subscription-concurrency.md`) — FSD §14 명시 조건
+- [x] 비례배분 단위 테스트 — 총합 일치 (`Σaᵢ == N`)
+- [x] 비례배분 결정론 테스트 — 동일 입력 100회 실행 → 100회 동일 결과
+- [x] 비례배분 단수주 테스트 — `T=3, N=2, rᵢ=[1,1,1]` 같은 극단 케이스
+- [x] 비례배분 오버플로우 테스트 — `rᵢ`, `N`이 큰 값일 때 정상 동작
+- [x] 동률 tie-breaker 3단계 전부 테스트 (소수부 동률 → 시각 동률 → ID)
+- [x] 초과 청약 불가 테스트 — `remaining_units` 초과 신청 시 `FUND_INSUFFICIENT_UNITS`
+- [x] 증거금 부족 테스트 — `FUND_INSUFFICIENT_CASH`, 청약 레코드 미생성
+- [x] 청약 취소 → 증거금 전액 환불 + `remaining_units` 복구 확인
+- [x] 청약 기간 외 취소 시도 → `STATE_` 에러
+- [x] 멱등성 테스트 — 동일 키 동시 100건 → 실제 처리 1건, 나머지는 동일 응답
+- [x] 배정 확정 후 INV-1 통과 (`totalIssued == Σ balance`)
+- [x] 배정 확정 후 INV-5 통과 (`Σ allotted_units == total_units`)
+- [x] 배정 확정 후 INV-6 통과 (예치금 보존)
+- [x] 배정 중 의도적 예외 발생 → **완전 롤백** (원장·잔고·예치금 전부 원복)
+- [x] `SubscriptionInvariantTest` 통과
+- [x] 3방식 전부 동일한 통합 테스트 스위트 통과
+
+> **완료 근거** (2026-08-31, 커밋 `e60c2ae`): 청약 테스트 30건 포함 전체 101건 통과.
+> 실측 비교표·실패 모드·배정 확정 처리량은 `docs/benchmarks/subscription-concurrency.md`.
 
 ## 흔한 실수
 
@@ -178,5 +181,8 @@ UPDATE issuance
 
 ## 다음 Phase 진입 전 확인
 
-- [ ] `LedgerPort.issue` 를 배정 건수만큼 호출할 때의 처리량이 실측되었는가
-- [ ] `remaining_units` 와 원장 잔고가 항상 일치하는가 (이중 진실 공급원 위험 — 문서에 명시)
+- [x] `LedgerPort.issue` 를 배정 건수만큼 호출할 때의 처리량이 실측되었는가
+- [x] `remaining_units` 와 원장 잔고가 항상 일치하는가 (이중 진실 공급원 위험 — 문서에 명시)
+      → 청약 진행 중에는 **의도적으로 불일치**한다(FCFS는 신청 시점 차감, 원장은 배정 확정 시점 기록).
+        배정 확정에서 `settleAndList`로 재확정하고 INV-1·INV-5로 대조한다.
+        상세: `docs/benchmarks/subscription-concurrency.md` §7

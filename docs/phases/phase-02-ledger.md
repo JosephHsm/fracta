@@ -91,20 +91,23 @@ public LedgerTxId append(LedgerTx tx) {
 
 ## 완료 조건 체크리스트
 
-- [ ] **1만 건 트랜잭션 INSERT 후 `verifyChain(1, 10000)` 통과** (FSD §14 명시 조건)
-- [ ] **임의 레코드 변조 후 검출 테스트 통과** — `units` 직접 UPDATE(관리자 권한) 후 `verifyChain`이 해당 seq를 정확히 지목
-- [ ] `prev_hash` 변조 검출 테스트 통과
-- [ ] Genesis 트랜잭션 `prev_hash == "0"*64` 검증
-- [ ] **동시성 테스트**: 50 스레드가 동시에 `issue` 호출 → 체인 분기 0건, `verifyChain` 통과
+- [x] **1만 건 트랜잭션 INSERT 후 `verifyChain(1, 10000)` 통과** (FSD §14 명시 조건)
+- [x] **임의 레코드 변조 후 검출 테스트 통과** — `units` 직접 UPDATE(관리자 권한) 후 `verifyChain`이 해당 seq를 정확히 지목
+- [x] `prev_hash` 변조 검출 테스트 통과
+- [x] Genesis 트랜잭션 `prev_hash == "0"*64` 검증
+- [x] **동시성 테스트**: 50 스레드가 동시에 `issue` 호출 → 체인 분기 0건, `verifyChain` 통과
   - `CountDownLatch`로 정확한 동시 시작 보장 (FSD §15.2)
-- [ ] INV-1 테스트 — `totalIssued(s) == Σ balance(owner, s).units`
-- [ ] INV-2 테스트 — `locked_units <= units` 위반 시도가 DB CHECK에서 거부됨
-- [ ] INV-3 테스트 — 잔고 초과 `transfer` 시 `InsufficientUnitsException`, 잔고 불변
-- [ ] INV-4 테스트 — `verifyChain` 이 전 구간 통과
-- [ ] `LedgerTransactionInvariantTest` 존재 및 통과 (CLAUDE.md 검증 규칙)
-- [ ] 애플리케이션 DB 유저로 `UPDATE ledger_transaction` / `DELETE` 시도 시 권한 오류
-- [ ] 모든 테스트가 Testcontainers PostgreSQL에서 실행됨 (H2 사용 0건)
-- [ ] `lock` 후 가용 수량이 정확히 감소하고, `transfer` 가 가용 수량 초과 시 실패
+- [x] INV-1 테스트 — `totalIssued(s) == Σ balance(owner, s).units`
+- [x] INV-2 테스트 — `locked_units <= units` 위반 시도가 DB CHECK에서 거부됨
+- [x] INV-3 테스트 — 잔고 초과 `transfer` 시 `InsufficientUnitsException`, 잔고 불변
+- [x] INV-4 테스트 — `verifyChain` 이 전 구간 통과
+- [x] `LedgerTransactionInvariantTest` 존재 및 통과 (CLAUDE.md 검증 규칙)
+- [x] 애플리케이션 DB 유저로 `UPDATE ledger_transaction` / `DELETE` 시도 시 권한 오류
+- [x] 모든 테스트가 Testcontainers PostgreSQL에서 실행됨 (H2 사용 0건)
+- [x] `lock` 후 가용 수량이 정확히 감소하고, `transfer` 가 가용 수량 초과 시 실패
+
+> **완료 근거** (2026-08-31, 커밋 `f88eded`): 원장 테스트 20건 통과.
+> 1만 건 `verifyChain` 87ms, 단건 append 약 225 tps 실측 — `docs/notes/phase-02-ledger-notes.md`.
 
 ## 흔한 실수
 
@@ -124,5 +127,5 @@ public LedgerTxId append(LedgerTx tx) {
 
 ## 다음 Phase 진입 전 확인
 
-- [ ] `LedgerPort` 시그니처가 확정되었는가? Phase 3·4·6이 전부 이걸 호출한다
-- [ ] `TxRef` 의 `RefType` enum에 `SUBSCRIPTION`/`EXECUTION`/`ADMIN` 이 정의되어 있는가
+- [x] `LedgerPort` 시그니처가 확정되었는가? Phase 3·4·6이 전부 이걸 호출한다
+- [x] `TxRef` 의 `RefType` enum에 `SUBSCRIPTION`/`EXECUTION`/`ADMIN` 이 정의되어 있는가

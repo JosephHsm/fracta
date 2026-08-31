@@ -68,10 +68,10 @@ docker compose up -d          # PostgreSQL / Redis / MinIO
 
 | Phase | 내용 | 상태 |
 |---|---|---|
-| 1 | [기반](docs/phases/phase-01-foundation.md) | ⬜ |
-| 2 | [원장](docs/phases/phase-02-ledger.md) | ⬜ |
-| 3 | [계좌·발행](docs/phases/phase-03-account-issuance.md) | ⬜ |
-| 4 | [청약](docs/phases/phase-04-subscription.md) | ⬜ |
+| 1 | [기반](docs/phases/phase-01-foundation.md) | ✅ |
+| 2 | [원장](docs/phases/phase-02-ledger.md) | ✅ |
+| 3 | [계좌·발행](docs/phases/phase-03-account-issuance.md) | ✅ |
+| 4 | [청약](docs/phases/phase-04-subscription.md) | ✅ |
 | 5 | [증권사 연동](docs/phases/phase-05-broker-integration.md) | ⬜ |
 | 6 | [유통·결제](docs/phases/phase-06-trading-settlement.md) | ⬜ |
 | 7 | [오픈 API](docs/phases/phase-07-openapi.md) | ⬜ |

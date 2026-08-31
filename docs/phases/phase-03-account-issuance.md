@@ -99,20 +99,24 @@ DRAFT → PENDING_APPROVAL → APPROVED → SUBSCRIBING → ALLOTTING
 
 ## 완료 조건 체크리스트
 
-- [ ] **발행 → 상장까지 상태 전이 통합 테스트 통과** (FSD §14 명시 조건)
-- [ ] 허용되지 않은 상태 전이 시도 → `STATE_` 에러 코드 반환 테스트
-- [ ] 투자자 등록 후 3초 내 KYC `VERIFIED` 전환 확인
-- [ ] 성향 진단 8문항 → 5등급 매핑 경계값 테스트 (각 등급 경계 점수)
-- [ ] 적합성 차단 테스트 — 위험등급 4 상품 + 성향등급 2 투자자 → `403 SUIT_PROFILE_MISMATCH`
-- [ ] 확인 서명 후 동일 요청 → 통과 + `suitability_ack` 기록 + 감사 로그 존재
-- [ ] `total_units × unit_price` 오버플로우 유발 입력 → `VALID_` 에러 (앱 크래시 아님)
-- [ ] 발행 검증 경계값 테스트: `total_units` = 99/100/1000000/1000001
-- [ ] 토큰 심볼 형식 테스트 + 동시 생성 100건에서 중복 0건
-- [ ] PDF 업로드 → MinIO 객체 존재 확인 + `ProspectusUploadedEvent` 발행 확인
-- [ ] 발행 승인 시 `audit_log`에 actor/before/after 기록 확인
-- [ ] INV-6 테스트 — 입금·출금 반복 후 `Σ cash_balance == 총입금 - 총출금`
-- [ ] 상장 후 `LedgerPort.totalIssued(symbol) == issuance.total_units` (INV-1 유지)
-- [ ] `IssuanceStateInvariantTest` 통과
+- [x] **발행 → 상장까지 상태 전이 통합 테스트 통과** (FSD §14 명시 조건)
+- [x] 허용되지 않은 상태 전이 시도 → `STATE_` 에러 코드 반환 테스트
+- [x] 투자자 등록 후 3초 내 KYC `VERIFIED` 전환 확인
+- [x] 성향 진단 8문항 → 5등급 매핑 경계값 테스트 (각 등급 경계 점수)
+- [x] 적합성 차단 테스트 — 위험등급 4 상품 + 성향등급 2 투자자 → `403 SUIT_PROFILE_MISMATCH`
+- [x] 확인 서명 후 동일 요청 → 통과 + `suitability_ack` 기록 + 감사 로그 존재
+- [x] `total_units × unit_price` 오버플로우 유발 입력 → `VALID_` 에러 (앱 크래시 아님)
+- [x] 발행 검증 경계값 테스트: `total_units` = 99/100/1000000/1000001
+- [x] 토큰 심볼 형식 테스트 + 동시 생성 100건에서 중복 0건
+- [x] PDF 업로드 → MinIO 객체 존재 확인 + `ProspectusUploadedEvent` 발행 확인
+- [x] 발행 승인 시 `audit_log`에 actor/before/after 기록 확인
+- [x] INV-6 테스트 — 입금·출금 반복 후 `Σ cash_balance == 총입금 - 총출금`
+- [x] 상장 후 `LedgerPort.totalIssued(symbol) == issuance.total_units` (INV-1 유지)
+- [x] `IssuanceStateInvariantTest` 통과
+
+> **완료 근거** (2026-08-31, 커밋 `41b91a3`): 계좌·발행 테스트 21건 포함 전체 71건 통과.
+> 성향 진단 배점표는 `docs/appendix/risk-profile-questions.md`.
+> FSD §6.1의 `SUITABILITY_MISMATCH` 대신 §7.1 접두사 체계를 따라 `SUIT_PROFILE_MISMATCH`를 사용한다.
 
 ## 흔한 실수
 
@@ -125,5 +129,5 @@ DRAFT → PENDING_APPROVAL → APPROVED → SUBSCRIBING → ALLOTTING
 
 ## 다음 Phase 진입 전 확인
 
-- [ ] `SuitabilityPort` 가 확정되었는가? Phase 4·6이 호출한다
-- [ ] `issuance.remaining_units` 컬럼이 있는가? **Phase 4의 방식 C(원자적 감소)가 이 컬럼을 요구한다.** 여기서 미리 추가하고 `total_units`로 초기화해 둔다
+- [x] `SuitabilityPort` 가 확정되었는가? Phase 4·6이 호출한다
+- [x] `issuance.remaining_units` 컬럼이 있는가? **Phase 4의 방식 C(원자적 감소)가 이 컬럼을 요구한다.** 여기서 미리 추가하고 `total_units`로 초기화해 둔다
