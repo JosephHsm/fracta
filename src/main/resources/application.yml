@@ -51,10 +51,32 @@ subscription:
 
 broker:
   env: ${BROKER_ENV:mock}
+  # 데이터 조회는 모의 도메인. 토큰 발급은 실전 도메인에서만 가능하다 (PLUG 고유 제약)
   base-url: ${BROKER_BASE_URL:https://moapi.nhplug.com:8443}
   auth-url: ${BROKER_AUTH_URL:https://api.nhplug.com:8443}
   account-product-code: ${BROKER_ACCOUNT_PRODUCT_CODE:03}
   allow-live: ${BROKER_ALLOW_LIVE:false}
+  app-key: ${BROKER_APP_KEY:}
+  app-secret: ${BROKER_APP_SECRET:}
+  token:
+    refresh-margin-seconds: ${BROKER_TOKEN_REFRESH_MARGIN:1800}   # 만료 30분 전 선제 갱신
+    cache-prefix: fracta:broker:token
+  rate-limit:
+    strategy: ${BROKER_RATE_LIMIT_STRATEGY:sliding}   # sliding | bucket
+    # 실측값이다. 공식 문서는 "초당 5회 수준", SDK 기본 스로틀은 4이지만
+    # 모의 도메인에서 2건/초부터 IGW42903 이 발생했다(1건/초 12/12 성공, 2건/초 10/20).
+    # 근거: docs/benchmarks/broker-quota.md
+    per-sec: ${BROKER_RATE_LIMIT_PER_SEC:1}
+    max-wait-millis: 3000
+  # 엔드포인트 경로는 하드코딩하지 않는다 (phase-05 §6-3).
+  # 출처: https://www.nhplug.com/openapi-docs/krstock/openapi.json (scripts/plug/spec/)
+  endpoints:
+    accountInfo: /n2/acctinfo
+    currentPrice: /krstock/quote/v1/currentPrice
+    currentDaily: /krstock/quote/v1/currentDaily
+    period: /krstock/quote/v1/period
+  # 모의 도메인 미지원 엔드포인트 → Mock 폴백 (실측으로 채운다)
+  unsupported-on-mock: ${BROKER_UNSUPPORTED_ON_MOCK:}
 
 minio:
   endpoint: ${MINIO_ENDPOINT:http://localhost:9000}

@@ -22,7 +22,10 @@ public enum ErrorCode {
     FUND_INSUFFICIENT_UNITS(HttpStatus.CONFLICT, "보유 수량이 부족하다"),
     FUND_INSUFFICIENT_CASH(HttpStatus.CONFLICT, "예치금이 부족하다"),
     SUIT_PROFILE_MISMATCH(HttpStatus.FORBIDDEN, "투자자 성향등급보다 위험한 상품이다"),
-    SUIT_PROFILE_REQUIRED(HttpStatus.FORBIDDEN, "유효한 투자성향 진단이 필요하다");
+    SUIT_PROFILE_REQUIRED(HttpStatus.FORBIDDEN, "유효한 투자성향 진단이 필요하다"),
+    RATE_LIMIT_EXCEEDED(HttpStatus.TOO_MANY_REQUESTS, "호출 한도를 초과했다"),
+    BROKER_AUTH_FAILED(HttpStatus.BAD_GATEWAY, "증권사 API 인증에 실패했다"),
+    BROKER_CALL_FAILED(HttpStatus.BAD_GATEWAY, "증권사 API 호출에 실패했다");
 
     private final HttpStatus status;
     private final String defaultMessage;

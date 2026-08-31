@@ -51,18 +51,23 @@ KIS 어댑터를 Phase 11에서 추가하면 **"증권사 2사를 동일 포트�
 | **토큰 유효기간** | **24시간** | 확인 |
 | 토큰 발급 엔드포인트 | **실전 도메인에서만 발급.** 모의 도메인은 토큰 발급을 제공하지 않음 | 확인 — **설계에 반영 필수** |
 | 계좌구분 코드 | `01`/`02` = 실전, **`03` = 모의** | 확인 |
-| 호출 제한 | 공식 SDK가 **4건/초로 스로틀**, 하드 리밋 5건/초로 표기 | 확인 (공식 수치는 미공개) |
-| 제한 초과 에러 | `IGW42901`, `IGW42902`, `IGW42903` (거래건수/유량 초과) | 확인 |
+| 호출 제한 | 공식 SDK가 **4건/초로 스로틀**, 하드 리밋 5건/초로 표기 | ⚠️ **실측과 다름** — 아래 참조 |
+| **호출 제한 (실측)** | **모의 도메인 실효 약 1건/초.** 2건/초부터 `IGW42903` 발생 | 2026-08-31 실측 · `docs/benchmarks/broker-quota.md` |
+| 제한 초과 에러 | `IGW42901`, `IGW42902`, `IGW42903` (거래건수/유량 초과) | 확인 — 실제 발생 코드는 `IGW42903` |
 | 기타 에러 | `IGW40011`(검증), `IGW40031`(잘못된 AppKey), `IGW40301`(권한 없음), `IGW50025`(일시적 서버 오류) | 확인 |
 | 실시간 | WebSocket 지원 (국내주식 호가·체결·예상체결) | 확인 |
 | 제공 범위 | 국내/해외 주식, 파생, 채권, 금현물 + 차트 | 확인 |
 
 **착수 전 반드시 실측할 항목**
-- [ ] 모의 도메인의 정확한 초당 호출 제한값
-- [ ] 모의 도메인에서 **미지원인 API 목록** (FSD §9.2의 "미지원 시 Mock 폴백" 대상)
-- [ ] WebSocket 접속 URL·인증 방식·구독 메시지 포맷
-- [ ] 토큰 재발급 시 기존 토큰 무효화 여부
-- [ ] 국내주식 현재가/일봉 조회의 정확한 요청·응답 스키마
+- [x] 모의 도메인의 정확한 초당 호출 제한값 → **약 1건/초** (`docs/benchmarks/broker-quota.md` §2)
+- [x] 모의 도메인에서 **미지원인 API 목록** → 사용 중인 3개 엔드포인트는 전부 지원됨.
+      미지원 시 `IGW40401`이 신호이며 `broker.unsupported-on-mock` 설정 + 코드 감지 양쪽으로 폴백한다
+- [x] WebSocket 접속 URL·인증 방식·구독 메시지 포맷 → 모의 `wss://moapi.nhplug.com:17070/websocket`,
+      `{"header":{"token":...,"tr_type":"1"},"body":{"tr_cd":"oc","tr_key":"005930"}}` (공식 `docs/realtime_channels.md`)
+- [x] 토큰 재발급 시 기존 토큰 무효화 여부 → **무효화되지 않는다.** 18회 연속 재발급 중
+      진행 중이던 호출이 1건도 실패하지 않았다 (`broker-quota.md` §6)
+- [x] 국내주식 현재가/일봉 조회의 정확한 요청·응답 스키마 → 실제 캡처 완료.
+      스텁은 캡처본으로 생성 (`src/test/resources/wiremock/plug/README.md`)
 
 ---
 
@@ -184,23 +189,45 @@ public boolean tryAcquire(String key, int limit, Duration window) {
 
 ## 5. 완료 조건 체크리스트
 
-- [ ] **24시간 무중단 폴링 성공** (FSD §14 명시 조건) — 토큰 자동 갱신 최소 1회 포함
-- [ ] **쿼터 초과 0건** (FSD §14 명시 조건) — `IGW429xx` 수신 횟수 0
-- [ ] `MockMarketDataAdapter` 로 전체 테스트 스위트 통과 (외부 의존 없이 CI 가능)
-- [ ] 토큰 만료 30분 전 선제 갱신 동작 확인 (시간 조작 테스트)
-- [ ] 토큰 갱신 중 동시 요청 10건 → 발급 호출은 **1회만** 발생
-- [ ] 토큰이 로그·`audit_log`에 평문 노출되지 않음
-- [ ] 토큰 발급은 실전 도메인, 데이터 조회는 모의 도메인으로 분리 호출됨을 WireMock으로 검증
-- [ ] 쿼터 초과 시 요청이 대기/거절되고 `fracta.broker.quota.rejected` 메트릭 증가
-- [ ] 토큰버킷 ↔ 슬라이딩 윈도우 설정 스위치 동작 확인 (양쪽 다 테스트 통과)
-- [ ] 슬라이딩 윈도우 **경계 시점 버스트 차단** 테스트 (FSD §15.1)
-- [ ] WebSocket 강제 종료 → 지수 백오프 재연결 → **구독 목록 복원** 확인
-- [ ] 장 시간 외 폴링 중단 + 마지막 종가 캐시 반환 확인
-- [ ] 미지원 API 호출 → Mock 폴백 + WARN 로그 확인
-- [ ] `PriceConverter` 단위 테스트 — 분할비율 경계값, 반올림, 원자산가 0 처리
-- [ ] WireMock 통합 테스트 — 정상/`IGW40031`/`IGW42901`/`IGW50025` 응답 각각 처리
-- [ ] `BrokerSafetyValidator`(Phase 1)가 여전히 동작 — 실전 계좌구분 설정 시 부팅 실패
-- [ ] `application-plug.yml` 에 tr_id/엔드포인트 매핑이 **설정으로 분리**됨 (하드코딩 0건)
+- [x] **무중단 폴링 성공** (FSD §14 명시 조건) — 토큰 자동 갱신 최소 1회 포함
+      → ⚠️ **24시간이 아니라 18분 압축 검증이다** (사용자 합의, B안). 토큰 수명은 서버가 정하므로
+        갱신 여유값을 86,340초로 두어 갱신 주기를 60초로 압축했다. 결과: **1,090초 무중단,
+        902회 전부 성공, 토큰 자동 갱신 18회.** 24시간 연속 가동에서만 드러나는 문제(커넥션 누수,
+        자정 경계 등)는 검증되지 않았다 — `docs/benchmarks/broker-quota.md` §5·§6
+- [x] **쿼터 초과 0건** (FSD §14 명시 조건) — `IGW429xx` 수신 횟수 0
+      → 902회 중 0건. 단, 문서값 4건/초로는 70% 이상이 거절됐다 (`broker-quota.md` §2)
+- [x] `MockMarketDataAdapter` 로 전체 테스트 스위트 통과 (외부 의존 없이 CI 가능)
+      → 전체 143건이 자격증명 없이 통과한다 (WireMock + Mock)
+- [x] 토큰 만료 30분 전 선제 갱신 동작 확인 (시간 조작 테스트)
+      → `PlugTokenManagerTest.preemptiveRefreshWhenNearExpiry` + 내구 실행 중 18회 실제 갱신
+- [x] 토큰 갱신 중 동시 요청 10건 → 발급 호출은 **1회만** 발생
+      → `concurrentRequestsIssueTokenOnce` (WireMock이 발급 요청 수를 셈)
+- [x] 토큰이 로그·`audit_log`에 평문 노출되지 않음 → `tokenNotLeaked`
+- [x] 토큰 발급은 실전 도메인, 데이터 조회는 모의 도메인으로 분리 호출됨을 WireMock으로 검증
+      → `tokenAndDataUseSeparateDomains` (두 WireMock 서버로 분리 확인)
+- [x] 쿼터 초과 시 요청이 대기/거절되고 `fracta.broker.quota.rejected` 메트릭 증가
+      → `rejectionIncrementsMetric`, `waitsInsteadOfRejectingWhenBudgetAllows`
+- [x] 토큰버킷 ↔ 슬라이딩 윈도우 설정 스위치 동작 확인 (양쪽 다 테스트 통과)
+      → `RateLimiterSelectorTest` + `RateLimiterTest`
+- [x] 슬라이딩 윈도우 **경계 시점 버스트 차단** 테스트 (FSD §15.1)
+      → `slidingBlocksBoundaryBurst` + 실서버 실측(균등 12/12 성공 vs 버스트 4/12)
+- [x] WebSocket 강제 종료 → 지수 백오프 재연결 → **구독 목록 복원** 확인
+      → `PlugWebSocketClientTest` (백오프 1→2→4→…→60초 상한, 복원 전송 검증)
+- [x] 장 시간 외 폴링 중단 + 마지막 종가 캐시 반환 확인 → `MarketClosedCacheTest`
+- [x] 미지원 API 호출 → Mock 폴백 + WARN 로그 확인 → `unsupportedUriFallsBackToMock` (`IGW40401`)
+- [x] `PriceConverter` 단위 테스트 — 분할비율 경계값, 반올림, 원자산가 0 처리 → 7건
+- [x] WireMock 통합 테스트 — 정상/`IGW40031`/`IGW42901`/`IGW50025` 응답 각각 처리
+      → 스텁은 **실제 캡처 응답**으로 만들었다 (`src/test/resources/wiremock/plug/README.md`)
+- [x] `BrokerSafetyValidator`(Phase 1)가 여전히 동작 — 실전 계좌구분 설정 시 부팅 실패
+      → 6건 전부 통과. 루프백(WireMock)만 예외로 허용하고 실전 도메인은 그대로 차단한다
+- [x] tr_id/엔드포인트 매핑이 **설정으로 분리**됨 (하드코딩 0건)
+      → ⚠️ 위치가 다르다: `application-plug.yml`은 `.gitignore` 대상(시크릿 보관 용도)이라
+        커밋되지 않으므로, 비밀이 아닌 엔드포인트 매핑은 `application.yml`의 `broker.endpoints`에 뒀다.
+        시크릿은 `.env`(gitignore) → 환경변수로만 주입된다
+
+> **완료 근거** (2026-08-31, 커밋 `<이 커밋>`): 증권사 테스트 42건 포함 전체 143건 통과.
+> 유량 실측·버스트 비교·지속 폴링 결과는 `docs/benchmarks/broker-quota.md`.
+> 오류코드 표는 `docs/reference/plug-error-codes.md`.
 
 ---
 
@@ -235,6 +262,8 @@ public boolean tryAcquire(String key, int limit, Duration window) {
 
 ## 8. 다음 Phase 진입 전 확인
 
-- [ ] `MarketDataPort` 가 Phase 6의 괴리율 계산에 필요한 정보를 전부 제공하는가
-- [ ] `MockMarketDataAdapter` 만으로 Phase 6 완료 조건을 충족할 수 있는가 (증권사 장애가 개발을 막지 않아야 한다)
-- [ ] 분할비율 컬럼이 `underlying_asset` 에 추가되었는가
+- [x] `MarketDataPort` 가 Phase 6의 괴리율 계산에 필요한 정보를 전부 제공하는가
+      → `getCurrentPrice`(원자산 현재가) + `PriceConverter`(조각 참조가·괴리율)로 충족
+- [x] `MockMarketDataAdapter` 만으로 Phase 6 완료 조건을 충족할 수 있는가
+      → 충족한다. Plug 어댑터는 `@Profile("plug")`이고 기본값이 Mock이라 증권사 장애가 개발·CI를 막지 않는다
+- [x] 분할비율 컬럼이 `underlying_asset` 에 추가되었는가 → Phase 3의 `V4__issuance.sql`에서 `split_ratio`로 추가됨

@@ -33,6 +33,7 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-batch")
     implementation("org.springframework.boot:spring-boot-starter-aop")
     implementation("org.springframework.boot:spring-boot-starter-security")
+    implementation("org.springframework.boot:spring-boot-starter-websocket")
     implementation("org.springframework.boot:spring-boot-starter-oauth2-resource-server")
 
     // 스토리지 MinIO (FSD §4.1) 공식 Java 클라이언트
@@ -56,6 +57,8 @@ dependencies {
 
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     testImplementation("org.springframework.security:spring-security-test")
+    // 증권사 API 스텁 (FSD 테스트 스택). 스텁은 실제 캡처 응답으로만 만든다
+    testImplementation("org.wiremock:wiremock-standalone:3.9.1")
     testImplementation("org.springframework.boot:spring-boot-testcontainers")
     testImplementation("org.testcontainers:junit-jupiter")
     testImplementation("org.testcontainers:postgresql")

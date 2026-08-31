@@ -36,9 +36,17 @@ public class BrokerSafetyValidator {
                             + properties.accountProductCode());
         }
         String host = properties.baseUrl() == null ? null : URI.create(properties.baseUrl()).getHost();
-        if (host == null || !host.startsWith("moapi.")) {
+        if (host == null || !(host.startsWith("moapi.") || isLoopback(host))) {
             throw new IllegalStateException(
                     "broker.base-url 은 moapi.* (모의) 도메인이어야 한다. 현재 값: " + properties.baseUrl());
         }
+    }
+
+    /**
+     * 로컬 스텁(WireMock) 주소만 예외로 허용한다. 실제 증권사 도메인은 여전히 moapi.* 만
+     * 통과하므로 실전 도메인 차단은 그대로다 — 루프백은 증권사가 아니다.
+     */
+    private boolean isLoopback(String host) {
+        return "localhost".equals(host) || "127.0.0.1".equals(host) || "[::1]".equals(host);
     }
 }
