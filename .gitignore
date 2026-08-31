@@ -85,3 +85,6 @@ scripts/bench/k6-*.log
 !docs/**/*.pdf
 *.mp4
 *.mov
+
+# PLUG 실제 응답 캡처 (계좌번호 등 포함)
+scripts/plug/captured/

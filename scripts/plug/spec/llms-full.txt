@@ -1,0 +1,1062 @@
+# NH투자증권 나무(Namuh) Open API — 전체 문맥 (llms-full.txt)
+
+> `https://www.nhplug.com/llms.txt` + 자산군별 `openapi.json` 요약. 1회 요청으로 전체 문맥을 읽을 수 있습니다.
+> 생성일: 2026-08-28 · hash `56bc3a0e4097` · 기준: API명세서 260730 · 스키마 정본은 각 `openapi.json`
+
+---
+
+# NH투자증권 Open API 가이드
+
+> 외부 LLM·AI coding agent 가 직접 읽는 안내 파일. 정본: https://www.nhplug.com/llms.txt
+>
+> 기준: API명세서 260730 / 나무(Namuh) 환경 (N2 는 추후) · 문서 개정 2026-08-28
+
+국내·해외 주식, 국내·해외 파생, 국내 채권, 국내 금현물의 **주문·계좌조회·시세·실시간 스트리밍**을 REST + WebSocket 으로 제공합니다.
+
+- **REST**: `POST` + JSON. 요청 `Input_0` / 응답 `Output_0`(+`Output_1`·`Output_2` …) + `message`.
+- **인증(REST)**: `Authorization: Bearer {access_token}` **하나만** 필요. `x-client-id`·`x-client-secret` 는 **불필요**.
+- **인증(WebSocket)**: 구독 메시지 `header.token` 에 토큰 전달. HTTP 헤더는 사용하지 않음.
+
+## 환경
+
+> ⚠️ **기본은 운영(Live). 주문이 실제로 체결됩니다.** 테스트는 모의투자(`moapi.nhplug.com`)를 쓰세요.
+
+**나무(Namuh)** 환경 기준. **포털**: `https://www.nhplug.com`
+
+| 용도 | REST | WebSocket |
+|---|---|---|
+| 🔴 운영 (기본) | `https://api.nhplug.com:8443` | `wss://api.nhplug.com:7070/websocket` (국내 시세·통보) · `:7080/websocket` (해외 시세) |
+| 🟢 모의투자 | `https://moapi.nhplug.com:8443` | `wss://moapi.nhplug.com:17070/websocket` |
+
+- ⚠️ **WebSocket 경로 `/websocket` 필수.** 호스트:포트만으로는 연결되지 않습니다.
+- ⚠️ **포트는 국내/해외가 아니라 시세/통보로 갈립니다.** `7070`=국내 시세 + **통보 전부(국내·해외)** · `7080`=**해외 시세 전용** · `17070`=모의투자. 통보를 `7080` 으로 보내면 `WSS10006`(허용되지 않는 tr_cd).
+- **접근토큰발급은 운영 전용**(모의투자 미제공). 발급 토큰은 양쪽에서 사용 가능.
+- 계좌는 환경별로 다릅니다 — `acct_type` `01`·`02`=운영 / `03`=모의투자.
+
+## 수수료
+
+**국내 증권사 최저가 수준** — 국내주식 **1bp(0.01%)** · 해외주식 **9bp(0.09%)**. 비용에 민감한 알고리즘·자동매매에 유리합니다.
+
+> 기본 수수료이며 **마케팅 이벤트·협의(별도 약정) 시 위 요율과 다릅니다.** 최신 값은 포털 확인. (1bp=0.01%, 100bp=1%)
+
+## 공통 API (인증·계좌)
+
+자산군 `openapi.json` 에 없는 플랫폼 공통 API. 모든 자산군 호출 전에 사용합니다.
+
+**1. 토큰 발급** — `POST /oauth2/token` (운영 전용)
+
+- Content-Type `application/x-www-form-urlencoded`, 쿼리 파라미터 `appkey`·`appsecretkey`·`grant_type=client_credentials`·`scope=oob`
+- 응답: `{ "access_token": "...", "token_type": "Bearer", "expires_in": 86400 }`
+
+> 🔑 **토큰은 24시간 유효. 캐시해서 재사용하세요.**
+> 매 호출 재발급 금지 — **재발급은 보안 알림을 유발**합니다. 프로세스 메모리 캐시는 스크립트 재실행 때 사라지니 **파일 등 공유 캐시**에 `expires_in` 기준 만료시각과 함께 저장하세요.
+> **재발급은 `401`(토큰 무효)일 때만.** `429`(유량 초과) 재시도에는 기존 토큰을 그대로 씁니다.
+
+**2. 계좌 목록** — `POST /n2/acctinfo`
+
+- 헤더 `Authorization: Bearer {access_token}` · 요청 `{ "Input_0": {} }`
+- 응답: `rsp_cd`·`rsp_msg`·`cust_no` + `Output_0[]` = `{ acct_no, acct_type }`
+- `acct_no` 를 이후 API 의 **`act_no`** 입력으로 사용합니다(이름만 다르고 값은 동일).
+
+| `acct_type` | 용도 | 사용 도메인 |
+|---|---|---|
+| `01` | 🔴 운영 (일반) | `https://api.nhplug.com:8443` |
+| `02` | 🔴 운영 (주문대리인) | `https://api.nhplug.com:8443` |
+| `03` | 🟢 모의투자 | `https://moapi.nhplug.com:8443` |
+
+> 목록에 여러 구분이 섞여 옵니다. **호출 환경과 같은 구분의 계좌를 고르세요.** 첫 계좌를 그대로 쓰지 마세요.
+
+**호출 순서**: 토큰 발급 → 계좌목록 조회 → 환경에 맞는 계좌 선택 → 자산군 API 호출
+
+## 종목마스터 파일
+
+> ⚠️ **전 종목 목록·종목명을 조회하는 REST API 는 없습니다.** 정적 종목정보는 마스터 파일(.mst) **28종**을 쓰세요.
+
+- 다운로드 `https://www.nhplug.com/instruments/<파일명>.mst` · 구조체 정의 `https://www.nhplug.com/instruments/<파일명>.h` (마스터와 **1:1**) — **둘 다 인증 불필요**
+
+**형식** — 전 파일 공통
+
+- **CP949**(UTF-8 아님) · **고정 길이** 레코드 · 파일 헤더 없음 · 레코드 끝 **LF(`0x0A`)**
+- 좌측정렬 + 공백(`0x20`) 우측 패딩 → 길이로 잘라내고 우측 공백 제거 (NUL 종료 아님)
+- **바이너리 모드(`"rb"`) 필수** — 텍스트 모드는 CRLF 축약·`0x1A` EOF 로 레코드가 어긋납니다
+- 읽기 전 **`파일크기 % 레코드크기 == 0`** 검증 (아니면 파일 손상 또는 구조체 불일치)
+
+| 구분 | 마스터 | 구조체 |
+|---|---|---|
+| 국내주식 | `m_new_stock.mst` | `m_new_stock.h` |
+| 해외주식 | `m_gtsstock.mst` | `m_gtsstock.h` |
+| 지수옵션 | `m_optksp.mst` | `m_optksp.h` |
+| 주식선물 | `m_stkfut.mst` | `m_stkfut.h` |
+| 장내채권 | `bond_hts.mst` | `bond_hts.h` |
+| 해외파생 CME지수선물 `FCME` | `fucode_h.mst` | `fucode_h.h` |
+| 해외파생 홍콩선물 `FHKE` | `fucode_fhke_h.mst` | `fucode_fhke_h.h` |
+| 해외파생 OPRA주식옵션 `OOPR` | `opcode_h.mst` | `opcode_h.h` |
+| 해외파생 상품정보 | `foitem_h.mst` | `foitem_h.h` |
+
+**파싱 주의**
+
+- 지수옵션(`m_optksp`·`m_moption`·`m_soption`·`m_woption`·`m_qoption`) `sPrice` = **행사가 × 100** → `/100`. 주식옵션(`m_optstp`) `sValue` 는 스케일 없음
+- 위클리옵션(`m_woption`·`m_qoption`) `sMonth` 는 **YYMMWW(주차)** — 날짜로 파싱 금지
+- 콜/풋은 **CP949 한글 2바이트**(`"콜"`/`"풋"`) — ASCII `C`/`P` 아님
+- 지수 편입 플래그는 **`== "Y"`** 로만 판정 (공백을 `N` 으로 오해하면 누락)
+- 국내주식 한글종목명 선두 1바이트는 지수 마커(`*` KOSPI200 / `#` 코스닥150) — 정렬·검색 시 제거
+- 해외파생 `fucode_h` 의 **`Leadmonth`(`1`=선도월물)** 로 최근월물 판별
+- 금현물은 마스터 파일이 없고 전문(`IVOGLDREQ01`)으로 조회
+
+## 문서 (Source of Truth)
+
+> 💡 **전체 문맥은 `https://www.nhplug.com/llms-full.txt` 한 번에** — llms.txt + 전 엔드포인트·필드 요약. 왕복 요청이 필요 없습니다.
+
+**읽는 순서**: `common/openapi.json`(토큰·계좌) → 자산군 선택 → 해당 `openapi.json` 으로 호출
+
+| 필요한 것 | 파일 |
+|---|---|
+| **요청·응답 필드, 타입, 필수여부, 실시간 채널(`tr_cd`)·예시** | **`openapi.json` — 정본** |
+| 엔드포인트 목록 훑기 | `README.md` |
+| 자산군 개요·구조 | `overview.md` |
+
+> ⚠️ **`llms.txt`·`README.md`·`overview.md` 에는 필드명이 없습니다.** 필드가 필요하면 **`openapi.json` 을 읽으세요.** 추측 금지.
+
+| 자산군 | 내용 | 문서 |
+|---|---|---|
+| **공통 (Common)** | 토큰 발급·계좌목록. **모든 호출의 선행 단계.** | [openapi.json](https://www.nhplug.com/openapi-docs/common/openapi.json) · [README](https://www.nhplug.com/openapi-docs/common/README.md) · [overview](https://www.nhplug.com/openapi-docs/common/overview.md) |
+| **국내주식 (Domestic Stock)** | KOSPI·KOSDAQ·ETF/ETN. 종목코드 6자리(삼성전자 `005930`). KRX·NXT·통합(UNT) 구분. | [openapi.json](https://www.nhplug.com/openapi-docs/krstock/openapi.json) · [README](https://www.nhplug.com/openapi-docs/krstock/README.md) · [overview](https://www.nhplug.com/openapi-docs/krstock/overview.md) |
+| **해외주식 (Global Stock)** | 미국·중국·일본·홍콩 상장주식(`AAPL`·`TSLA`). 외화 결제·환율 필드 포함. | [openapi.json](https://www.nhplug.com/openapi-docs/gbstock/openapi.json) · [README](https://www.nhplug.com/openapi-docs/gbstock/README.md) · [overview](https://www.nhplug.com/openapi-docs/gbstock/overview.md) |
+| **국내파생 (KR Derivatives)** | KOSPI200·코스닥150·미니 선물/옵션, 주식선물, 변동성지수. **주간·야간 구분.** | [openapi.json](https://www.nhplug.com/openapi-docs/krfuture/openapi.json) · [README](https://www.nhplug.com/openapi-docs/krfuture/README.md) · [overview](https://www.nhplug.com/openapi-docs/krfuture/overview.md) |
+| **해외파생 (Global Derivatives)** | CME 등 해외 선물·옵션. 분/틱/일/주/월봉, 상품정보·장운영시간. | [openapi.json](https://www.nhplug.com/openapi-docs/gbfuture/openapi.json) · [README](https://www.nhplug.com/openapi-docs/gbfuture/README.md) · [overview](https://www.nhplug.com/openapi-docs/gbfuture/overview.md) |
+| **국내채권 (KR Bond)** | 장내채권(국채·회사채·소액채권·전환사채). 민평단가·수익률. | [openapi.json](https://www.nhplug.com/openapi-docs/krbond/openapi.json) · [README](https://www.nhplug.com/openapi-docs/krbond/README.md) · [overview](https://www.nhplug.com/openapi-docs/krbond/overview.md) |
+| **국내금현물 (KR Gold)** | KRX 금시장 금현물. 금 1kg `M04020000` · 미니금 100g `M04020100`. | [openapi.json](https://www.nhplug.com/openapi-docs/krgold/openapi.json) · [README](https://www.nhplug.com/openapi-docs/krgold/README.md) · [overview](https://www.nhplug.com/openapi-docs/krgold/overview.md) |
+
+## 공통 규약
+
+**응답 봉투** — `Output_0`(+`Output_1` …) + `message`
+
+- ⚠️ **`Output_0` 은 배열이 아닐 수 있습니다.** API 에 따라 **객체(집계)** 또는 **배열(목록)**. 예: 국내주식 잔고조회는 `Output_0`=객체(예수금·총평가금액), `Output_1`=배열(보유종목).
+- 응답 블록은 **데이터가 있을 때만** 내려옵니다. 존재 여부를 먼저 확인하세요.
+- 정확한 블록 구성·타입은 자산군 `openapi.json` 에 있습니다.
+
+**성공 판정** — ⚠️ **HTTP 200 이 곧 성공은 아닙니다**
+
+- ❌ `rsp_cd == "00000"` 같은 **단일 코드 비교 금지** — 정상 코드는 여러 개이고 API 마다 다릅니다. 정상 응답을 실패로 오판합니다.
+- ✅ ① **기대한 블록에 값이 있는지** → ② **`rsp_msg`** 가 완료를 뜻하는지(실패 메시지는 "종목코드 항목을 입력하세요." 처럼 원인을 서술) → ③ `rsp_cd` 는 **로그·문의용**으로 보관
+- **조회 0건과 오류는 다릅니다.** 블록이 비었다고 실패로 처리하지 말고 `rsp_msg` 로 구분하세요.
+- 실패면 **다음 단계(주문 등)로 진행하지 말고 중단**하고 `rsp_cd`·`rsp_msg` 를 노출하세요.
+
+**연속조회(`cts`)**
+
+- ⚠️ **`cts`·`cts_flag` 는 응답 *헤더*** 로 옵니다(본문 아님). 본문만 파싱하면 연속조회를 감지하지 못합니다.
+- `cts_flag` `Y`=다음 페이지 / `N`=종료. 다음 요청 헤더에 직전 `cts`·`cts_flag` 를 그대로 실어 보냅니다.
+- 헤더 없이 응답코드로만 알리는 API 도 있습니다 — `00165`("조회가 계속됩니다…") · `00218`("계속 조회시 다음(연속조회) 버튼을…")
+- ⚠️ **`cts` 가 직전과 동일하면 중단.** 끝 2~3자만 바뀌는 경우가 있으니 **전체 문자열로 비교**하세요.
+
+**호출 유량**
+
+- REST **초당 5회 수준**. 초과 시 오류 응답 → **재시도 대신 간격을 늘리세요**(0.2초 이상).
+- 유량 초과는 토큰 문제가 아닙니다. **토큰 재발급 금지**(재발급은 `401` 일 때만).
+- **WebSocket: 동시 2개 채널, 채널당 최대 30건 구독.**
+
+**필드 표기** — 모든 필드에 한글명·영문 필드명 병기.
+
+### 실시간 (WebSocket)
+
+**1. 접속** — `wss://api.nhplug.com:{포트}/websocket` (포트는 위 환경 표 참조)
+
+**2. 구독** — `tr_type` `1`=등록 / `2`=해제. `tr_cd`=채널코드, `tr_key`=구독키(종목코드·사용자ID). 값은 자산군 `openapi.json` 의 `x-realtime-channels` 참조.
+
+```json
+{ "header": { "token": "{access_token}", "tr_type": "1" },
+  "body":   { "tr_cd": "<채널코드>", "tr_key": "<구독키>" } }
+```
+
+한 연결에 구독 메시지를 **반복 전송**하면 여러 채널·종목을 동시 구독할 수 있습니다.
+
+**3. 수신** — `{ "header": { "tr_cd", "tr_key" }, "body": {…} }` **JSON**. 채널은 `header.tr_cd` 로 구분합니다. **비정기 push**(발생 시마다), **heartbeat 불필요**, **암호화 없음**(통보 포함 평문).
+
+> 🔐 **TLS(Python)** — 실거래 WebSocket 은 서버가 **중간 CA 를 보내지 않아** Python 기본 검증이 실패합니다(curl·Windows schannel 은 성공). `pip install truststore` 후 `truststore.SSLContext` 로 **OS 신뢰 저장소** 사용. (Python 3.10+)
+
+## API Coverage
+
+빠른 파악용. 정확한 동작은 자산군 `openapi.json` 이 정본입니다.
+
+- **국내주식** 주문(현금·신용 매수/매도·정정·취소·예약) · 조회(잔고·체결·가능수량·손익·증거금·권리) · 시세(현재가·체결·일자별·투자자·기간별·시간외·ETF) · 실시간(호가·체결·예상체결·회원사·프로그램매매·통보 / KRX·통합·NXT)
+- **해외주식** 주문(매수/매도·정정·취소·예약) · 조회(잔고·체결·가능금액·일별거래·손익·증거금) · 시세(현재가·체결추이·기간별·종목지수환율) · 실시간(호가·체결가·통보)
+- **국내파생** 주간/야간 주문·정정·취소 · 조회(체결·잔고·증거금·평가손익) · 시세(주간/야간·기간별·체결추이) · 실시간(지수·주식·상품 선물/옵션)
+- **해외파생** 주문·정정·취소 · 조회(주문·미체결·가능·손익·증거금) · 시세(현재가·호가·분/틱/일/주/월봉·상품정보·장운영) · 실시간(호가·체결가·통보)
+- **국내채권** 주문(매수/매도·정정·취소·대용매도) · 조회(가능수량·체결·잔고·대용잔고) · 시세(현재가·민평단가·수익률·발행현황) · 실시간(소액채권·전환사채)
+- **국내금현물** 주문(매수/매도·정정·취소) · 조회(가능수량·체결·잔고) · 시세(현재가·괴리율·일별추이) · 실시간(호가·체결·예상체결·통보)
+
+---
+
+# 자산군별 엔드포인트 · 필드
+
+## 공통 (인증·계좌) (`common`)
+
+정본: https://www.nhplug.com/openapi-docs/common/openapi.json
+
+### 접근 토큰 발급 — `POST /oauth2/token`
+⚠️ **모의투자 미제공 — 운영(api.nhplug.com:8443) 에서만 발급 가능합니다.** 발급받은 access token 은 모의투자·운영 호출 모두에 사용합니다.  🔑 **토큰은 24시간(expires_in=86400) 유효합니다. 반드시 캐시해서 재사용하세요.** - 매 API 호출마다 재발급하지 마세요. 재발급은 보안 알림을 유발하며, 알림이 쌓이면 실제 이상 발급을 구분할 수 없게 됩니다. - 프로세스 메모리 캐시만으로는 부족합니다(스크립트는 실행마다 새 프로세스). 파일 등 프로세스 간 공유 캐시에 저장하세요. - 재발급 조건은 401(토큰 무효)뿐입니다. 429(유량 초과) 재시도에는 기존 토큰을 그대로 사용하세요.  앱키/앱시크릿으로 access token 발급. 쿼리 파라미터 + C
+환경: live
+
+### 계좌 목록 조회 — `POST /n2/acctinfo`
+자격증명(앱키/시크릿)에 연결된 보유 계좌 목록 조회. 입력 없음. 응답 acct_no 를 이후 잔고·주문 API 의 act_no 로 사용.  응답 블록은 **데이터가 있을 때만 내려옵니다.** 블록이 없을 수 있으니 존재 여부를 먼저 확인하세요.  **계좌구분(acct_type)에 따라 사용 도메인이 다릅니다.** 01=운영(api.nhplug.com:8443, 일반) · 02=운영(api.nhplug.com:8443, 주문대리인) · 03=모의투자(moapi.nhplug.com:8443). 대상 환경에 맞는 계좌를 선택하세요.
+환경: mock,live
+- 응답 `Output_0` (배열): `acct_no`, `acct_type`
+
+---
+
+## 국내주식 (`krstock`)
+
+정본: https://www.nhplug.com/openapi-docs/krstock/openapi.json
+
+종목마스터: m_new_stock.mst (국내주식) · 구조체 m_new_stock.h — https://www.nhplug.com/instruments/<파일명>.mst (인증 불필요)
+
+### 주식주문(현금) 매수 — `POST /krstock/order/v1/cashBuy`
+국내주식 현금 매수주문 API 입니다.  응답 블록은 **데이터가 있을 때만 내려옵니다.** 블록이 없을 수 있으니 존재 여부를 먼저 확인하세요.
+- 요청 `Input_0`: `act_no`* 계좌번호 / 길이 11 / /n2/acctinfo 의 acct_no 사용 (운영은 acct_type=01·02, 모의투자는 03 계좌만 유효), `iem_cd`* 종목코드 / 길이 12 / 예시> NH투자증권인 경우, 005940, `orr_qty`* 주문수량 / 길이 18, `orr_pr` 주문가격 / 길이 15.3 / 예시> 12,345원인 경우, 12345, `orr_amt` 주문금액 / 길이 18, `nmn_pr_tp_cd`* 호가유형코드 / 길이 2 / 01.보통가 05.시장가 06.조건부지정가 09.자기주식 10.S-OPTION자기주식 11.금전신탁자기주식 12.최유리지정가 13.최우선지정가 16.스톱지정가 17.중간가 61.장전시간외 71.장후시간외 81.시간외단일가 91.장전시간외경쟁대량 92.장중경쟁대량, `orr_cnd_dit_cd`* 주문조건구분코드 / 길이 2 / 00.없음 01.IOC 02.FOK, `ssl_nmn_pr_dit_cd`* 공매도호가구분코드 / 길이 2 / 00.정상 (기본값) 01.차입주식매도 02.기타공매도 99.권리공매도, `sop_cnd_pr` 정지조건가격 / 길이 15.3 / 호가유형코드 16(스톱지정가일때만 입력), `rmt_mkt_cd`* 요청시장코드 / 길이 3 / SOR/KRX/NXT, `sor_mkt_sli_yn`* SOR시장분할여부 / 길이 1 / SOR일경우에만 Y/N선택, KRX/NXT 면 무조건 N
+- 응답 `Output_0` (객체): `orr_gno_tab_cd`, `mkt_orr_no`, `sor_fle_id`, `sor_ant_rt1`, `sor_ant_rt2`, `orr_qty1`, `orr_qty2`, `anw_cld_mkt_orr_no1`, `anw_cld_mkt_orr_no2`
+
+### 주식주문(현금) 매도 — `POST /krstock/order/v1/cashSell`
+국내주식 현금 매도주문 API 입니다.  응답 블록은 **데이터가 있을 때만 내려옵니다.** 블록이 없을 수 있으니 존재 여부를 먼저 확인하세요.
+- 요청 `Input_0`: `act_no`* 계좌번호 / 길이 11 / /n2/acctinfo 의 acct_no 사용 (운영은 acct_type=01·02, 모의투자는 03 계좌만 유효), `iem_cd`* 종목코드 / 길이 12 / 예시> NH투자증권인 경우, 005940, `orr_qty`* 주문수량 / 길이 18, `orr_pr` 주문가격 / 길이 15.3 / 예시> 12,345원인 경우, 12345, `orr_amt` 주문금액 / 길이 18, `nmn_pr_tp_cd`* 호가유형코드 / 길이 2 / 01.보통가 05.시장가 06.조건부지정가 09.자기주식 10.S-OPTION자기주식 11.금전신탁자기주식 12.최유리지정가 13.최우선지정가 16.스톱지정가 17.중간가 61.장전시간외 71.장후시간외 81.시간외단일가 91.장전시간외경쟁대량 92.장중경쟁대량, `orr_cnd_dit_cd`* 주문조건구분코드 / 길이 2 / 00.없음 01.IOC 02.FOK, `ssl_nmn_pr_dit_cd`* 공매도호가구분코드 / 길이 2 / 00.정상 (기본값) 01.차입주식매도 02.기타공매도 99.권리공매도, `sop_cnd_pr` 정지조건가격 / 길이 15.3 / 호가유형코드 16(스톱지정가일때만 입력), `rmt_mkt_cd`* 요청시장코드 / 길이 3 / SOR/KRX/NXT, `sor_mkt_sli_yn`* SOR시장분할여부 / 길이 1 / SOR일경우에만 Y/N선택, KRX/NXT 면 , 무조건 N
+- 응답 `Output_0` (객체): `orr_gno_tab_cd`, `mkt_orr_no`, `sor_fle_id`, `sor_ant_rt1`, `sor_ant_rt2`, `orr_qty1`, `orr_qty2`, `anw_cld_mkt_orr_no1`, `anw_cld_mkt_orr_no2`
+
+### 주식주문(신용) 매수 — `POST /krstock/order/v1/creditBuy`
+국내주식 신용 매수주문 API 입니다.  응답 블록은 **데이터가 있을 때만 내려옵니다.** 블록이 없을 수 있으니 존재 여부를 먼저 확인하세요.
+- 요청 `Input_0`: `act_no`* 계좌번호 / 길이 11 / /n2/acctinfo 의 acct_no 사용 (운영은 acct_type=01·02, 모의투자는 03 계좌만 유효), `iem_cd`* 종목코드 / 길이 12 / 예시> NH투자증권인 경우, 005940, `orr_qty`* 주문수량 / 길이 18, `orr_pr` 주문가격 / 길이 15.3 / 예시> 12,345원인 경우, 12345, `orr_amt` 주문금액 / 길이 18, `nmn_pr_tp_cd`* 호가유형코드 / 길이 2 / 01.보통가 05.시장가 06.조건부지정가 09.자기주식 10.S-OPTION자기주식 11.금전신탁자기주식 12.최유리지정가 13.최우선지정가 16.스톱지정가 17.중간가 61.장전시간외 71.장후시간외 81.시간외단일가 91.장전시간외경쟁대량 92.장중경쟁대량, `orr_cnd_dit_cd`* 주문조건구분코드 / 길이 2 / 00.없음 01.IOC 02.FOK, `cfd_lon_cd`* 신용대출코드 / 길이 2 / 01.유통융자 02.자기융자 03.유통대주 04.자기대주 10.매입자금대출, `lon_dt` 대출일자 / 길이 8 / 신용대출코드 03,04일 경우 필수, `sop_cnd_pr` 정지조건가격 / 길이 15.3 / 호가유형코드 16(스톱지정가일때만 입력), `rmt_mkt_cd`* 요청시장코드 / 길이 3 / SOR/KRX/NXT, `sor_mkt_sli_yn`* SOR시장분할여부 / 길이 1 / SOR일경우에만 Y/N선택, KRX/NXT 면 무조건 N
+- 응답 `Output_0` (객체): `orr_gno_tab_cd`, `mkt_orr_no`, `sor_fle_id`, `sor_ant_rt1`, `sor_ant_rt2`, `orr_qty1`, `orr_qty2`, `anw_cld_mkt_orr_no1`, `anw_cld_mkt_orr_no2`
+
+### 주식주문(신용) 매도 — `POST /krstock/order/v1/creditSell`
+국내주식 신용 매도주문 API 입니다.  응답 블록은 **데이터가 있을 때만 내려옵니다.** 블록이 없을 수 있으니 존재 여부를 먼저 확인하세요.
+- 요청 `Input_0`: `act_no`* 계좌번호 / 길이 11 / /n2/acctinfo 의 acct_no 사용 (운영은 acct_type=01·02, 모의투자는 03 계좌만 유효), `iem_cd`* 종목코드 / 길이 12 / 예시> NH투자증권인 경우, 005940, `orr_qty`* 주문수량 / 길이 18, `orr_pr` 주문가격 / 길이 15.3 / 예시> 12,345원인 경우, 12345, `orr_amt` 주문금액 / 길이 18, `nmn_pr_tp_cd`* 호가유형코드 / 길이 2 / 01.보통가 05.시장가 06.조건부지정가 09.자기주식 10.S-OPTION자기주식 11.금전신탁자기주식 12.최유리지정가 13.최우선지정가 16.스톱지정가 17.중간가 61.장전시간외 71.장후시간외 81.시간외단일가 91.장전시간외경쟁대량 92.장중경쟁대량, `orr_cnd_dit_cd`* 주문조건구분코드 / 길이 2 / 00.없음 01.IOC 02.FOK, `cfd_lon_cd`* 신용대출코드 / 길이 2 / 01.유통융자 02.자기융자 03.유통대주 04.자기대주 10.매입자금대출, `lon_dt` 대출일자 / 길이 8 / 신용대출코드 03,04일 경우 필수, `sop_cnd_pr` 정지조건가격 / 길이 15.3 / 호가유형코드 16(스톱지정가일때만 입력), `rmt_mkt_cd`* 요청시장코드 / 길이 3 / SOR/KRX/NXT, `sor_mkt_sli_yn`* SOR시장분할여부 / 길이 1 / SOR일경우에만 Y/N선택, KRX/NXT 면 , 무조건 N
+- 응답 `Output_0` (객체): `orr_gno_tab_cd`, `mkt_orr_no`, `sor_fle_id`, `sor_ant_rt1`, `sor_ant_rt2`, `orr_qty1`, `orr_qty2`, `anw_cld_mkt_orr_no1`, `anw_cld_mkt_orr_no2`
+
+### 주식주문(정정취소) 정정 — `POST /krstock/order/v1/modify`
+국내주식 정정주문 API 입니다.  응답 블록은 **데이터가 있을 때만 내려옵니다.** 블록이 없을 수 있으니 존재 여부를 먼저 확인하세요.
+- 요청 `Input_0`: `act_no`* 계좌번호 / 길이 11 / /n2/acctinfo 의 acct_no 사용 (운영은 acct_type=01·02, 모의투자는 03 계좌만 유효), `org_mkt_orr_no`* 원시장주문번호 / 길이 10, `all_pat_dit_cd`* 전체일부구분코드 / 길이 1 / 1.전체(전량) 2.일부(잔량), `iem_cd`* 종목코드 / 길이 12 / 예시> NH투자증권인 경우, 005940, `cor_qty`* 정정수량 / 길이 18 / 전체일부구분코드 "2.일부(잔량)"인 경우 셋팅, `cor_pr`* 정정가격 / 길이 15.3 / 예시> 12,345원인 경우, 12345, `sop_cnd_pr`* 정지조건가격 / 길이 15.3 / 원주문의 호가유형코드 16(스톱지정가일때) KRX는 효력발생전으로만 수정가능 NXT는 원주문의 스톱지정가 그대로입력, `rmt_mkt_cd`* 요청시장코드 / 길이 3 / 원주문과 동일하게 입력(SOR/KRX/NXT), `sor_mkt_sli_yn`* SOR시장분할여부 / 길이 1 / 원주문과 동일하게 입력 (SOR일경우에만 Y/N선택, KRX/NXT 면 , 무조건 N)
+- 응답 `Output_0` (객체): `orr_gno_tab_cd`, `mkt_orr_no`, `sor_fle_id`, `can_sor_ant_rt1`, `can_sor_ant_rt2`, `can_orr_qty1`, `can_orr_qty2`, `can_cld_mkt_orr_no1`, `can_cld_mkt_orr_no2`
+
+### 주식주문(정정취소) 취소 — `POST /krstock/order/v1/cancel`
+국내주식 취소주문 API 입니다.  응답 블록은 **데이터가 있을 때만 내려옵니다.** 블록이 없을 수 있으니 존재 여부를 먼저 확인하세요.
+- 요청 `Input_0`: `act_no`* 계좌번호 / 길이 11 / /n2/acctinfo 의 acct_no 사용 (운영은 acct_type=01·02, 모의투자는 03 계좌만 유효), `org_mkt_orr_no`* 원시장주문번호 / 길이 10, `all_pat_dit_cd`* 전체일부구분코드 / 길이 1 / 1.전체(전량) 2.일부(잔량), `iem_cd`* 종목코드 / 길이 12 / 예시> NH투자증권인 경우, 005940, `cor_qty` 정정수량 / 길이 18 / 전체일부구분코드 "2.일부(잔량)"인 경우 셋팅
+- 응답 `Output_0` (객체): `orr_gno_tab_cd`, `mkt_orr_no`, `sor_fle_id`, `can_sor_ant_rt1`, `can_sor_ant_rt2`, `can_orr_qty1`, `can_orr_qty2`, `can_cld_mkt_orr_no1`, `can_cld_mkt_orr_no2`
+
+### 주식예약주문 — `POST /krstock/order/v1/reservedOrder`
+국내주식 예약주문(매수/매도) API 입니다.  응답 블록은 **데이터가 있을 때만 내려옵니다.** 블록이 없을 수 있으니 존재 여부를 먼저 확인하세요.
+- 요청 `Input_0`: `act_no`* 계좌번호 / 길이 11 / /n2/acctinfo 의 acct_no 사용 (운영은 acct_type=01·02, 모의투자는 03 계좌만 유효), `iem_cd`* 종목코드 / 길이 12 / 예시> NH투자증권인 경우, 005940, `sby_dit_cd`* 매매구분코드 / 길이 1 / 1.매도 2.매수, `frs_sba_orr_yn`* 선물대용주문여부 / 길이 1 / Y.예 N.아니오, `nmn_pr_tp_cd`* 호가유형코드 / 길이 2 / 01.지정가 05.시장가 06.조건부지정가 09.자기주식 61.장전시간외, `cfd_lon_cd`* 신용대출코드 / 길이 2 / 00.일반거래 01.유통융자 02.자기융자 03.유통대주 04.자기대주 10.매입자금대출 11.매도담보대출 12.주식담보대출, `lon_dt` 대출일자 / 길이 8 / YYYYMMDD, `orr_qty`* 주문수량 / 길이 18, `orr_uit_pr`* 주문단가 / 길이 18 / 예시> 12,345원인 경우, 12345, `bkg_orr_tp_cd`* 예약주문유형코드 / 길이 1 / 1.일반예약 2.잔량주문 3.지정수량주문, `bkg_orr_sta_dt` 예약주문시작일자 / 길이 8 / 예약주문유형코드가 "2" 또는 "3"일 때 (최대 30일) YYYYMMDD, `bkg_orr_end_dt` 예약주문종료일자 / 길이 8 / 예약주문유형코드가 "2" 또는 "3"일 때 (최대 30일) YYYYMMDD, `bkg_orr_enf_tp_cd`* 예약주문집행유형코드 / 길이 1 / 1.일반 2.기준가격대비, `end_pr_cmp_ftw_amt` 종가대비등락폭금액 / 길이 18 / 예약주문집행유형코드가 "2"일 때, `orr_pr_rge_hlm_pr` 주문가격범위상한가 / 길이 18 / 예약주문집행유형코드가 "2"일 때, `orr_pr_rge_llm_pr` 주문가격범위하한가 / 길이 18 / 예약주문집행유형코드가 "2"일 때, `rmt_mkt_cd`* 요청시장코드 / 길이 3 / KRX.KRX NXT.NXT
+- 응답 `Output_0` (객체): `bkg_orr_no`, `act_no`, `iem_cd`, `sby_dit_cd`, `frs_sba_orr_yn`, `nmn_pr_tp_cd`, `cfd_lon_cd`, `lon_dt`, `orr_qty`, `orr_uit_pr`, `aca_tel_no`, `bkg_orr_tp_cd`, `bkg_orr_sta_dt`, `bkg_orr_end_dt`, `bkg_orr_enf_tp_cd`, `end_pr_cmp_ftw_amt`, `orr_pr_rge_hlm_pr`, `orr_pr_rge_llm_pr`, `pwd`
+
+### 주식예약주문취소 — `POST /krstock/order/v1/reservedCancel`
+국내주식 예약 취소주문 API 입니다.  응답 블록은 **데이터가 있을 때만 내려옵니다.** 블록이 없을 수 있으니 존재 여부를 먼저 확인하세요.
+- 요청 `Input_0`: `act_no`* 계좌번호 / 길이 11 / /n2/acctinfo 의 acct_no 사용 (운영은 acct_type=01·02, 모의투자는 03 계좌만 유효), `sby_dit_cd`* 매매구분코드 / 길이 1 / 1.매도 2.매수, `iem_cd`* 종목코드 / 길이 12 / 예시> NH투자증권인 경우, 005940, `bkg_orr_no`* 예약주문번호 / 길이 10, `bkg_orr_tp_cd`* 예약주문유형코드 / 길이 1 / 1.일반예약 2.잔량주문 3.지정수량주문, `bkg_rtn_dt` 예약접수일자 / 길이 8 / 예약주문유형코드가 "2" 또는 "3"일 때 YYYYMMDD, `rmt_mkt_cd`* 요청시장코드 / 길이 3 / KRX.KRX NXT.NXT
+- 응답 `Output_0` (객체): `act_no`, `sby_dit_cd`, `iem_cd`, `bkg_orr_no`, `bkg_orr_tp_cd`, `bkg_rtn_dt`
+
+### 주식일별주문체결조회 — `POST /krstock/inquiry/v1/dailyOrderExecution`
+국내주식 체결내역 조회 API 입니다.  응답 블록은 **데이터가 있을 때만 내려옵니다.** 블록이 없을 수 있으니 존재 여부를 먼저 확인하세요.  ⚠️ **명세 검증 필요**: `Output_0` 는 명세상 **Object** 로 선언되어 있으나 예시 응답은 **Array** 입니다. 실제 응답 타입을 확인 후 사용하세요.
+- 요청 `Input_0`: `orr_dt`* 주문일자 / 길이 8 / YYYYMMDD, `act_no`* 계좌번호 / 길이 11 / /n2/acctinfo 의 acct_no 사용 (운영은 acct_type=01·02, 모의투자는 03 계좌만 유효), `itg_orr_no` 통합주문번호 / 길이 10, `orr_mkt_cd` 주문시장코드 / 길이 2 / 00.전체 01.거래소주식 02.코스닥 03.K-OTC 06.코넥스, `ost_cns_dit`* 체결구분 / 길이 1 / 0.전체 1.미체결 2.체결
+- 응답 `Output_0` (객체): `cus_fnm`
+- 응답 `Output_1` (배열): `itg_orr_no`, `orr_mkt_cd_nm`, `mo_itg_orr_no`, `org_itg_orr_no`, `iem_cd`, `iem_nm`, `sby_dit_cd_nm`, `cor_can_dit_cd_nm`, `lon_dt`, `cfd_lon_cd`, `nmn_pr_tp_cd_nm`, `orr_cnd_dit_cd_nm`, `orr_qty`, `orr_pr`, `tot_cns_qty`, `cns_avg_uit_pr`, `cns_amt`, `cns_cnt`, `ny_cns_qty`, `cor_qty`, `can_qty`, `orr_tm`, `orr_mdi`, `bnd_byn_dt`, `syn_ttn_dit_cd_nm`, `orr_rjt_rsn_cd_nm`, `pcs_emp_no`, `rmt_mkt_cd`, `sor_mkt_sli_yn`, `krx_lnt_opi_sec_co_cd`, `krx_lnt_opi_act_no`, `krx_lnt_cnf_cpl_hur`
+
+### 주식잔고조회 — `POST /krstock/inquiry/v1/balance`
+국내주식 잔고조회 API 입니다. 순자산금액, 총자산금액, 총매수금액, 총평가금액, 총평가손익 정보는 보유한 잔고를 모두 조회한 이후에 제공됩니다.  응답 블록은 **데이터가 있을 때만 내려옵니다.** 블록이 없을 수 있으니 존재 여부를 먼저 확인하세요.
+- 요청 `Input_0`: `act_no`* 계좌번호 / 길이 11 / /n2/acctinfo 의 acct_no 사용 (운영은 acct_type=01·02, 모의투자는 03 계좌만 유효), `bnc_bse_cd`* 잔고기준코드 / 길이 1 / 1.주식관련 총 평가(체결기준) 5.주식잔고평가(현재가기준), `ltg_aot_dit_cd`* 상장폐지구분코드 / 길이 1 / 1.상장종목 9.전체, `aet_bse`* 자산기준 / 길이 1 / 1.순자산 2.총자산, `qut_dit_cd`* 시세구분코드 / 길이 3 / UNT/KRX/NXT 중 하나를 반드시 입력 (UNT=통합시세, KRX=KRX시세, NXT=NXT시세)
+- 응답 `Output_0` (객체): `dca`, `nxt_dd_dca`, `nxt2_dd_dca`, `fc_dca`, `fc_mgg_amt`, `fc_orr_pbl_amt`, `drn_pbl_amt`, `fnn_amt`, `mgg_rt`, `rit_eal_amt`, `orr_pbl_amt`, `nas_amt`, `tot_aet_amt`, `tot_byn_amt`, `tot_eal_amt`, `tot_eal_pls`, `pft_rt`, `rba`, `int_ny_pmt_amt`, `ny_rdp_amt`, `ect_lga`, `lon_amt`, `sba_amt`, `orr_pbl_amt1`, `orr_pbl_amt2`, `orr_pbl_amt3`, `orr_pbl_amt4`, `slo_mgg_amt`, `csh_wtm`, `sba_wtm`, `sll_edn_amt`, `cfd_pdt_tp_nm`, `act_atv_tp_dtl_cd`, `act_no`
+- 응답 `Output_1` (배열): `pdt_tp_nm`, `iem_nm`, `iem_cd`, `tp_cd_nm`, `itg_bnc_qty`, `ny_stl_qty`, `rsdl_qty`, `phs_pr`, `now_pr`, `byn_amt`, `eal_amt`, `eal_pls_amt`, `sll_amt`, `sll_pls_amt`, `pft_rt`, `syn_ttn_dit_cd`, `syn_ttn_dit_cd_nm`, `crm_aet_cfc_cd`, `ctc_int_rt`, `lon_byn_dt`, `xrn_dt`, `wtm_rt`, `lon_bnc_amt`, `iem_mlf_cd`, `itg_bnc_tp_cd`
+
+### 매수가능수량조회 — `POST /krstock/inquiry/v1/buyableQuantity`
+국내주식 매수가능수량 조회 API 입니다.  응답 블록은 **데이터가 있을 때만 내려옵니다.** 블록이 없을 수 있으니 존재 여부를 먼저 확인하세요.
+- 요청 `Input_0`: `ost_dit_cd`* 구분코드 / 길이 1 / 1.현금 2.신용(융자대주) 3.매입자금대출, `act_no`* 계좌번호 / 길이 11 / /n2/acctinfo 의 acct_no 사용 (운영은 acct_type=01·02, 모의투자는 03 계좌만 유효), `iem_cd`* 종목코드 / 길이 12 / 예시> NH투자증권인 경우, 005940, `nmn_pr_tp_cd`* 호가유형코드 / 길이 2 / 01.보통가 05.시장가 06.조건부지정가 09.자기주식 10.S-OPTION자기주식 11.금전신탁자기주식 12.최유리지정가 13.최우선지정가 16.스톱지정가 17.중간가 61.장전시간외 71.장후시간외 81.시간외단일가 91.장전시간외경쟁대량 92.장중경쟁대량, `orr_pr` 주문가격 / 길이 18 / 예시> 12,345원인 경우, 12345, `cfd_lon_cd` 신용대출코드 / 길이 2 / 구분코드가 "2"인 경우 01.유통융자 02.자기융자 03.유통대주 04.자기대주, `lon_dt` 대출일자 / 길이 8 / 구분코드가 "2", "3"인 경우
+- 응답 `Output_0` (객체): `sll_ctc_amt1`, `byn_ctc_amt1`, `sdr_xps1`, `dca`, `sll_ctc_amt`, `ost_byn_ctc_amt`, `sdr_xps`, `nxt_dd_dca`, `nxt2_dd_dca`, `byn_ny_cns_orr_amt`, `ost_fee`, `max_pbl_amt`, `max_pbl_qty`, `rvb_orn_max_pbl_fee`, `csh_orr_pbl_amt`, `csh_orr_pbl_qty`, `ost_fee1`, `cfd_rvb_orr_pbl_amt`, `cfd_rvb_orr_pbl_qty`, `cfd_max_pbl_fee`, `cfd_orr_pbl_amt`, `cfd_orr_pbl_qty`, `ost_fee2`, `lmt_amt`, `use_lmt_amt`, `rmn_lmt`, `use_pbl_sba_amt`, `use_pbl_csh`, `orr_pbl_amt1`, `lon_lmt_amt`, `lmt_use_amt`, `rmn_lmt1`, `orr_pbl_sba_amt`, `orr_pbl_amt2`, `orr_pbl_amt3`, `orr_pbl_qty`, `ost_fee3`, `int_rt`, `orr_pr`, `rp_eal_amt`, `ny_stl_qty`
+
+### 매도가능수량조회 — `POST /krstock/inquiry/v1/sellableQuantity`
+국내주식 매도가능수량 조회 API 입니다.  응답 블록은 **데이터가 있을 때만 내려옵니다.** 블록이 없을 수 있으니 존재 여부를 먼저 확인하세요.
+- 요청 `Input_0`: `act_no`* 계좌번호 / 길이 11 / /n2/acctinfo 의 acct_no 사용 (운영은 acct_type=01·02, 모의투자는 03 계좌만 유효), `iem_cd`* 종목코드 / 길이 12 / 예시> NH투자증권인 경우, 005940, `lon_dt` 대출일자 / 길이 8 / 신용대출코드가 '01.유통융자'일때 YYYYMMDD, `cfd_lon_cd`* 신용대출코드 / 길이 2 / 00.일반거래 01.유통융자 02.자기융자 03.유통대주 04.자기대주
+- 응답 `Output_0` (객체): `cus_fnm`, `ost_dit_cd`, `dit_nm`, `iem_cd`, `iem_nm`, `lon_dt`, `cfd_lon_cd`, `cfd_lon_cd_nm`, `ttn_tp_cd`, `ttn_tp_cd_nm`, `bnc_qty`, `sll_ny_stl_qty`, `byn_ny_stl_qty`, `tdt_sll_ny_cns_qty`, `sll_pbl_qty`, `phs_uit_pr`
+
+### 주식예약주문조회 — `POST /krstock/inquiry/v1/reservedInquiry`
+국내주식 예약주문내역 조회 API 입니다.  응답 블록은 **데이터가 있을 때만 내려옵니다.** 블록이 없을 수 있으니 존재 여부를 먼저 확인하세요.
+- 요청 `Input_0`: `bkg_orr_rtn_dt` 예약주문접수일자 / 길이 8 / YYYYMMDD, `act_no`* 계좌번호 / 길이 11 / 조회구분 "2"일 때 / /n2/acctinfo 의 acct_no 사용 (운영은 acct_type=01·02, 모의투자는 03 계좌만 유효), `iem_cd` 종목코드 / 길이 12 / 예시> NH투자증권인 경우, 005940, `sby_dit_cd`* 매매구분코드 / 길이 1 / 0.전체 1.매도 2.매수, `cfd_lon_cd` 신용대출코드 / 길이 2 / 00.일반거래 01.유통융자 02.자기융자 03.유통대주 04.자기대주 10.매입자금대출 11.매도담보대출 12.주식담보대출, `bkg_orr_tp_cd`* 예약주문유형코드 / 길이 1 / 0.전체 1.일반예약(현금/대출예약) 2.기간예약(잔량예약) 3.기간예약(수량예약), `bkg_orr_can_dit_cd` 예약주문취소구분코드 / 길이 1 / .전체 0.잔존주문 1.본인취소 2.직원취소
+- 응답 `Output_0` (객체): `tab_nm`, `bkg_orr_rtn_dt`
+- 응답 `Output_1` (배열): `act_no`, `cus_fnm`, `amn_tab_nm`, `act_pdt_nm`, `iem_cd`, `iem_nm`, `sby_dit_cd_nm`, `nmn_pr_tp_cd_nm`, `cfd_lon_cd_nm`, `lon_dt`, `orr_qty`, `orr_pr`, `acl_cns_qty`, `orr_enf_sta_dt`, `orr_enf_end_dt`, `lst_orr_enf_dt`, `bkg_orr_tp_cd_nm`, `bkg_orr_enf_tp_cd_nm`, `end_pr_cmp_ftw_amt`, `orr_pr_rge_hlm_pr`, `orr_pr_rge_llm_pr`, `bkg_orr_can_dit_cd_nm`, `rgs_dt`, `rgs_tm`, `rgs_emp_no`, `can_dt`, `can_tm`, `can_emp_no`, `bkg_orr_rtn_dt`, `bkg_rtn_orr_no`, `sby_dit_cd`, `stk_now_pr`, `te_bkg_orr_ssp_yn`, `rmt_mkt_cd`
+
+### 주식잔고조회_실현손익 — `POST /krstock/inquiry/v1/realizedPnl`
+국내주식 실현손익 조회 API 입니다.  응답 블록은 **데이터가 있을 때만 내려옵니다.** 블록이 없을 수 있으니 존재 여부를 먼저 확인하세요.
+- 요청 `Input_0`: `act_no`* 계좌번호 / 길이 11 / /n2/acctinfo 의 acct_no 사용 (운영은 acct_type=01·02, 모의투자는 03 계좌만 유효), `iqr_dit_cd1`* 조회구분코드1 / 길이 1 / 0.전체 1.잔고종목 2.당일매매, `fee_dit_cd`* 수수료구분코드 / 길이 1 / 1.온라인 2.영업점, `qut_dit_cd`* 시세구분코드 / 길이 3 / UNT/KRX/NXT 중 하나를 반드시 입력 (UNT=통합시세, KRX=KRX시세, NXT=NXT시세)
+- 응답 `Output_0` (객체): `cus_fnm`, `rnm_cfm_no`, `act_atv_tp_dtl_cd`, `act_amn_tab_cd`, `act_pdt_llf_cd`, `tdy_dca`, `nxt_dd_dca`, `nxt2_dd_dca`, `orr_pbl_amt1`, `orr_pbl_amt2`, `orr_pbl_amt3`, `orr_pbl_amt4`, `csh_wtm`, `sba_wtm`, `tdt_byn_amt`, `tdt_sll_amt`, `sdr_xps`, `sby_pls_amt`, `eal_amt_sum`, `eal_pls_amt`, `sll_edn_amt`, `aet_amt`, `aet_drs_amt`, `pft_rt1`, `pft_rt2`, `bf_dd_eal_amt2`, `eal_pls2`, `pft_rt3`, `pna_sum_amt`, `phs_tal`, `aet_par_tal`, `sdr_xps2`, `sby_wtm_aly_cd_nm`, `pft_rt10`
+- 응답 `Output_1` (배열): `iem_nm`, `iem_cd`, `itg_bnc_qty`, `orr_pbl_qty`, `bf_dd_byn_qty`, `bf_dd_sll_qty`, `tdt_byn_qty`, `tdt_sll_qty`, `avg_phs_uit_pr`, `sll_uit_pr`, `phs_amt`, `rzt_pls_amt`, `sdr_xps`, `rzt_pft_sby_pls_amt`, `ost_phs_amt_pna`, `eal_pls`, `now_pr`, `pft_rt`, `sdr_xps1`, `pft_rt7`, `pft_rt6`, `pft_rt2`, `bnc_tp_dit_cd_nm`, `lon_dt`, `bf_dd_end_pr`, `bf_dd_bnc_amt`, `bf_dd_cmp_ind_amt`, `bf_dd_cmp_ind_rt`, `stl_bnc_qty`, `avg_uit_pr1`, `xrn_dt`, `dit_nm1`, `bf_dd_sll_amt`, `tdy_sll_amt`, `bf_dd_byn_amt`, `tdy_byn_amt`, `sll_pna`, `bnc_eal_amt`
+
+### 투자계좌자산현황조회 — `POST /krstock/inquiry/v1/assetStatus`
+국내주식 자산현황 조회 API 입니다.  응답 블록은 **데이터가 있을 때만 내려옵니다.** 블록이 없을 수 있으니 존재 여부를 먼저 확인하세요.
+- 요청 `Input_0`: `act_no`* 계좌번호 / 길이 11 / /n2/acctinfo 의 acct_no 사용 (운영은 acct_type=01·02, 모의투자는 03 계좌만 유효), `eal_aly_cd`* 평가적용코드 / 길이 1 / 1.장부가평가 2.시가평가, `aet_bse`* 자산기준 / 길이 1 / 1.순자산 2.총자산, `qut_dit_cd`* 시세구분코드 / 길이 3 / UNT/KRX/NXT 중 하나를 반드시 입력 (UNT=통합시세, KRX=KRX시세, NXT=NXT시세)
+- 응답 `Output_0` (객체): `cus_fnm`, `rnm_cfm_no`, `ctc_tp_cd_nm`, `act_amn_tab_cd`, `act_pdt_llf_cd`, `amn_emp_fnm`, `dca`, `nxt_dd_dca`, `nxt2_dd_dca`, `krw_tsl_fc_dca`, `krw_tsl_fc_mgg_amt`, `krw_tsl_fc_orr_pbl_amt`, `drn_pbl_amt`, `fnn_amt`, `mgg_rt`, `stk_orr_pbl_amt`, `tot_aet_amt`, `nas_amt`, `tot_byn_amt`, `tot_eal_amt`, `tot_eal_pls_amt`, `pft_rt`, `rba`, `int_ny_pmt_amt`, `ect_lga`, `lon_amt`, `sba_amt`, `fnc_pdt_orr_pbl_amt`, `ny_rdp_amt`, `cfd_pdt_tp_nm`, `act_atv_tp_cd_nm`, `slo_amt`, `csh_wtm`, `fnd_sll_stl_xpn_amt`, `sbi_dca`, `ima_wtm`
+- 응답 `Output_1` (배열): `iem_mlf_nm`, `iem_nm`, `iem_cd`, `bnc_tp_dit_cd_nm`, `itg_bnc_qty`, `phs_pr`, `now_pr`, `byn_amt`, `eal_amt`, `eal_pls_amt`, `sll_pls_amt`, `pft_rt`, `int_rt`, `byn_dt`, `xrn_dt`, `lon_xrn_dt`, `syn_ttn_dit_cd`, `syn_ttn_dit_cd_nm`, `crm_aet_cfc_cd`, `iem_mlf_cd`, `byn_cim_qty`, `rth_qty`, `ctc_int_rt`, `lon_bnc_amt`, `cur_cd`, `fc_sec_trd_nat_cd`, `nat_cd_nm`, `itg_bnc_tp_cd`, `tck_iem_cd`
+
+### 실현손익일별합산조회 — `POST /krstock/inquiry/v1/dailyPnl`
+국내주식 실현손익추이 조회 API 입니다.  응답 블록은 **데이터가 있을 때만 내려옵니다.** 블록이 없을 수 있으니 존재 여부를 먼저 확인하세요.
+- 요청 `Input_0`: `act_no`* 계좌번호 / 길이 11 / /n2/acctinfo 의 acct_no 사용 (운영은 acct_type=01·02, 모의투자는 03 계좌만 유효), `iem_cd` 종목코드 / 길이 12, `iqr_sta_dt`* 조회시작일자 / 길이 8 / YYYYMMDD, `iqr_end_dt`* 조회종료일자 / 길이 8 / YYYYMMDD
+- 응답 `Output_0` (객체): `act_fnm`, `byn_cst_sum`, `sll_cst_sum`, `pls_amt_sum`, `acl_sdr_xps`
+- 응답 `Output_1` (배열): `sby_dt`, `byn_qty`, `byn_amt`, `byn_fee`, `byn_amt_sum`, `sll_qty`, `sll_amt`, `sll_tax_sum`, `sll_amt_sum`, `pls_amt`, `pft_rt`, `iem_mlf_cd`
+
+### 종목별실현손익현황조회 — `POST /krstock/inquiry/v1/tradingPnl`
+국내주식 손익현황 API 입니다.  응답 블록은 **데이터가 있을 때만 내려옵니다.** 블록이 없을 수 있으니 존재 여부를 먼저 확인하세요.
+- 요청 `Input_0`: `act_no`* 계좌번호 / 길이 11 / /n2/acctinfo 의 acct_no 사용 (운영은 acct_type=01·02, 모의투자는 03 계좌만 유효), `iqr_sta_dt`* 조회시작일자 / 길이 8 / YYYYMMDD, `iqr_end_dt`* 조회종료일자 / 길이 8 / YYYYMMDD
+- 응답 `Output_0` (객체): `iem_cd`, `byn_qty`, `byn_uit_pr`, `byn_fee`, `byn_cnt`, `byn_amt`, `sll_qty`, `sll_uit_pr`, `sll_tax_sum`, `sll_cnt`, `sll_amt`, `sll_abk_amt`, `pls_amt`, `pft_rt`, `fee_sum`, `tax_sum`
+- 응답 `Output_1` (배열): `iem_cd`, `iem_nm`, `byn_qty`, `byn_uit_pr`, `byn_fee`, `byn_cnt`, `byn_amt`, `sll_qty`, `sll_uit_pr`, `sll_tax_sum`, `sll_cnt`, `sll_amt`, `sll_abk_amt`, `pls_amt`, `pft_rt`, `fee_sum`, `tax_sum`, `iem_mlf_cd`
+
+### 주식통합증거금 현황 — `POST /krstock/inquiry/v1/integratedMargin`
+국내주식 통합증거금 조회 API 입니다.  응답 블록은 **데이터가 있을 때만 내려옵니다.** 블록이 없을 수 있으니 존재 여부를 먼저 확인하세요.
+- 요청 `Input_0`: `act_no`* 계좌번호 / 길이 11 / /n2/acctinfo 의 acct_no 사용 (운영은 acct_type=01·02, 모의투자는 03 계좌만 유효)
+- 응답 `Output_0` (객체): `fc_orr_pbl_amt3`, `cro_sby_stl_amt`, `cro_sby_act_yn`, `lmt_amt`, `lmt_use_amt`, `rmn_lmt_amt`
+- 응답 `Output_1` (배열): `cur_cd`, `fc_dca`, `fc_mgg_amt`, `ose_trd_tax`, `fc_ato_re_sby_obj_amt`, `fc_orr_pbl_amt`, `aly_xcg_rt`, `orr_pbl_amt_csh`, `cnv_rt`, `krw_tsl_cro_pbl_amt`, `trd_cur_cro_pbl_amt`, `fc_orr_pbl_amt1`, `fc_orr_pbl_amt2`, `trd_cur_cro_use_amt`
+
+### 기간별계좌권리현황조회보유 — `POST /krstock/inquiry/v1/rightsHeld`
+국내주식 권리보유 현황조회 API 입니다.  응답 블록은 **데이터가 있을 때만 내려옵니다.** 블록이 없을 수 있으니 존재 여부를 먼저 확인하세요.
+- 요청 `Input_0`: `sta_dt` 시작일자 / 길이 8 / YYYYMMDD, `act_no`* 권리계좌번호 / 길이 20 / /n2/acctinfo 의 acct_no 사용 (운영은 acct_type=01·02, 모의투자는 03 계좌만 유효), `rit_tp_cd` 권리유형코드 / 길이 2 / .전체 01.배당 02.유상 03.무상 04.매수청구 05.신주인수권증서 06.뮤추얼 07.ETF분배금 08.선박펀드 09.투융자펀드 10.해외자원개발펀드 11.Ritz(부동산신탁) 12.ELS상환 13.DLS상환 14.ELW만기결제 15.기타청산 16.전환/상환 17.ETN분배금 21.흡수합병 22.회사분할 A2.회사분할2 A3.회사분할3 A4.회사분할4 A5.회사분할5 23.주식교환 24.자본감소 25.액면분할 27.종목변경 31.후흡수합병 32.후회사분할 33.후주식교환 34.후자본감소 35.후액면분할 36.후액면병합 37.후종목변경 48.수익증권 4B.말소
+- 응답 `Output_0` (객체): `sta_dt`
+- 응답 `Output_1` (배열): `iem_cd`, `bse_dt`, `rit_tp_cd`, `hld_qty`, `aloc_bse_pr`, `req_amt`, `aloc_amt_pym_dt`, `ltg_dt`, `req_yn`, `iem_nm`, `ldg_brw_dit_cd`, `cln_dit_cd`, `aloc_qty`, `req_end_dt`, `req_qty`, `rit_aloc_amt`, `ltg_iem_cd`, `pcs_yn`, `hdd_yn`, `bkg_sta_dt`, `bkg_end_dt`, `rrs_itn_rtn_end_dt`, `byn_cim_rtn_end_dt`
+
+### 기간별계좌권리현황조회예정 — `POST /krstock/inquiry/v1/rightsScheduled`
+국내주식 권리예정 현황조회 API 입니다.  응답 블록은 **데이터가 있을 때만 내려옵니다.** 블록이 없을 수 있으니 존재 여부를 먼저 확인하세요.
+- 요청 `Input_0`: `act_no`* 권리계좌번호 / 길이 20 / /n2/acctinfo 의 acct_no 사용 (운영은 acct_type=01·02, 모의투자는 03 계좌만 유효)
+- 응답 `Output_0` (배열): `iem_cd`, `iem_nm`, `rit_tp_cd`, `rit_tp_nm`, `aloc_qty`, `aloc_rt`, `xgt_dt`, `bse_dt`, `rit_erc_end_dt`, `ltg_dt`, `rit_erc_pr`
+
+### 주식현재가 시세 — `POST /krstock/quote/v1/currentPrice`
+국내주식 현재가 조회 API 입니다.  응답 블록은 **데이터가 있을 때만 내려옵니다.** 블록이 없을 수 있으니 존재 여부를 먼저 확인하세요.  ⚠️ **명세 검증 필요**: `Output_2` 는 명세상 **Array** 로 선언되어 있으나 예시 응답은 **Object** 입니다. 실제 응답 타입을 확인 후 사용하세요.
+- 요청 `Input_0`: `market_cd`* 시장구분코드 / 길이 3 / KRX/NXT/UNT, `iem_cd`* 종목코드 / 길이 6 / 예시> NH투자증권인 경우, 005940
+- 응답 `Output_0` (객체): `iem_cd`, `iem_nm`, `stck_prpr`, `prdy_vrss_sign`, `prdy_vrss`, `prdy_ctrt`, `askp`, `bidp`, `acml_vol`, `vol_rate`, `move_rate`, `acml_tr_pbmn`, `stck_mxpr`, `stck_hgpr`, `stck_oprc`, `stck_oprc_sign`, `stck_oprc_vrss`, `stck_lwpr`, `stck_llam`, `hoga_bsop_hour`, `askp1`, `askp2`, `askp3`, `askp4`, `askp5`, `askp6`, `askp7`, `askp8`, `askp9`, `askp10`, `bidp1`, `bidp2`, `bidp3`, `bidp4`, `bidp5`, `bidp6`, `bidp7`, `bidp8`, `bidp9`, `bidp10`, `askp_rsqn1`, `askp_rsqn2`, `askp_rsqn3`, `askp_rsqn4`, `askp_rsqn5`, `askp_rsqn6`, `askp_rsqn7`, `askp_rsqn8`, `askp_rsqn9`, `askp_rsqn10`, `bidp_rsqn1`, `bidp_rsqn2`, `bidp_rsqn3`, `bidp_rsqn4`, `bidp_rsqn5`, `bidp_rsqn6`, `bidp_rsqn7`, `bidp_rsqn8`, `bidp_rsqn9`, `bidp_rsqn10`, `total_askp_rsqn`, `total_bidp_rsqn`, `ovtm_askp_rsqn`, `ovtm_bidp_rsqn`, `pvt_scnd_dmrs`, `pvt_frst_dmrs`, `pvt_pont_val`, `pvt_frst_dmsp`, `pvt_scnd_dmsp`, `mrkt_div_isnm`, `bstp_kor_isnm`, `bstp_cls_code`, `avls_scal_isnm`, `stac_month`, `market1`, `market2`, `market3`, `market4`, `market5`, `market6`, `cb_text`, `stck_fcam`, `prdy_clpr_title`, `stck_prdy_clpr`, `stck_sspr`, `gongprice`, `d5_hgpr`, `d5_lwpr`, `d20_hgpr`, `d20_lwpr`, `w52_hgpr`, `w52_hgpr_date`, `w52_lwpr`, `w52_lwpr_date`, `move_stcn`, `lstn_stcn_unit3`, `hts_avls`, `memb_bsop_hour`, `seln_mbcr_name1`, `shnu_mbcr_name1`, `seln_qty1`, `shnu_qty1`, `seln_mbcr_name2`, `shnu_mbcr_name2`, `seln_qty2`, `shnu_qty2`, `seln_mbcr_name3`, `shnu_mbcr_name3`, `seln_qty3`, `shnu_qty3`, `seln_mbcr_name4`, `shnu_mbcr_name4`, `seln_qty4`, `shnu_qty4`, `seln_mbcr_name5`, `shnu_mbcr_name5`, `seln_qty5`, `shnu_qty5`, `glob_seln_qty`, `glob_shnu_qty`, `for_hour`, `for_rate`, `crdt_stlm_date`, `crdt_rmnd_rate`, `yu_date`, `mu_date`, `yu_rate`, `mu_rate`, `frgn_ntby_vol`, `jasa`, `stck_lstn_date`, `dae_rate`, `dae_date`, `filler`, `deposit_gb`, `cpfn`, `total_seln_qty`, `total_shnu_qty`, `detour_gb`, `scrt_grp_isnm`, `crdt_deal_date`, `crdt_loan_gvrt`, `per`, `hando_gb`, `wghn_avrg_prc`, `lstn_stcn_unit0`, `add_lstn_stcn`, `gicomment`, `prdy_vol`, `pre_prdy_sign`, `pre_prdy_vrss`, `stck_dryy_hgpr`, `dryy_hgpr_date`, `stck_dryy_lwpr`, `dryy_lwpr_date`, `frgn_hldn_qty`, `issu_limt_rate`, `frml_mrkt_unit`, `comp_cls_code`, `largem_gb`, `pbr`, `dmrs_val`, `dmsp_val`, `prdy_tr_pbmn`, `vi_antc_sdpr`, `vi_antc_mxpr`, `vi_antc_llam`, `invt_epmd_yn`, `uplm_qty`, `short_over_code`, `mrkt_alrm_code`, `sltr_yn`, `crd_rt_grd_nm`, `mid_prc`, `midp_total_askp_rsqn`, `midp_total_bidp_rsqn`, `nxt_mid_prc`, `nxt_midp_total_askp_rsqn`, `nxt_midp_total_bidp_rsqn`, `marg_grad_cls_code`
+- 응답 `Output_1` (배열): `bsop_hour`, `stck_prpr`, `prdy_vrss_sign`, `prdy_vrss`, `askp`, `bidp`, `cntg_vol`, `acml_vol`
+- 응답 `Output_2` (배열): `cncc_aspr_code`, `antc_cnpr`, `antc_cntg_sign`, `antc_cntg_vrss`, `antc_prdy_ctrt`, `antc_vol`, `chkdata`, `ovtm_untp_prpr`, `ovtm_untp_sign`, `ovtm_untp_vrss`, `ovtm_untp_ctrt`, `ovtm_untp_vol`, `ovtm_antc_sign`, `ovtm_antc_vrss`, `ovtm_antc_ctrt`, `scoring`, `vi_type_code`
+
+### 주식현재가 체결 — `POST /krstock/quote/v1/currentExecution`
+국내주식 변동거래량 조회 API 입니다.  응답 블록은 **데이터가 있을 때만 내려옵니다.** 블록이 없을 수 있으니 존재 여부를 먼저 확인하세요.
+- 요청 `Input_0`: `market_cd`* 시장구분코드 / 길이 3 / KRX/NXT/UNT, `iem_cd`* 종목코드 / 길이 6 / 예시> NH투자증권인 경우, 005940, `array_cnt` 읽을갯수 / 길이 4
+- 응답 `Output_0` (배열): `bsop_hour`, `stck_prpr`, `prdy_vrss_sign`, `prdy_vrss`, `prdy_ctrt`, `cntg_vol`, `shnu_cntg_smtn`, `bidrate`, `seln_cntg_smtn`, `askrate`, `stnr_cntg_smtn`, `uncrate`, `cttr`, `askp`, `bidp`, `acml_vol`, `filler`
+- 응답 `Output_1` (객체): `iem_cd`, `iem_nm`, `toffervol`, `tbidvol`, `tbovol`, `toffersu`, `tbidsu`, `tbosu`, `stck_prpr`, `prdy_vrss_sign`, `prdy_vrss`, `acml_vol`, `stck_oprc`, `stck_hgpr`, `stck_lwpr`, `askp`, `bidp`, `cttr`, `new_volume`, `stck_prdy_clpr`, `filler`, `ctsz20`, `nextbutton`
+
+### 주식현재가 일자별 — `POST /krstock/quote/v1/currentDaily`
+국내주식 일별 시세 조회 API 입니다.  응답 블록은 **데이터가 있을 때만 내려옵니다.** 블록이 없을 수 있으니 존재 여부를 먼저 확인하세요.
+- 요청 `Input_0`: `market_cd`* 시장구분코드 / 길이 3 / KRX/NXT/UNT, `iem_cd`* 종목코드 / 길이 6 / 예시> NH투자증권인 경우, 005940, `array_cnt` 읽을갯수 / 길이 3
+- 응답 `Output_0` (배열): `bsop_date`, `stck_oprc`, `stck_hgpr`, `stck_lwpr`, `stck_clpr`, `prdy_vrss_sign`, `prdy_vrss`, `prdy_ctrt`, `acml_vol`, `acml_tr_pbmn`, `high_date`, `low_date`, `vol_prdy_rt`, `cttr`, `filler`, `next_key`, `nextbutton`
+
+### 주식현재가 투자자 — `POST /krstock/quote/v1/currentInvestor`
+국내주식 투자자별 거래현황 조회 API 입니다.  응답 블록은 **데이터가 있을 때만 내려옵니다.** 블록이 없을 수 있으니 존재 여부를 먼저 확인하세요.
+- 요청 `Input_0`: `market_cd`* 시장구분코드 / 길이 3 / KRX/NXT/UNT, `iem_cd`* 종목코드 / 길이 6, `array_cnt`* 요청건수 / 길이 3
+- 응답 `Output_0` (배열): `bsop_date1`, `bsop_date2`, `stck_prpr`, `prdy_vrss_sign`, `prdy_vrss`, `prdy_ctrt`, `acml_vol`, `for_rate`, `frgn_ntby_qty`, `person`, `gigwan`, `invest`, `account`, `program`, `jasaz10`, `filler`
+
+### 국내주식기간별시세(일/주/월/년) — `POST /krstock/quote/v1/period`
+국내주식 주기별 시세 조회 API 입니다.  응답 블록은 **데이터가 있을 때만 내려옵니다.** 블록이 없을 수 있으니 존재 여부를 먼저 확인하세요.  ⚠️ **명세 검증 필요**: `Output_0` 는 명세상 **Array** 로 선언되어 있으나 예시 응답은 **Object** 입니다. 실제 응답 타입을 확인 후 사용하세요.
+- 요청 `Input_0`: `market_cd`* 시장구분코드 / 길이 3 / KRX/NXT/UNT, `iem_cd`* 단축종목코드 / 길이 9, `mrkt_div_cls_code` 시장분류구분코드 / 길이 1 / 1.거래소 4.코스닥 A.ETN E.ELW T.K-OTC, `edate` 종료일 / 길이 8, `array_cnt` 읽을건수 / 길이 4, `maxavg` 최대이평 / 길이 3, `gubun` 주기구분 / 길이 1 / 1.일 2.주 3.월 4.년 5.분 6.초 7.틱, `xtick` 분구분 / 길이 3 / 분/초/틱시 입력, `today_cls_code` 당일조회구분 / 길이 1 / 1.당일만조회(분/초/틱에서 사용) 0.전체조회, `fake_tick` 거래량0봉제외여부 / 길이 1 / 0.허봉+실봉 1.실봉, `sur_flag` 복기구분플래그 / 길이 1 / 0.복기사용안함 1.복기처리사용함, `sur_gb_day_cnt` 복기시작n일전 / 길이 2 / sur_flag값이1일때만기능함 00.D당일데이터복기 01.D-1일전 02.D-2일전, `sur_bf_end_time` 복기시작전종료시각 / 길이 6 / HHmmSS sur_flag값이1일때 n일전기준으로복기시작전까지 표현할시각, `out1_scale_change` Out1단위변경 / 길이 1 / Out1기준단위 0.변경안함 1.거래량천단위,거래대금백만단위 2.거래량단주,거래대금만백만단위, `out2_scale_change` Out2단위변경 / 길이 1 / Out2기준단위 0.변경안함 1.거래량천단위,거래대금백만단위 2.거래량단주,거래대금만백만단위
+- 응답 `Output_0` (배열): `qry_date`, `qry_time`, `iem_cd`, `iem_nm`, `stck_prpr`, `prdy_vrss_sign`, `prdy_vrss`, `prdy_ctrt`, `acml_vol`, `acml_tr_pbmn`, `prdy_vol`, `prdy_vol_rate`, `vol_rate`, `cttr`, `prdy_cttr`, `askp`, `bidp`, `askp_rsqn1`, `bidp_rsqn1`, `stck_mxpr`, `stck_llam`, `stck_oprc`, `stck_hgpr`, `stck_lwpr`, `lstn_stcn`, `hts_avls`, `dae_rate`, `per`, `pbr`, `eps`, `bps`, `prdy_oprc`, `prdy_high`, `prdy_low`, `prdy_clpr`, `tdw_oprc`, `tdw_high`, `tdw_low`, `tdm_oprc`, `tdm_high`, `tdm_low`, `vi_sttc_mxpr`, `vi_sttc_llam`, `start_time`, `end_time`, `bsop_date`, `stck_sdpr`, `stck_fcam`, `bstp_kor_isnm`, `bstp_cls_code`, `exchange_prpr`, `ctsz30`, `lasttickcount`, `send_cnt`, `pre_tr_sta_hour`, `pre_tr_fin_hour`, `main_tr_sta_hour`, `main_tr_fin_hour`, `aft_tr_sta_hour`, `aft_tr_fin_hour`, `cncc_aspr_sta_hour`
+- 응답 `Output_1` (배열): `bsop_date`, `bsop_time`, `stck_sdpr`, `stck_oprc`, `stck_hgpr`, `stck_lwpr`, `stck_prpr`, `vol`, `tr_pbmn`, `flng_cls_code`, `prtt_rate`, `news_cnt`, `updownmark`, `fcam_mod_cls_code`, `vol_prtt_rate`
+
+### 국내주식 시간외현재가 — `POST /krstock/quote/v1/afterHoursCurrent`
+국내주식 시간외 현재가 조회 API 입니다.  응답 블록은 **데이터가 있을 때만 내려옵니다.** 블록이 없을 수 있으니 존재 여부를 먼저 확인하세요.
+- 요청 `Input_0`: `iem_cd`* 종목코드 / 길이 6
+- 응답 `Output_0` (객체): `iem_cd`, `iem_nm`, `mrkt_cls_code`, `trht_yn`, `mkop_cls_code`, `stck_prpr`, `ovtm_untp_sdpr`, `ovtm_untp_mxpr`, `ovtm_untp_llam`, `ovtm_cntg_hour`, `ovtm_untp_prpr`, `prdy_vrss_sign`, `ovtm_prdy_vrss`, `ovtm_prdy_ctrt`, `ovtm_untp_oprc`, `ovtm_untp_hgpr`, `ovtm_untp_lwpr`, `ovtm_untp_vol`, `ovtm_tr_pbmn`, `ovtm_untp_askp`, `ovtm_untp_bidp`, `ovtm_bsop_hour`, `ovtm_untp_askp1`, `ovtm_untp_askp2`, `ovtm_untp_askp3`, `ovtm_untp_askp4`, `ovtm_untp_askp5`, `ovtm_untp_askp6`, `ovtm_untp_askp7`, `ovtm_untp_askp8`, `ovtm_untp_askp9`, `ovtm_untp_askp10`, `ovtm_untp_bidp1`, `ovtm_untp_bidp2`, `ovtm_untp_bidp3`, `ovtm_untp_bidp4`, `ovtm_untp_bidp5`, `ovtm_untp_bidp6`, `ovtm_untp_bidp7`, `ovtm_untp_bidp8`, `ovtm_untp_bidp9`, `ovtm_untp_bidp10`, `ovtm_askp_rsqn1`, `ovtm_askp_rsqn2`, `ovtm_askp_rsqn3`, `ovtm_askp_rsqn4`, `ovtm_askp_rsqn5`, `ovtm_askp_rsqn6`, `ovtm_askp_rsqn7`, `ovtm_askp_rsqn8`, `ovtm_askp_rsqn9`, `ovtm_askp_rsqn10`, `ovtm_bidp_rsqn1`, `ovtm_bidp_rsqn2`, `ovtm_bidp_rsqn3`, `ovtm_bidp_rsqn4`, `ovtm_bidp_rsqn5`, `ovtm_bidp_rsqn6`, `ovtm_bidp_rsqn7`, `ovtm_bidp_rsqn8`, `ovtm_bidp_rsqn9`, `ovtm_bidp_rsqn10`, `total_askp_rsqn`, `total_bidp_rsqn`, `ecn_dongsi`, `ovtm_antc_cnpr`, `antc_vrss_sign`, `antc_cntg_vrss`, `antc_cntg_ctrt`, `antc_vol`, `antc_tr_pbmn`, `item_info`, `ivs_hed_yn`, `short_ovh_gb`, `alert_gb`, `jungri_yn`
+- 응답 `Output_1` (객체): `bsop_date`, `acml_vol`, `vol_rate`, `acml_tr_pbmn`, `stck_oprc`, `stck_hgpr`, `stck_lwpr`, `stck_prpr`, `stck_mxpr`, `stck_llam`, `stck_fcam`, `askp`, `bidp`, `askp_rsqn`, `bidp_rsqn`, `total_askp_rsqn`, `total_bidp_rsqn`, `ovtm_askp_rsqn`, `ovtm_bidp_rsqn`, `frgn_hour`, `for_rate`, `prdy_vrss_sign`, `prdy_vrss`, `prdy_ctrt`, `sosokz6`, `bstp_kor_isnm`, `bstp_cls_code`, `cap_size`, `new_volume`
+
+### 주식현재가 시간외일자별주가 — `POST /krstock/quote/v1/currentAfterHoursDaily`
+국내주식 시간외 일자별 주가 조회 API 입니다.  응답 블록은 **데이터가 있을 때만 내려옵니다.** 블록이 없을 수 있으니 존재 여부를 먼저 확인하세요.
+- 요청 `Input_0`: `iem_cd`* 종목코드 / 길이 6, `date`* 일자 / 길이 8 / YYYYMMDD, `array_cnt`* 읽을갯수 / 길이 4, `maxavg`* 최대이평 / 길이 3, `gubun`* 구분 / 길이 1 / 1.정규장 2.정규장+시간외단일가 이외.정규장+당일시간외단일가
+- 응답 `Output_0` (배열): `qry_date`, `qry_time`, `shrn_iscd`, `hts_kor_isnm`, `stck_prpr`, `prdy_vrss_sign`
+- 응답 `Output_1` (배열): `prdy_ctrt`, `acml_vol`, `acml_tr_pbmn`, `prdy_vol`
+
+### 주식현재가 시간외시간별체결 — `POST /krstock/quote/v1/currentAfterHoursExecution`
+국내주식 시간외 체결가 조회 API 입니다.  응답 블록은 **데이터가 있을 때만 내려옵니다.** 블록이 없을 수 있으니 존재 여부를 먼저 확인하세요.
+- 요청 `Input_0`: `iem_cd`* 종목코드 / 길이 6
+- 응답 `Output_0` (배열): `iem_cd`, `bsop_hour`, `open`, `high`, `low`, `stck_prpr`, `prdy_vrss_sign`, `prdy_vrss`, `prdy_ctrt`, `acml_vol`, `cntg_vol`, `cntg_tr_pbmn`, `askp1`, `bidp1`, `filler`
+
+### 주식현재가 시간외시간별예상 — `POST /krstock/quote/v1/afterHoursExpected`
+국내주식 시간외 예상체결가 조회 API 입니다.  응답 블록은 **데이터가 있을 때만 내려옵니다.** 블록이 없을 수 있으니 존재 여부를 먼저 확인하세요.
+- 요청 `Input_0`: `iem_cd`* 종목코드 / 길이 6
+- 응답 `Output_0` (배열): `iem_cd`, `bsop_hour`, `stck_prpr`, `prdy_vrss_sign`, `prdy_vrss`, `prdy_ctrt`, `cntg_vol`, `askp1`, `bidp1`, `askp_rsqn1`, `bidp_rsqn1`, `filler`
+
+### ETF/ETN 현재가 — `POST /krstock/quote/v1/etfCurrent`
+국내주식 ETF 현재가 조회 API 입니다.  응답 블록은 **데이터가 있을 때만 내려옵니다.** 블록이 없을 수 있으니 존재 여부를 먼저 확인하세요.  ⚠️ **명세 검증 필요**: 예시 응답에는 명세에 없는 블록(Output_3, Output_4)이 포함되어 있습니다.
+- 요청 `Input_0`: `iem_cd`* 종목코드 / 길이 6
+- 응답 `Output_0` (객체): `iem_cd`, `iem_nm`, `stck_prpr`, `prdy_vrss_sign`, `prdy_vrss`, `prdy_ctrt`, `askp`, `bidp`, `acml_vol`, `acml_rate`, `yu_rate`, `acml_tr_pbmn`, `stck_mxpr`, `stck_hgpr`, `stck_oprc`, `oprc_sign`, `oprc_vrss`, `stck_lwpr`, `stck_llam`, `bsop_hour`, `askp1`, `askp2`, `askp3`, `askp4`, `askp5`, `askp6`, `askp7`, `askp8`, `askp9`, `askp10`, `bidp1`, `bidp2`, `bidp3`, `bidp4`, `bidp5`, `bidp6`, `bidp7`, `bidp8`, `bidp9`, `bidp10`, `askp_rsqn1`, `askp_rsqn2`, `askp_rsqn3`, `askp_rsqn4`, `askp_rsqn5`, `askp_rsqn6`, `askp_rsqn7`, `askp_rsqn8`, `askp_rsqn9`, `askp_rsqn10`, `bidp_rsqn1`, `bidp_rsqn2`, `bidp_rsqn3`, `bidp_rsqn4`, `bidp_rsqn5`, `bidp_rsqn6`, `bidp_rsqn7`, `bidp_rsqn8`, `bidp_rsqn9`, `bidp_rsqn10`, `total_askp_rsqn`, `total_bidp_rsqn`, `ovtm_askp_rsqn`, `ovtm_bidp_rsqn`, `pvt_scnd_dmrs`, `pvt_frst_dmrs`, `pvt_pont_val`, `pvt_frst_dmsp`, `pvt_scnd_dmsp`, `mrkt_div_code`, `bstp_cls_code`, `bstp_kor_isnm`, `cap_size`, `stac_month`, `market1`, `market2`, `market3`, `market4`, `market5`, `market6`, `cb_text`, `stck_fcam`, `prdy_clpr_title`, `prdy_clpr`, `stck_sspr`, `gongprice`, `d5_hgpr`, `d5_lwpr`, `d20_hgpr`, `d20_lwpr`, `w52_hgpr`, `w52_lwpr`, `move_stcn`, `lstn_stcn1`, `hts_avls`, `cntg_hour`, `seln_mbcr_no1`, `shnu_mbcr_no1`, `seln_acml_vol1`, `shnu_acml_vol1`, `seln_mbcr_no2`, `shnu_mbcr_no2`, `seln_acml_vol2`, `shnu_acml_vol2`, `seln_mbcr_no3`, `shnu_mbcr_no3`, `seln_acml_vol3`, `shnu_acml_vol3`, `seln_mbcr_no4`, `shnu_mbcr_no4`, `seln_acml_vol4`, `shnu_acml_vol4`, `seln_mbcr_no5`, `shnu_mbcr_no5`, `seln_acml_vol5`, `shnu_acml_vol5`, `seln_frgn_vol`, `shnu_frgn_vol`, `frgn_hour`, `for_rate`, `settdate`, `crate`, `yudate`, `mudate`, `yurate`, `murate`, `lstn_date`, `lstn_stcn`, `total_seln_qty`, `total_shnu_qty`, `new_volume`
+- 응답 `Output_1` (배열): `bsop_hour`, `stck_prpr`, `prdy_vrss_sign`, `prdy_vrss`, `askp`, `bidp`, `cntg_vol`, `acml_vol`
+- 응답 `Output_2` (객체): `aspr_cls_code`, `antc_cnpr`, `antc_sign`, `antc_vrss`, `antc_ctrt`, `antc_vol`
+- 응답 `Output_3` (객체): `bu12`, `itmt_last_nav`, `nav_sign`, `nav_vrss`, `prdy_last_nav`, `dprt`, `dprt_sign`, `cnfg_cnt`, `totvalue`, `trc_errt`, `lp_askp_rsqn1`, `lp_askp_rsqn2`, `lp_askp_rsqn3`, `lp_askp_rsqn4`, `lp_askp_rsqn5`, `lp_askp_rsqn6`, `lp_askp_rsqn7`, `lp_askp_rsqn8`, `lp_askp_rsqn9`, `lp_askp_rsqn10`, `lp_bidp_rsqn1`, `lp_bidp_rsqn2`, `lp_bidp_rsqn3`, `lp_bidp_rsqn4`, `lp_bidp_rsqn5`, `lp_bidp_rsqn6`, `lp_bidp_rsqn7`, `lp_bidp_rsqn8`, `lp_bidp_rsqn9`, `lp_bidp_rsqn10`, `clon_cls_code`, `txtn_type_code`
+- 응답 `Output_4` (객체): `bstp_cls_code`, `bstp_kor_isnm`, `prpr_nmix`, `prdy_vrss_sign`, `prdy_vrss`, `ubjiid`, `ubjiid2`, `ubjisu`, `ubsign`, `ubchange`, `symbol`, `ovrs_nmix`, `ovrs_sign`, `ovrs_vrss`, `jisukpgubun`
+
+### ETF 구성종목시세 — `POST /krstock/quote/v1/etfComponents`
+국내주식 ETF 구성종목 시세조회 API 입니다.  응답 블록은 **데이터가 있을 때만 내려옵니다.** 블록이 없을 수 있으니 존재 여부를 먼저 확인하세요.
+- 요청 `Input_0`: `iem_cd`* ETF종목코드 / 길이 6
+- 응답 `Output_0` (배열): `iem_cd`, `iem_nm`, `stck_prpr`, `prdy_vrss_sign`, `prdy_vrss`, `prdy_ctrt`, `cu_unit`, `totprice`, `vol`, `vltn_amt`, `filler`
+
+### 실시간 채널 (21개) — wss://api.nhplug.com:7070/websocket
+포트: 국내 시세 7070 · 해외 시세 7080 · 통보(국내·해외) 7070 · 모의 17070 (통보를 7080 → WSS10006) · 동시 2채널, 채널당 30건
+- `ob` 국내주식 실시간호가KRX — tr_key `code`, 필드 49개 · 국내주식 실시간 호가(KRX기준) 서비스 입니다.
+- `oc` 국내주식 실시간체결가KRX — tr_key `code`, 필드 24개 · 국내주식 실시간 체결가(KRX기준) 서비스 입니다.
+- `oa` 국내주식 실시간예상체결KRX — tr_key `code`, 필드 16개 · 국내주식 실시간 예상체결가(KRX기준) 서비스 입니다.
+- `t1` 국내주식 실시간회원사KRX — tr_key `code`, 필드 72개 · 국내주식 실시간 회원사 거래(KRX기준) 서비스 입니다.
+- `t8` 국내주식 실시간프로그램매매KRX — tr_key `code`, 필드 30개 · 국내주식 실시간 프로그램매매(KRX기준) 서비스 입니다.
+- `e5` 국내주식 시간외 실시간호가KRX — tr_key `ecn_code`, 필드 49개 · 국내주식 실시간 시간외 호가(KRX기준) 서비스 입니다.
+- `e2` 국내주식 시간외 실시간체결가KRX — tr_key `ecn_code`, 필드 17개 · 국내주식 실시간 시간외 체결가(KRX기준) 서비스 입니다.
+- `e4` 국내주식 시간외 실시간예상체결KRX — tr_key `ecn_code`, 필드 12개 · 국내주식 실시간 시간외 예상체결가(KRX기준) 서비스 입니다.
+- `mb` 국내주식 실시간호가통합 — tr_key `code`, 필드 52개 · 국내주식 실시간 호가(통합시세 기준) 서비스 입니다.
+- `mc` 국내주식 실시간체결가통합 — tr_key `code`, 필드 24개 · 국내주식 실시간 체결가(통합시세 기준) 서비스 입니다.
+- `ma` 국내주식 실시간예상체결통합 — tr_key `code`, 필드 19개 · 국내주식 실시간 예상체결가(통합시세 기준) 서비스 입니다.
+- `mg` 국내주식 실시간회원사통합 — tr_key `code`, 필드 72개 · 국내주식 실시간 회원사 거래(통합시세 기준) 서비스 입니다.
+- `mn` 국내주식 실시간프로그램매매통합 — tr_key `code`, 필드 30개 · 국내주식 실시간 프로그램매매(통합시세 기준) 서비스 입니다.
+- `nb` 국내주식 실시간호가NXT — tr_key `code`, 필드 49개 · 국내주식 실시간 호가(NXT 기준) 서비스 입니다.
+- `nc` 국내주식 실시간체결가NXT — tr_key `code`, 필드 24개 · 국내주식 실시간 체결가(NXT 기준) 서비스 입니다.
+- `na` 국내주식 실시간예상체결NXT — tr_key `code`, 필드 16개 · 국내주식 실시간 예상체결가(NXT 기준) 서비스 입니다.
+- `ng` 국내주식 실시간회원사NXT — tr_key `code`, 필드 72개 · 국내주식 실시간 회원사 거래(NXT 기준) 서비스 입니다.
+- `nn` 국내주식 실시간프로그램매매NXT — tr_key `code`, 필드 30개 · 국내주식 실시간 프로그램매매(NXT 기준) 서비스 입니다.
+- `d2` 국내주식 실시간체결통보 — tr_key `userid`, 필드 21개 · wss://api.nhplug.com:7070/websocket · 국내주식 주문 체결 시 실시간으로 수신됩니다. 통보 채널 — 국내·해외 모두 포트 7070 사용(7080 사용 시 WSS10006).
+- `d3` 국내주식 실시간주문내역통보 — tr_key `userid`, 필드 24개 · wss://api.nhplug.com:7070/websocket · 국내주식 주문 접수 시 실시간으로 수신됩니다. 통보 채널 — 국내·해외 모두 포트 7070 사용(7080 사용 시 WSS10006).
+- `uB` 채권지수 실시간 체결가 — tr_key `jisuid`, 필드 36개 · 채권지수 실시간 체결가 서비스 입니다.
+
+---
+
+## 해외주식 (`gbstock`)
+
+정본: https://www.nhplug.com/openapi-docs/gbstock/openapi.json
+
+종목마스터: m_gtsstock.mst (해외주식) · 구조체 m_gtsstock.h — https://www.nhplug.com/instruments/<파일명>.mst (인증 불필요)
+
+### 해외주식 주문매수 — `POST /gbstock/order/v1/buy`
+해외주식 매수주문 API 입니다.  응답 블록은 **데이터가 있을 때만 내려옵니다.** 블록이 없을 수 있으니 존재 여부를 먼저 확인하세요.
+- 요청 `Input_0`: `act_no`* 계좌번호 / 길이 11 / 계좌번호 입력 / /n2/acctinfo 의 acct_no 사용 (운영은 acct_type=01·02, 모의투자는 03 계좌만 유효), `fc_sec_trd_nat_cd`* 외화증권거래국가코드 / 길이 3 / 200.미국 070.일본 120.홍콩 160.상해 170.심천, `iem_cd`* 티커종목코드 / 길이 12 / 예시> 미국주식 APPLE인 경우, AAPL, `orr_qty`* 주문수량 / 길이 18 / 주문수량, `fc_orr_uit_pr` 외화주문단가 / 길이 15.6 / 주문단가 - 소수점 2자리까지(향후변경예정) "현물호가유형코드" 00,11,12,61,62,63 시 필수, `ahi_nmn_pr_tp_cd`* 현물호가유형코드 / 길이 2 / 00.지정가 03.시장가 61.프리마켓(지정가) 62.애프터마켓(지정가) 63.주간거래(지정가) 11.LOO(장개시 지정가) 12.LOC(장마감 지정가) 13.MOO(장개시 시장가) 14.MOC(장마감 시장가) TW.TWAP(시장가) VW.VWAP(시장가) TL.TWAP(지정가) VL.VWAP(지정가), `wtm_cur_knd_cd`* 증거금통화종류코드 / 길이 1 / 1.해당통화 2.원화
+- 응답 `Output_0` (객체): `amn_tab_cd`, `orr_no`
+
+### 해외주식 주문매도 — `POST /gbstock/order/v1/sell`
+해외주식 매도주문 API 입니다.  응답 블록은 **데이터가 있을 때만 내려옵니다.** 블록이 없을 수 있으니 존재 여부를 먼저 확인하세요.
+- 요청 `Input_0`: `act_no`* 계좌번호 / 길이 11 / 계좌번호 입력 / /n2/acctinfo 의 acct_no 사용 (운영은 acct_type=01·02, 모의투자는 03 계좌만 유효), `fc_sec_trd_nat_cd`* 외화증권거래국가코드 / 길이 3 / 200.미국 070.일본 120.홍콩 160.상해 170.심천, `iem_cd`* 티커종목코드 / 길이 12 / 예시> 미국주식 APPLE인 경우, AAPL, `orr_qty`* 주문수량 / 길이 18 / 주문수량, `fc_orr_uit_pr` 외화주문단가 / 길이 15.6 / 주문단가 - 소수점 2자리까지(향후변경예정) "현물호가유형코드" 00,11,12,16,61,62,63 시 필수, `ahi_nmn_pr_tp_cd`* 현물호가유형코드 / 길이 2 / 00.지정가 03.시장가 61.프리마켓(지정가) 62.애프터마켓(지정가) 63.주간거래(지정가) 11.LOO(장개시 지정가) 12.LOC(장마감 지정가) 13.MOO(장개시 시장가) 14.MOC(장마감 시장가) 15.STOP(시장가) 16.STOP LIMIT(지정가) TW.TWAP(시장가) VW.VWAP(시장가) TL.TWAP(지정가) VL.VWAP(지정가)
+- 응답 `Output_0` (객체): `amn_tab_cd`, `orr_no`
+
+### 해외주식 정정취소주문정정 — `POST /gbstock/order/v1/modify`
+해외주식 정정주문 API 입니다.  응답 블록은 **데이터가 있을 때만 내려옵니다.** 블록이 없을 수 있으니 존재 여부를 먼저 확인하세요.
+- 요청 `Input_0`: `act_no`* 계좌번호 / 길이 11 / 계좌번호 / /n2/acctinfo 의 acct_no 사용 (운영은 acct_type=01·02, 모의투자는 03 계좌만 유효), `fc_sec_trd_nat_cd`* 외화증권거래국가코드 / 길이 3 / 200.미국 070.일본 120.홍콩 160.상해 170.심천, `iem_cd`* 티커종목코드 / 길이 12 / 예시> 미국주식 APPLE인 경우, AAPL, `org_orr_no`* 원주문번호 / 길이 10 / 정정대상 주문번호, `fc_orr_uit_pr`* 외화주문단가 / 길이 15.6 / 주문단가 - 소수점 2자리까지(향후변경예정), `fc_stop_orr_bse_pr` 외화STOP주문기준가격 / 길이 15.6 / 호가유형이 15.STOP, 16.STOP LIMIT 일 때 필수 그 외 미입력
+- 응답 `Output_0` (객체): `amn_tab_cd`, `orr_no`
+
+### 해외주식 정정취소주문취소 — `POST /gbstock/order/v1/cancel`
+해외주식 취소주문 API 입니다.  응답 블록은 **데이터가 있을 때만 내려옵니다.** 블록이 없을 수 있으니 존재 여부를 먼저 확인하세요.
+- 요청 `Input_0`: `act_no`* 계좌번호 / 길이 11 / 계좌번호 / /n2/acctinfo 의 acct_no 사용 (운영은 acct_type=01·02, 모의투자는 03 계좌만 유효), `org_orr_no`* 원주문번호 / 길이 10 / 취소대상 주문번호, `fc_sec_trd_nat_cd`* 외화증권거래국가코드 / 길이 3 / 200.미국 070.일본 120.홍콩 160.상해 170.심천, `iem_cd`* 티커종목코드 / 길이 12 / 예시> 미국주식 APPLE인 경우, AAPL, `can_qty` 취소수량 / 길이 18 / 취소수량, `all_pat_dit_cd`* 전체일부구분코드 / 길이 1 / 1:전체, 2:일부
+- 응답 `Output_0` (객체): `amn_tab_cd`, `orr_no`
+
+### 해외주식 예약주문접수 — `POST /gbstock/order/v1/reservedSubmit`
+해외주식 예약주문(매수/매도) API 입니다.  응답 블록은 **데이터가 있을 때만 내려옵니다.** 블록이 없을 수 있으니 존재 여부를 먼저 확인하세요.
+- 요청 `Input_0`: `act_no`* act_no / 길이 11 / /n2/acctinfo 의 acct_no 사용 (운영은 acct_type=01·02, 모의투자는 03 계좌만 유효), `fc_sec_trd_nat_cd`* fc_sec_trd_nat_cd / 길이 3 / 200.미국 070.일본 120.홍콩 160.상해 170.심천, `iem_cd`* tck_iem_cd / 길이 12 / 예시> 미국주식 APPLE인 경우, AAPL, `oss_sby_dit_cd`* oss_sby_dit_cd / 길이 1 / 1.매도 2.매수, `orr_qty`* orr_qty / 길이 18, `fc_orr_uit_pr` fc_orr_uit_pr / 길이 15.6, `nmn_pr_tp_cd`* nmn_pr_tp_cd / 길이 2 / 00.지정가 03.시장가 61.프리마켓(지정가) 11.LOO(장개시 지정가) 12.LOC(장마감 지정가) 13.MOO(장개시 시장가) 14.MOC(장마감 시장가) 15.STOP(시장가) 16.STOP LIMIT(지정가) TW.TWAP(시장가) VW.VWAP(시장가) TL.TWAP(지정가) VL.VWAP(지정가), `oss_orr_knd_cd` oss_orr_knd_cd / 길이 1 / 1.GTS주문(해외투자전략코드가 0 또는 미국시장주문) 2.기타자동주문, `ose_ivs_sgy_cd` ose_ivs_sgy_cd / 길이 1 / 0.일반 1.VWAP(미국만 가능) 2.TWAP(미국만 가능), `bkg_orr_tp_cd` bkg_orr_tp_cd / 길이 1 / 1.일반예약 2.잔량주문 3.지정수량주문, `bkg_orr_sta_dt` bkg_orr_sta_dt / 길이 8 / YYYYMMDD, `bkg_orr_end_dt` bkg_orr_end_dt / 길이 8 / YYYYMMDD, `wtm_cur_knd_cd` wtm_cur_knd_cd / 길이 1 / 1.거래국가통화 2.원화, `fc_stop_orr_bse_pr` fc_stop_orr_bse_pr / 길이 15.6 / 호가유형코드 15.STOP(시장가), 16.STOP LIMIT(지정가) 의 경우에만 입력, `orr_pdt_dit_cd` orr_pdt_dit_cd / 길이 2 / 00.해당없음 02.교체예약주문 03.미국Stop예약주문, `lon_dt` lon_dt / 길이 8 / YYYYMMDD, `cfd_lon_cd` cfd_lon_cd / 길이 2 / 00.현금 19.해외주식담보대출
+- 응답 `Output_0` (객체): `bkg_rtn_orr_no`
+
+### 해외주식 예약주문접수취소 — `POST /gbstock/order/v1/reservedCancel`
+해외주식 예약취소주문 API 입니다.  응답 블록은 **데이터가 있을 때만 내려옵니다.** 블록이 없을 수 있으니 존재 여부를 먼저 확인하세요.
+- 요청 `Input_0`: `act_no`* 계좌번호 / 길이 11 / /n2/acctinfo 의 acct_no 사용 (운영은 acct_type=01·02, 모의투자는 03 계좌만 유효), `fc_mkt_dit_cd`* 외화시장구분코드 / 길이 3 / 200.미국 070.일본 120.홍콩 160.상해 170.심천, `bkg_orr_dt`* 예약주문일자 / 길이 8, `bkg_rtn_orr_no`* 예약접수주문번호 / 길이 10, `iem_cd` 티커종목코드 / 길이 12 / 예시> 미국주식 APPLE인 경우, AAPL, `orr_pdt_dit_cd` 주문상품구분코드 / 길이 2 / 00.해당없음 02.교체예약주문 03.미국Stop예약주문
+- 응답 `Output_0` (객체): `wrk_rlt_cd`
+
+### 해외주식 매수가능금액·수량 / 매도가능수량 조회 — `POST /gbstock/inquiry/v1/buyableAmount`
+처리구분(pcs_dit)으로 매수·매도를 모두 조회합니다. 1.매수가능금액 2.매수가능수량 3.매도가능수량 4.예약매수금액/수량 5.예약매도수량. (국내주식은 buyableQuantity/sellableQuantity 로 API 가 분리되어 있으나, 해외주식은 이 API 하나로 통합되어 있습니다.)  해외주식 매수/매도 가능 수량/금액 조회 API 입니다.  응답 블록은 **데이터가 있을 때만 내려옵니다.** 블록이 없을 수 있으니 존재 여부를 먼저 확인하세요.
+- 요청 `Input_0`: `act_no`* 계좌번호 / 길이 11 / /n2/acctinfo 의 acct_no 사용 (운영은 acct_type=01·02, 모의투자는 03 계좌만 유효), `pcs_dit`* 처리구분 / 길이 1 / 1.매수가능금액조회 2.매수가능수량조회 3.매도가능수량조회 4.예약매수금액/수량 5.예약매도수량, `fc_sec_trd_nat_cd`* 외화증권거래국가코드 / 길이 3 / 200.미국 070.일본 120.홍콩 160.상해 170.심천, `iem_cd`* 종목코드 / 길이 12 / 예시> 미국주식 APPLE인 경우, AAPL, `fc_orr_uit_pr` 외화주문단가 / 길이 15.6, `wtm_cur_knd_cd`* 증거금통화종류코드 / 길이 1 / 1.거래국가통화 2.원화 3.기타통화 4.거래국가통화(통합금거금가능금미포함), `oss_orr_knd_cd`* 해외증권주문종류코드 / 길이 1 / 1.GTS(미국시장주문) 2.기타자동 3.기타수동, `ahi_nmn_pr_tp_cd`* 현물호가유형코드 / 길이 2 / 00.지정가 03.시장가 61.프리마켓(지정가) 62.애프터마켓(지정가) 63.주간거래(지정가) 11.LOO(장개시 지정가) 12.LOC(장마감 지정가) 13.MOO(장개시 시장가) 14.MOC(장마감 시장가) 15.STOP(시장가) 16.STOP LIMIT(지정가) TW.TWAP(시장가) VW.VWAP(시장가) TL.TWAP(지정가) VL.VWAP(지정가), `cfd_lon_cd` 신용대출코드 / 길이 2 / 00.현금 19.해외주식담보대출, `lon_dt` 대출일자 / 길이 8 / YYYYMMDD
+- 응답 `Output_0` (객체): `fc_dca`, `mgg_fc_amt`, `csh_wtm`, `re_use_obj_amt`, `re_use_rtr_use_amt`, `ect_use_amt`, `orr_pbl_amt`, `wtm_cur_cd`, `hld_qty`, `orr_pbl_qty`, `sll_pbl_qty`, `sll_pbl_qty1`, `byn_cns_qty`, `sll_cns_qty`, `sll_orr_qty`, `dps_rsc_qty`, `byn_pbl_qty`, `max_pbl_amt`, `max_pbl_qty`, `csh_wtm_rt`
+
+### 해외주식 주문체결내역 — `POST /gbstock/inquiry/v1/unexecuted`
+주문별 체결수량·체결가격·미체결주문수량을 포함한 **주문·체결 내역 조회** 입니다. URI 의 `unexecuted` 는 서버 경로일 뿐이며, 실제로는 체결·미체결 내역을 모두 반환합니다. (주문 접수 API 아님, 조회 전용)  해외주식 주문체결내역 조회 API 입니다.  응답 블록은 **데이터가 있을 때만 내려옵니다.** 블록이 없을 수 있으니 존재 여부를 먼저 확인하세요.
+- 요청 `Input_0`: `orr_dt`* 주문일자 / 길이 8, `act_no`* 계좌번호 / 길이 11 / /n2/acctinfo 의 acct_no 사용 (운영은 acct_type=01·02, 모의투자는 03 계좌만 유효), `iem_cd` 티커종목코드 / 길이 12 / 예시> 미국주식 APPLE인 경우, AAPL, `oss_sby_dit_cd`* 해외증권매매구분코드 / 길이 1 / 0.전체 1.매도 2.매수, `sot_dit`* 정렬구분 / 길이 1 / 0.주문번호순 1.주문번호역순, `orr_no` 주문번호 / 길이 10, `ost_cns_dit`* 체결구분 / 길이 1 / 0.전체 1.체결 2.미체결
+- 응답 `Output_0` (배열): `rgs_tm`, `oss_orr_knd_cd`, `orr_knd_nm`, `orr_no`, `org_orr_no`, `oss_sby_dit_cd`, `sby_dit_nm`, `fc_sec_trd_nat_cd`, `mkt_dit_cd_nm`, `iem_cd`, `iem_nm`, `orr_qty`, `fc_orr_uit_pr`, `cns_qty`, `cns_pr`, `ny_cns_orr_qty`, `cor_can_dit_cd`, `cor_can_dit_nm`, `cor_qty`, `can_qty`, `oss_ato_orr_sts_cd`, `orr_sts_nm`, `oms_cus_orr_no`, `rjt_rsn_cts`, `ivs_nat_krx_dit_cd`, `fix_sgy_tgt_sgy_nm`, `fix_orr_pcs_mtd_cd`, `orr_pcs_mtd_cd_nm`, `rut_orr_krx_cd`, `hts_usr_id`, `usr_ip_adr`, `cuc_mdi_cd`, `cuc_mdi_cd_nm`, `ahi_nmn_pr_tp_cd`, `ahi_nmn_pr_tp_cd_nm`, `fc_stop_orr_bse_pr`, `orr_pdt_dit_cd`, `orr_dt`, `csh_wtm_rt`, `cfd_lon_cd`, `cfd_lon_cd_nm`, `lon_dt`
+
+### 해외주식 잔고 — `POST /gbstock/inquiry/v1/balance`
+해외주식 잔고조회 API 입니다.  응답 블록은 **데이터가 있을 때만 내려옵니다.** 블록이 없을 수 있으니 존재 여부를 먼저 확인하세요.
+- 요청 `Input_0`: `act_no`* 계좌번호 / 길이 11 / /n2/acctinfo 의 acct_no 사용 (운영은 acct_type=01·02, 모의투자는 03 계좌만 유효), `qut_iqr_dit_cd`* 시세조회구분코드 / 길이 1 / 1.정규장 9.전체, `fc_sec_trd_nat_cd`* 외화증권거래국가코드 / 길이 3 / 200.미국 070.일본 120.홍콩 160.상해 170.심천, `cur_cd`* 통화코드 / 길이 3 / KRW.전체 USD.USD CNY.CNY HKD.HKD JPY.JPY, `xns_dit_cd` 비용구분코드 / 길이 1 / 0.미포함 1.포함
+- 응답 `Output_0` (객체): `abk_amt`, `eal_amt_sum`, `eal_pls_sum_amt`, `krw_pft_rt`, `krw_dca`, `krw_ny_stl_xcl_amt`, `tot_aet_amt`, `fc_abk_amt`, `fc_eal_amt`, `fc_eal_pls_amt`, `pft_rt`, `fc_dca`, `fc_ny_stl_xcl_amt`, `fc_aet_amt`, `ptps_ttn_amt`, `ptps_ttn_amt1`
+- 응답 `Output_1` (배열): `fc_sec_trd_nat_cd`, `fc_sec_trd_nat_nm`, `iem_cd`, `oss_iem_eng_nm`, `iem_nm`, `cns_bse_bnc_qty`, `sll_cns_qty`, `byn_cns_qty`, `sll_pbl_qty1`, `fc_abk_amt`, `krw_abk_amt1`, `fc_phs_uit_pr`, `phs_uit_pr`, `fc_sec_end_pr`, `end_pr`, `fc_eal_amt`, `krw_eal_amt`, `fc_eal_pls_amt`, `krw_eal_pls_amt`, `eal_pft_rt`, `eal_pft_rt1`, `cur_cd`, `phs_xcg_rt`, `tdt_sby_bse_xcg_rt`, `fc_mkt_dit_cd`, `fc_sll_pls_amt`, `krw_sll_pls_amt`, `fc_sll_pft_rt`, `krw_sll_pft_rt`, `fc_cns_bse_phs_xps`, `krw_cns_bse_phs_xps`, `fc_avg_phs_pr`, `krw_avg_phs_pr`, `fc_fee`, `krw_fee`, `fc_tax_amt`, `krw_tax_amt`, `fc_pls_qtr_phs_pr`, `krw_pls_qtr_phs_pr`, `sby_fee_rt`, `fc_stk_lws_sby_fee`, `cfd_lon_cd_nm`, `lon_dt`, `xrn_dt`
+
+### 해외주식 예약주문조회 — `POST /gbstock/inquiry/v1/reservedInquiry`
+해외주식 예약주문내역 조회 API 입니다.  응답 블록은 **데이터가 있을 때만 내려옵니다.** 블록이 없을 수 있으니 존재 여부를 먼저 확인하세요.
+- 요청 `Input_0`: `fc_mkt_dit_cd`* 외화시장구분코드 / 길이 3 / 000.전체 200.미국 070.일본 120.홍콩 160.상해 170.심천, `bkg_orr_dt`* 예약주문일자 / 길이 8 / YYYYMMDD, `act_no`* 계좌번호 / 길이 11 / /n2/acctinfo 의 acct_no 사용 (운영은 acct_type=01·02, 모의투자는 03 계좌만 유효), `iem_cd` 티커종목코드 / 길이 12 / 예시> 미국주식 APPLE인 경우, AAPL, `sby_dit_cd`* 매매구분코드 / 길이 1 / 0.전체 1.매도 2.매수, `bkg_orr_can_yn`* 예약주문취소여부 / 길이 1 / 0.전체 1.접수 2.취소 3.주문전송 4.주문확인 5.실행거부 6.실행거부(현지) 7.완료, `oss_orr_knd_cd`* 해외증권주문종류코드 / 길이 1 / 0.전체 1.GTS(미국시장주문) 2.기타자동 3.기타수동, `bkg_orr_tp_cd`* 예약주문유형코드 / 길이 1 / 0.전체 1.일반예약 2.기간잔량 3.기간지정 4.증거금징수, `wtm_cur_knd_cd`* 증거금통화종류코드 / 길이 1 / 0.전체 1.거래국가통화 2.원화
+- 응답 `Output_0` (배열): `fc_mkt_dit_cd`, `bkg_orr_dt`, `act_no`, `cus_fnm`, `iem_cd`, `iem_nm`, `cur_cd`, `sby_dit_cd`, `sby_dit_nm`, `orr_qty`, `orr_pr`, `cns_qty`, `cns_pr`, `bkg_orr_can_yn`, `orr_can_dit_nm`, `bkg_orr_rtn_dt`, `bkg_orr_rtn_tm`, `rgs_tab_cd`, `rgs_emp_no`, `rgs_emp_fnm`, `cct_dt`, `cct_tm`, `cct_emp_no`, `cct_emp_fnm`, `bkg_rtn_orr_no`, `orr_sno`, `ost_orr_mdi`, `orr_cpl_yn`, `ost_pcs_cd`, `pcs_msg_cts`, `aca_tel_no`, `ahi_nmn_pr_tp_cd`, `ahi_nmn_pr_tp_cd_nm`, `oss_orr_knd_cd_nm`, `ivs_sgy_cd_nm`, `fc_csh_wtm`, `fc_csh_wtm_fee`, `fc_csh_wtm_tax_amt`, `fc_csh_wtm_trd_tax`, `fc_mkt_dit_cd_nm`, `bkg_orr_tp_cd`, `bkg_orr_tp_cd_nm`, `orr_enf_sta_dt`, `orr_enf_end_dt`, `acl_cns_qty`, `lst_orr_enf_dt`, `rmn_qty`, `wtm_cur_knd_cd`, `cd_nm`, `fc_stop_orr_bse_pr`, `orr_pdt_dit_cd`, `cfd_lon_cd`, `cfd_lon_cd_nm`, `lon_dt`
+
+### 해외주식 일별거래내역 — `POST /gbstock/inquiry/v1/dailyTransaction`
+해외주식 일별거래내역 조회 API 입니다.  응답 블록은 **데이터가 있을 때만 내려옵니다.** 블록이 없을 수 있으니 존재 여부를 먼저 확인하세요.
+- 요청 `Input_0`: `act_no`* 계좌번호 / 길이 11 / /n2/acctinfo 의 acct_no 사용 (운영은 acct_type=01·02, 모의투자는 03 계좌만 유효), `iqr_sta_dt`* 조회시작일자 / 길이 8 / YYYYMMDD, `iqr_end_dt`* 조회종료일자 / 길이 8 / YYYYMMDD, `act_trd_cfc_cd`* 계좌거래분류코드 / 길이 2 / 00.전체 01.입금 02.출금 03.입고 04.출고 05.매수 06.매도, `iem_mlf_cd`* 종목중분류코드 / 길이 5 / 00001.외화주식 00002.외화채권 00003.외화Warrant 00004.외화수익증권 00005.해외수익증권, `iem_cd` 종목코드 / 길이 12 / 예시> 미국주식 APPLE인 경우, AAPL
+- 응답 `Output_0` (배열): `trd_dt`, `trd_sno`, `act_trd_tp_nm`, `sps_cd_nm`, `iem_krl_nm`, `iem_cd`, `trd_qty`, `trd_uit_pr`, `cur_cd_nm`, `aly_xcg_rt`, `trd_bf_bnc_qty`, `trd_af_bnc_qty`, `fc_trd_amt`, `krw_trd_amt`, `trd_af_fc_dca`, `trd_af_dca`, `trd_af_fc_mgg_amt`, `trd_af_krw_mgg_amt`, `abd_sdr_xps_fc_amt`, `tsl_mgg_amt`, `ose_fee`, `dmt_fee`, `icm_tax`, `rsd_tax`, `rgs_cuc_mdi_cd_nm`, `rgs_tm`, `rgs_tab_cd`, `rgs_emp_no`, `oss_iem_cd`, `oss_iem_nm`, `trd_bf_fc_dca`, `trd_bf_dca`, `oss_stm_tax`, `fc_tsl_txa`, `fc_amt`, `krw_amt`, `fc_tax_sum`, `tax_sum`, `fc_icm_tax`, `fc_rsd_tax`, `fc_sas_amt`, `krw_sas_amt`, `tsl_cmu_txa`, `fc_trd_dit_cd`, `ral_trd_dt`
+- 응답 `Output_1` (객체): `cus_fnm`, `rnm_cfm_no`, `rpm_tal`, `drn_tal`, `amt_sum`, `tax_sum_amt`, `fee_sum_amt`
+
+### 해외주식 기간손익 — `POST /gbstock/inquiry/v1/periodPnl`
+해외주식 기간별 손익 조회 API 입니다.  응답 블록은 **데이터가 있을 때만 내려옵니다.** 블록이 없을 수 있으니 존재 여부를 먼저 확인하세요.
+- 요청 `Input_0`: `act_no`* 계좌번호 / 길이 11 / /n2/acctinfo 의 acct_no 사용 (운영은 acct_type=01·02, 모의투자는 03 계좌만 유효), `iqr_dit`* 조회구분 / 길이 1 / 1.거래통화기준 2.원화기준, `sta_orr_dt`* 시작주문일자 / 길이 8 / YYYYMMDD, `end_orr_dt`* 종료주문일자 / 길이 8 / YYYYMMDD, `iem_cd` 티커종목코드 / 길이 12 / 예시> 미국주식 APPLE인 경우, AAPL, `trd_cur_cd` 거래통화코드 / 길이 3 / KRW.KRW USD.USD CNY.CNY HKD.HKD JPY.JPY, `fc_sec_trd_nat_cd` 외화증권거래국가코드 / 길이 3 / 000.전체 200.미국 070.일본 120.홍콩 160.상해 170.심천
+- 응답 `Output_0` (객체): `act_fnm`, `byn_qty_sum`, `fc_byn_amt_sum`, `sll_qty_sum`, `fc_sll_amt_sum`, `fc_sby_pls_sum`, `fc_sby_pft_rt`, `fc_sdr_xps_sum`, `fc_rzt_pls_sum`, `fc_rzt_pft_rt`
+- 응답 `Output_1` (배열): `orr_dt`, `fc_sec_trd_nat_cd`, `fc_sec_trd_nat_nm`, `trd_cur_cd`, `byn_qty`, `byn_uit_pr`, `fc_byn_amt1`, `sll_qty`, `sll_uit_pr`, `fc_sll_amt`, `fc_sby_pls`, `fc_sby_pft_rt`, `fc_sdr_xps`, `fc_rzt_pls`, `fc_rzt_pft_rt`
+
+### 해외주식 기간손익 상세 — `POST /gbstock/inquiry/v1/periodPnlDetail`
+해외주식 기간별 손익 상세조회 API 입니다.  응답 블록은 **데이터가 있을 때만 내려옵니다.** 블록이 없을 수 있으니 존재 여부를 먼저 확인하세요.
+- 요청 `Input_0`: `act_no`* 계좌번호 / 길이 11 / /n2/acctinfo 의 acct_no 사용 (운영은 acct_type=01·02, 모의투자는 03 계좌만 유효), `iqr_dit`* 조회구분 / 길이 1 / 1.거래통화기준 2.원화기준, `iem_cd` 티커종목코드 / 길이 12 / 예시> 미국주식 APPLE인 경우, AAPL, `orr_dt`* 주문일자 / 길이 8 / YYYYMMDD, `fc_sec_trd_nat_cd`* 외화증권거래국가코드 / 길이 3 / 200.미국 070.일본 120.홍콩 160.상해 170.심천, `trd_cur_cd`* 거래통화코드 / 길이 3 / KRW.KRW USD.USD CNY.CNY HKD.HKD JPY.JPY
+- 응답 `Output_0` (배열): `iem_cd`, `iem_nm`, `byn_qty`, `byn_uit_pr`, `fc_byn_amt1`, `sll_qty`, `sll_uit_pr`, `fc_sll_amt`, `fc_sby_pls`, `fc_sby_pft_rt`, `fc_sdr_xps`, `fc_rzt_pls`, `fc_rzt_pft_rt`
+
+### 해외증거금 통화별조회 — `POST /gbstock/inquiry/v1/margin`
+해외주식 증거금 조회 API 입니다.  응답 블록은 **데이터가 있을 때만 내려옵니다.** 블록이 없을 수 있으니 존재 여부를 먼저 확인하세요.
+- 요청 `Input_0`: `act_no`* 계좌번호 / 길이 11 / /n2/acctinfo 의 acct_no 사용 (운영은 acct_type=01·02, 모의투자는 03 계좌만 유효)
+- 응답 `Output_0` (배열): `cur_cd`, `dca`, `orr_wtm`, `ect_mgg_amt`, `drn_pbl_amt`, `fc_dca`, `fc_mgg_amt`, `ect_mgg_fc_amt`, `fc_drn_pbl_amt`, `sby_bse_xcg_rt`, `fc_rba`, `rba`, `fc_rvb_odu_fee`, `rvb_odu_fee`, `stl_af_dca`, `stl_af_drn_pbl_amt`, `stl_af_fc_dca`, `stl_af_fc_drn_pbl_amt`
+
+### 해외주식 현재가상세 — `POST /gbstock/quote/v1/current`
+해외주식 현재가 조회 API 입니다.  응답 블록은 **데이터가 있을 때만 내려옵니다.** 블록이 없을 수 있으니 존재 여부를 먼저 확인하세요.
+- 요청 `Input_0`: `iem_cd`* 종목코드 / 길이 15 / 예시> 미국주식 APPLE인 경우, AAPL
+- 응답 `Output_0` (객체): `iem_cd`, `kor_name`, `industry_code`, `industry_name`, `trdprc`, `netchng_cls`, `netchng`, `pctchng`, `open_prc`, `high`, `low`, `acvol`, `uplimit`, `uplimit_rate`, `lolimit`, `lolimit_rate`, `w52high_prc`, `w52highprc_netchng`, `w52high_date`, `w52low_prc`, `w52lowprc_netchng`, `w52low_date`, `quote_time`, `best_ask1`, `best_bid1`, `best_asiz1`, `best_bsiz1`, `best_ask2`, `best_bid2`, `best_asiz2`, `best_bsiz2`, `best_ask3`, `best_bid3`, `best_asiz3`, `best_bsiz3`, `best_ask4`, `best_bid4`, `best_asiz4`, `best_bsiz4`, `best_ask5`, `best_bid5`, `best_asiz5`, `best_bsiz5`, `asksize`, `bidsize`, `cov_pric`, `currency_prc`, `list_num`, `list_amt`, `list_amt_2`, `turnover`, `currency_unit`, `hst_trdprc`, `capital_amt`, `base_prc`, `eps_date`, `eps_prc`, `per_prc`, `trading_unit`, `hst_acvol`, `trade_date`, `exch_id`, `exch_name`, `com_kind`, `com_kind_name`, `pf_jgubun`, `pf_trdprc`, `pf_netchng_cls`, `pf_netchng`, `pf_pctchng`, `best_ask6`, `best_bid6`, `best_asiz6`, `best_bsiz6`, `best_ask7`, `best_bid7`, `best_asiz7`, `best_bsiz7`, `best_ask8`, `best_bid8`, `best_asiz8`, `best_bsiz8`, `best_ask9`, `best_bid9`, `best_asiz9`, `best_bsiz9`, `best_ask10`, `best_bid10`, `best_asiz10`, `best_bsiz10`, `marketperiod_cls`, `normal_trdprc`, `normal_netchng_cls`, `normal_netchng`, `normal_pctchng`, `normal_acvol`, `normal_open_prc`, `normal_high`, `normal_low`
+
+### 해외주식 체결추이 — `POST /gbstock/quote/v1/executionTrend`
+해외주식 변동거래량 조회 API 입니다.  응답 블록은 **데이터가 있을 때만 내려옵니다.** 블록이 없을 수 있으니 존재 여부를 먼저 확인하세요.
+- 요청 `Input_0`: `period_type`* 기간구분 / 길이 1 / 1.시간별 2.일별, `req_cnt`* 요청건수 / 길이 4, `iem_cd`* 종목코드 / 길이 15 / 예시> 미국주식 APPLE인 경우, AAPL
+- 응답 `Output_0` (배열): `iem_cd`, `trade_date`, `trade_time`, `trdprc`, `netchng_cls`, `netchng`, `pctchng`, `turnover`, `fill_size`, `acvol`, `open_prc`, `high`, `low`, `best_ask1`, `best_bid1`, `cont_rate`, `nextbutton`, `ctsz18`
+
+### 해외주식 기간별시세(개별종목) — `POST /gbstock/quote/v1/period`
+해외 **개별종목**의 기간별 시세입니다. iem_cd 에 종목코드(예: AAPL, TSLA)를 입력합니다. 조회구분(gubun) 1.틱 2.분 3.일 4.주 5.월 — 틱·분 조회를 지원합니다. 조회건수는 count, 조회단위(xtick)는 일 조회 시 0001(4자리). 지수·환율 조회는 /gbstock/quote/v1/symbolIndexFxPeriod 를 사용하세요.  해외주식 주기별 시세 조회 API 입니다.  응답 블록은 **데이터가 있을 때만 내려옵니다.** 블록이 없을 수 있으니 존재 여부를 먼저 확인하세요.
+- 요청 `Input_0`: `iem_cd`* 종목코드 / 길이 15 / 예시> 미국주식 APPLE인 경우, AAPL, `end_dt`* 검색종료일 / 길이 8 / YYYYMMDD, `count`* 조회건수 / 길이 4, `maxavg`* 최대이평 / 길이 3, `gubun`* 조회구분 / 길이 1 / 1.틱 2.분 3.일 4.주 5.월, `xtick`* 조회단위 / 길이 4 / 주기구분 일인경우 0001 분/초/틱에서는 별도 설정 가능, `today_cls`* 당일조회 / 길이 1 / 0.종료일조회 1.당일조회, `market_cls`* 장시간구분 / 길이 1 / 0.전체 1.정규장
+- 응답 `Output_0` (배열): `date`, `time`, `iem_cd`, `kor_name`, `trdprc`, `netchng_cls`, `netchng`, `pctchng`, `acvol`, `turnover`, `open_prc`, `high`, `low`, `per`, `pbr`, `eps`, `list_num`, `list_amt`, `hst_open_prc`, `hst_high`, `hst_low`, `hst_trdprc`, `hst_acvol`, `hst_acvol_rate`, `best_ask`, `best_bid`, `week_open_prc`, `week_high`, `week_low`, `mon_open_prc`, `mon_high`, `mon_low`, `market_start_time`, `market_end_time`, `bsop_date`, `fx_rate`, `trading_cls`, `decimal`, `base_prc`, `ctsz16`, `tick_cnt`, `count`, `marketperiod_cls`, `r_base_prc`
+- 응답 `Output_1` (배열): `trade_date`, `trade_time`, `open_prc`, `high`, `low`, `close_prc`, `movolume`, `movalue`, `netchng_cls`, `bsop_date`
+
+### 해외주식 기간별시세(지수·환율) — `POST /gbstock/quote/v1/symbolIndexFxPeriod`
+해외 **지수·환율**의 기간별 시세입니다. iem_cd 에 지수코드/환율코드를 입력합니다(개별종목 아님). 조회구분(gubun) 1.일 2.주 3.월 — 틱·분은 지원하지 않습니다. 조회건수는 array_cnt(개별종목 API 의 count 와 필드명이 다름), 조회단위(xtick)는 일 조회 시 001(3자리). 당일조회(today_cls) 의미도 반대입니다(1.당일만조회 0.전체조회). 개별종목 조회는 /gbstock/quote/v1/period 를 사용하세요.  해외주식 종목/지수/환율 주기별 시세조회 API 입니다.  응답 블록은 **데이터가 있을 때만 내려옵니다.** 블록이 없을 수 있으니 존재 여부를 먼저 확인하세요.
+- 요청 `Input_0`: `iem_cd`* SYMBOL / 길이 14 / 지수코드, `end_dt`* 검색종료일 / 길이 8, `array_cnt`* 조회건수 / 길이 4, `maxavg`* 최대이평 / 길이 3, `gubun`* 조회구분 / 길이 1 / 1.일 2.주 3.월, `xtick` 조회단위 / 길이 3 / 주기구분 일인경우 001 분/초/틱에서는 별도 설정 가능, `today_cls`* 당일조회 / 길이 1 / 1.당일만조회(분/초/틱에서 사용) 0.전체조회, `scale_change` 단위변경 / 길이 1 / Output_1에만 적용 1.거래량천단위 그외.단주
+- 응답 `Output_0` (객체): `qry_date`, `qry_time`, `data_code`, `iem_cd`, `hts_kor_isnm`, `ovrs_prpr`, `prdy_vrss_sign`, `prdy_vrss`, `prdy_ctrt`, `acml_vol`, `acml_tr_pbmn`, `prdy_clpr`, `ovrs_oprc`, `ovrs_hgpr`, `ovrs_lwpr`, `prdy_oprc`, `prdy_hgpr`, `prdy_lwpr`, `prdy_prpr`, `tdw_ovrs_oprc`, `tdw_ovrs_hgpr`, `tdw_ovrs_lwpr`, `tdm_ovrs_oprc`, `tdm_ovrs_hgpr`, `tdm_ovrs_lwpr`, `localtime`, `bsop_date`, `base_ptr`, `ctsz30`, `lasttickcount`, `send_cnt`
+- 응답 `Output_1` (배열): `bsop_date`, `bsop_time`, `ovrs_oprc`, `ovrs_hgpr`, `ovrs_lwpr`, `ovrs_prpr`, `vol`
+
+### 실시간 채널 (6개) — wss://api.nhplug.com:7080/websocket
+포트: 국내 시세 7070 · 해외 시세 7080 · 통보(국내·해외) 7070 · 모의 17070 (통보를 7080 → WSS10006) · 동시 2채널, 채널당 30건
+- `RH` 해외주식 실시간호가 — tr_key `gicz15`, 필드 50개 · 유료시세 사용 약정 고객만 이용 가능합니다.
+- `rh` 해외주식 지연호가(아시아) — tr_key `gicz15`, 필드 50개 · 미국, 중국시장만 지연정보가 제공됩니다.
+- `RC` 해외주식 실시간체결가 — tr_key `gicz15`, 필드 35개 · 유료시세 사용 약정 고객만 이용 가능합니다.
+- `rc` 해외주식 지연체결가 — tr_key `gicz15`, 필드 35개 · 미국, 중국시장만 지연정보가 제공됩니다.
+- `d0` 해외주식 실시간체결통보 — tr_key `userid`, 필드 18개 · wss://api.nhplug.com:7070/websocket · 해외주식 주문 체결 시 실시간으로 수신됩니다. 통보 채널 — 국내·해외 모두 포트 7070 사용(7080 사용 시 WSS10006).
+- `d1` 해외주식 실시간주문내역통보 — tr_key `userid`, 필드 22개 · wss://api.nhplug.com:7070/websocket · 해외주식 주문 접수 시 실시간으로 수신됩니다. 통보 채널 — 국내·해외 모두 포트 7070 사용(7080 사용 시 WSS10006).
+
+---
+
+## 국내파생 (`krfuture`)
+
+정본: https://www.nhplug.com/openapi-docs/krfuture/openapi.json
+
+종목마스터: m_optksp.mst (지수옵션), m_stkfut.mst (주식선물), m_optstp.mst (주식옵션), m_woption.mst·m_qoption.mst (위클리옵션) · 구조체 m_optksp.h · m_stkfut.h · m_optstp.h · m_woption.h · m_qoption.h — https://www.nhplug.com/instruments/<파일명>.mst (인증 불필요)
+
+### 선물옵션 주문주간 — `POST /krfuture/order/v1/day`
+선물옵션 주간주문(매수/매도) API 입니다.  응답 블록은 **데이터가 있을 때만 내려옵니다.** 블록이 없을 수 있으니 존재 여부를 먼저 확인하세요.
+- 요청 `Input_0`: `act_no`* 계좌번호 / 길이 11 / /n2/acctinfo 의 acct_no 사용 (운영은 acct_type=01·02, 모의투자는 03 계좌만 유효), `sby_dit_cd`* 매매구분코드 / 길이 1 / 1.매도 2.매수, `iem_cd`* 선물옵션종목코드 / 길이 12 / 예시> 코스피200 선물 26년9월물일 경우, KA0169000, `orr_qty`* 주문수량 / 길이 18, `orr_pr` 주문가격 / 길이 15.3, `fno_nmn_pr_tp_cd` 선물옵션호가유형코드 / 길이 1 / L.지정가 M.시장가 B.최유리지정가 C.조건부지정가, `frs_orr_cnd_dit_cd` 선물주문조건구분코드 / 길이 1 / 0.일반주문 1.일부충족(IOC) 2.전량충족(FOK)
+- 응답 `Output_0` (객체): `ost_pcs_rlt`, `msg_cd`, `orr_no`, `orr_pbl_csh`, `orr_pbl_tal`, `dsg_csh_isf_amt`, `dsg_tal_isf_amt`, `orr_pbl_qty`, `act_fnm`, `iem_nm`, `fnd_amn_emp_no`, `frs_fnd_no`, `frs_fnd_orr_no`, `sby_dit_cd`, `act_no`, `ost_pwd`, `fno_iem_cd`, `orr_qty`, `orr_pr`, `mmb_pcs_hdn`, `orr_gno_tab_cd`
+
+### 선물옵션 주문야간 — `POST /krfuture/order/v1/night`
+선물옵션 야간주문(매수/매도) API 입니다.  응답 블록은 **데이터가 있을 때만 내려옵니다.** 블록이 없을 수 있으니 존재 여부를 먼저 확인하세요.
+- 요청 `Input_0`: `act_no`* 계좌번호 / 길이 11 / /n2/acctinfo 의 acct_no 사용 (운영은 acct_type=01·02, 모의투자는 03 계좌만 유효), `sby_dit_cd`* 매매구분코드 / 길이 1 / 1.매도 2.매수, `iem_cd`* 선물옵션종목코드 / 길이 12 / 예시> 코스피200 선물 26년9월물일 경우, KA0169000, `orr_qty`* 주문수량 / 길이 18, `orr_pr` 주문가격 / 길이 15.3, `fno_nmn_pr_tp_cd` 선물옵션호가유형코드 / 길이 1 / L.지정가 M.시장가 B.최유리지정가 C.조건부지정가, `frs_orr_cnd_dit_cd` 선물주문조건구분코드 / 길이 1 / 0.일반주문 1.일부충족(IOC) 2.전량충족(FOK)
+- 응답 `Output_0` (객체): `ost_pcs_rlt`, `msg_cd`, `orr_no`, `orr_pbl_csh`, `orr_pbl_tal`, `dsg_csh_isf_amt`, `dsg_tal_isf_amt`, `orr_pbl_qty`, `act_fnm`, `iem_nm`, `fnd_amn_emp_no`, `frs_fnd_no`, `frs_fnd_orr_no`, `sby_dit_cd`, `act_no`, `ost_pwd`, `fno_iem_cd`, `orr_qty`, `orr_pr`, `mmb_pcs_hdn`, `orr_gno_tab_cd`
+
+### 선물옵션 정정취소주문주간정정 — `POST /krfuture/order/v1/dayModify`
+선물옵션 주간 정정주문 API 입니다.  응답 블록은 **데이터가 있을 때만 내려옵니다.** 블록이 없을 수 있으니 존재 여부를 먼저 확인하세요.
+- 요청 `Input_0`: `act_no`* 계좌번호 / 길이 11 / /n2/acctinfo 의 acct_no 사용 (운영은 acct_type=01·02, 모의투자는 03 계좌만 유효), `iem_cd`* 선물옵션종목코드 / 길이 12 / 예시> 코스피200 선물 26년9월물일 경우, KA0169000, `orr_qty`* 주문수량 / 길이 18, `orr_pr`* 주문가격 / 길이 15.3, `fno_nmn_pr_tp_cd`* 선물옵션호가유형코드 / 길이 1 / L.지정가 M.시장가 B.최유리지정가 C.조건부지정가, `frs_orr_cnd_dit_cd`* 선물주문조건구분코드 / 길이 1 / 0.일반주문 1.일부충족(IOC) 2.전량충족(FOK), `org_orr_no`* 원주문번호 / 길이 10 / 정정/취소 시 사용
+- 응답 `Output_0` (객체): `msg_cd`, `orr_no`, `orr_pbl_csh`, `orr_pbl_tal`, `dsg_csh_isf_amt`, `dsg_tal_isf_amt`, `orr_pbl_qty`, `act_fnm`, `iem_nm`, `fnd_amn_emp_no`, `frs_fnd_no`, `frs_fnd_orr_no`, `sby_dit_cd`, `act_no`, `ost_pwd`, `fno_iem_cd`, `orr_qty`, `orr_pr`, `mmb_pcs_hdn`, `orr_gno_tab_cd`
+
+### 선물옵션 정정취소주문야간정정 — `POST /krfuture/order/v1/nightModify`
+선물옵션 야간 정정주문 API 입니다.  응답 블록은 **데이터가 있을 때만 내려옵니다.** 블록이 없을 수 있으니 존재 여부를 먼저 확인하세요.
+- 요청 `Input_0`: `act_no`* 계좌번호 / 길이 11 / /n2/acctinfo 의 acct_no 사용 (운영은 acct_type=01·02, 모의투자는 03 계좌만 유효), `iem_cd`* 선물옵션종목코드 / 길이 12 / 예시> 코스피200 선물 26년9월물일 경우, KA0169000, `orr_qty`* 주문수량 / 길이 18, `orr_pr`* 주문가격 / 길이 15.3, `fno_nmn_pr_tp_cd`* 선물옵션호가유형코드 / 길이 1 / L.지정가 M.시장가 B.최유리지정가 C.조건부지정가, `frs_orr_cnd_dit_cd`* 선물주문조건구분코드 / 길이 1 / 0.일반주문 1.일부충족(IOC) 2.전량충족(FOK), `org_orr_no`* 원주문번호 / 길이 10 / 정정/취소 시 사용
+- 응답 `Output_0` (객체): `msg_cd`, `orr_no`, `orr_pbl_csh`, `orr_pbl_tal`, `dsg_csh_isf_amt`, `dsg_tal_isf_amt`, `orr_pbl_qty`, `act_fnm`, `iem_nm`, `fnd_amn_emp_no`, `frs_fnd_no`, `frs_fnd_orr_no`, `sby_dit_cd`, `act_no`, `ost_pwd`, `fno_iem_cd`, `orr_qty`, `orr_pr`, `mmb_pcs_hdn`, `orr_gno_tab_cd`
+
+### 선물옵션 정정취소주문주간취소 — `POST /krfuture/order/v1/dayCancel`
+선물옵션 주간 취소주문 API 입니다.  응답 블록은 **데이터가 있을 때만 내려옵니다.** 블록이 없을 수 있으니 존재 여부를 먼저 확인하세요.
+- 요청 `Input_0`: `act_no`* 계좌번호 / 길이 11 / /n2/acctinfo 의 acct_no 사용 (운영은 acct_type=01·02, 모의투자는 03 계좌만 유효), `iem_cd`* 선물옵션종목코드 / 길이 12 / 예시> 코스피200 선물 26년9월물일 경우, KA0169000, `orr_qty` 주문수량 / 길이 18, `org_orr_no`* 원주문번호 / 길이 10 / 정정/취소 시 사용
+- 응답 `Output_0` (객체): `msg_cd`, `orr_no`, `orr_pbl_csh`, `orr_pbl_tal`, `dsg_csh_isf_amt`, `dsg_tal_isf_amt`, `orr_pbl_qty`, `act_fnm`, `iem_nm`, `fnd_amn_emp_no`, `frs_fnd_no`, `frs_fnd_orr_no`, `sby_dit_cd`, `act_no`, `ost_pwd`, `fno_iem_cd`, `orr_qty`, `orr_pr`, `mmb_pcs_hdn`, `orr_gno_tab_cd`
+
+### 선물옵션 정정취소주문야간취소 — `POST /krfuture/order/v1/nightCancel`
+선물옵션 야간 취소주문 API 입니다.  응답 블록은 **데이터가 있을 때만 내려옵니다.** 블록이 없을 수 있으니 존재 여부를 먼저 확인하세요.
+- 요청 `Input_0`: `act_no`* 계좌번호 / 길이 11 / /n2/acctinfo 의 acct_no 사용 (운영은 acct_type=01·02, 모의투자는 03 계좌만 유효), `iem_cd`* 선물옵션종목코드 / 길이 12 / 예시> 코스피200 선물 26년9월물일 경우, KA0169000, `orr_qty` 주문수량 / 길이 18, `org_orr_no`* 원주문번호 / 길이 10 / 정정/취소 시 사용
+- 응답 `Output_0` (객체): `msg_cd`, `orr_no`, `orr_pbl_csh`, `orr_pbl_tal`, `dsg_csh_isf_amt`, `dsg_tal_isf_amt`, `orr_pbl_qty`, `act_fnm`, `iem_nm`, `fnd_amn_emp_no`, `frs_fnd_no`, `frs_fnd_orr_no`, `sby_dit_cd`, `act_no`, `ost_pwd`, `fno_iem_cd`, `orr_qty`, `orr_pr`, `mmb_pcs_hdn`, `orr_gno_tab_cd`
+
+### 선물옵션 주문체결내역조회 — `POST /krfuture/inquiry/v1/orderExecutionHistory`
+국내선물옵션 주문체결내역 조회 API 입니다.  응답 블록은 **데이터가 있을 때만 내려옵니다.** 블록이 없을 수 있으니 존재 여부를 먼저 확인하세요.
+- 요청 `Input_0`: `act_no`* 계좌번호 / 길이 11 / /n2/acctinfo 의 acct_no 사용 (운영은 acct_type=01·02, 모의투자는 03 계좌만 유효), `orr_dt`* 시작주문일자 / 길이 8 / YYYYMMDD, `cns_dit_cd`* 체결구분코드 / 길이 1 / 0.전체 1.체결 2.미체결, `sot_dit`* 정렬구분 / 길이 1 / 1.주문번호역순 2.주문번호순, `sby_dit_cd`* 매매구분코드 / 길이 1 / 0.전체 1.매도 2.매수, `iem_dit`* 종목구분 / 길이 1 / 9.전체 1.코스피200선물 2.코스피200옵션 7.주식선물 8.주식옵션 A.변동지수선물 B.섹터지수선물 D.미니코스피200선물 E.미니코스피200옵션 F.코스닥150선물 G.유로스톡스50선물 K.KRX300선물 L.코스닥150옵션 N.위클리옵션 P.코스닥글로벌 Q.코리아밸류업 R.코스닥150위클리옵션
+- 응답 `Output_0` (배열): `fno_orr_no`, `fno_org_orr_no`, `frs_ctc_no`, `frs_orr_cnd_dit_cd`, `orr_cnd_dit_cd_nm`, `nmn_pr_tp_cd_nm`, `fno_nmn_pr_tp_cd`, `sby_dit_cd`, `iem_cd`, `iem_nm`, `orr_qty`, `orr_pr`, `frs_cns_qty`, `fno_cns_pr`, `ny_cns_qty`, `pcs_rlt_msg_cd`, `cns_pcs_hur`, `orr_rtn_hur`, `orr_pcs_hur`, `orr_cfm_hur`, `ost_orr_cnd`, `sby_dit_nm`, `cor_can_dit_cd`, `orr_dt`, `cuc_mdi_cd`, `cuc_mdi_cd_nm`, `fno_rjt_rsn_cd`, `orr_rjt_rsn_cd_nm`
+
+### 선물옵션 잔고현황 — `POST /krfuture/inquiry/v1/balance`
+국내선물옵션 잔고조회 API 입니다.  응답 블록은 **데이터가 있을 때만 내려옵니다.** 블록이 없을 수 있으니 존재 여부를 먼저 확인하세요.
+- 요청 `Input_0`: `act_no`* 계좌번호 / 길이 11 / /n2/acctinfo 의 acct_no 사용 (운영은 acct_type=01·02, 모의투자는 03 계좌만 유효)
+- 응답 `Output_0` (배열): `iem_cd`, `iem_nm`, `sby_dit_nm`, `tdy_ny_stl_qty`, `byn_cns_qty`, `sll_cns_qty`, `ny_cns_byn_orr_qty`, `ny_cns_sll_orr_qty`, `avg_pr`, `pti_uit_pr`, `now_pr`, `tdt_cns_byn_avg_pr`, `tdt_cns_sll_avg_pr`, `eal_pls_amt`, `frs_pti_eal_pls`, `sby_pls_amt`, `frs_pti_sby_pls`, `tot_pls_sum`, `lqd_qty`, `lqd_pbl_qty`, `opt_eal_amt`, `fno_fee`, `byn_cns_amt`, `sll_cns_amt`, `abk_amt`, `pti_abk_amt`, `sby_pls_rt`, `pti_eal_pft_rt`, `pti_eal_pls`, `frs_fee`, `pti_fee`, `lqd_fee`, `sby_dit_nm2`, `bf_dd_ny_stl_qty`, `bnc_ind_qty`
+- 응답 `Output_1` (객체): `ral_pls_sum`, `tot_pls_sum`, `sby_pls_sum`, `tot_eal_pls`, `pti_tot_pls_sum`, `pti_sby_pls_sum`, `pti_eal_pls_sum`, `pti_eal_pls`, `ral_frs_pls`, `frs_tot_pls`, `frs_sby_pls`, `frs_eal_pls`, `pti_frs_eal_pls`, `frs_pti_sby_pls`, `frs_pti_eal_pls`, `ral_opt_pls`, `opt_tot_pls`, `opt_sby_pls`, `opt_eal_pls`, `idx_opt_pls_amt`, `pti_sby_pls`, `eal_pls_amt`, `fno_eal_amt`, `byn_cst_sum1`, `sum_qty1`, `sll_cst_sum1`, `sum_qty2`, `fee_sum`, `fee_sum_amt`, `frs_byn_amt`, `frs_qty`, `frs_sll_amt`, `qty_sum`, `frs_fee`, `opt_byn_amt`, `sby_qty`, `opt_sll_amt`, `sby_qty1`, `fno_fee`, `dsg_tal`, `orr_pbl_amt_tal`, `brg_wtm_tal`, `nas_tal`, `tot_eal_amt`, `dsg_csh`, `csh_dga`, `orr_pbl_amt_csh`, `brg_wtm_csh`, `nas_csh`, `eal_amt_sum`, `dsg_sba_amt`, `tot_aet_amt`, `tot_byn_amt`, `eal_amt`, `eal_pls1`, `xcl_dpa_sum`, `lst_dfa_amt`, `opt_eal_pls_amt`, `opt_aloc_amt`, `opt_erc_amt`, `bf_dd_sba_sll_amt`, `tdt_sba_sll_amt`, `drn_pbl_amt`, `amn_emp_fnm`, `trd_act_nm`
+
+### 선물옵션 주문가능 — `POST /krfuture/inquiry/v1/orderable`
+국내선물옵션 주문가능수량 조회 API 입니다.  응답 블록은 **데이터가 있을 때만 내려옵니다.** 블록이 없을 수 있으니 존재 여부를 먼저 확인하세요.
+- 요청 `Input_0`: `act_no`* 계좌번호 / 길이 11 / /n2/acctinfo 의 acct_no 사용 (운영은 acct_type=01·02, 모의투자는 03 계좌만 유효), `ost_sby_dit`* 매매구분 / 길이 1 / 1.매도 2.매수, `iem_cd`* 선물옵션종목코드 / 길이 12 / 예시> 코스피200 선물 26년9월물일 경우, KA0169000, `orr_uit_pr` 주문단가 / 길이 15.3, `ost_orr_tp`* 주문유형 / 길이 1 / L.지정가 M.시장가 B.최유리지정가 C.조건부지정가
+- 응답 `Output_0` (객체): `act_no`, `tot_eal_amt`, `dsg_tal`, `dsg_csh`, `dsg_sba_amt`, `csh_rba`, `brg_wtm_tal`, `brg_wtm_csh`, `orr_pbl_tal`, `orr_pbl_csh`, `frs_xcl_dpa`, `frs_tdt_dpa`, `frs_rwl_dpa`, `opt_sll_amt`, `opt_byn_amt`, `opt_eal_amt`, `ned_dsg_tal`, `ned_dsg_csh`, `wtm_lvy_qty`, `wtm_iny_qty`, `wtm_lvy_uit_pr`, `anw_qty`, `lqd_pbl_qty`, `all_orr_qty`, `ftn_aet_iem_end_pr`, `nas_rt`, `sum_stl_amt`, `max_pbl_bse_qty`, `copt_sll_ny_stl_qty`, `popt_sll_ny_stl_qty`, `krx1_cal_sll_qty`, `krx1_popt_sll_qty`, `orr_pbl_qty`, `orr_pbl_qty1`, `orr_qty`, `orr_amt`, `anw_orr_qty`, `orr_af_dsg_tal`, `orr_af_dsg_csh`, `orr_af_brg_wtm_tal`, `orr_af_brg_wtm_csh`, `orr_af_orr_pbl_tal`, `orr_af_orr_pbl_csh`
+
+### 선물옵션 증거금 상세 — `POST /krfuture/inquiry/v1/margin`
+국내선물옵션 증거금 조회 API 입니다.  응답 블록은 **데이터가 있을 때만 내려옵니다.** 블록이 없을 수 있으니 존재 여부를 먼저 확인하세요.
+- 요청 `Input_0`: `act_no`* 계좌번호 / 길이 11 / /n2/acctinfo 의 acct_no 사용 (운영은 acct_type=01·02, 모의투자는 03 계좌만 유효)
+- 응답 `Output_0` (객체): `dsg_csh`, `nxt_dd_amp_dsg_csh`, `nxt2_dd_amp_dsg_csh`, `dsg_sba_amt`, `dsg_tal`, `brg_wtm_csh`, `brg_wtm_tal`, `orr_pbl_amt_csh`, `orr_pbl_amt_tal`, `wrw_pbl_amt_csh`, `mnc_wtm_csh`, `mnc_wtm_tal`, `apd_wtm_csh`, `apd_wtm_tal`, `orr_wtm_tal`, `orr_wtm_csh`, `opt_pr_wtm`, `rrv_wtm`, `sby_pls_amt`, `opt_byn_cst`, `opt_sll_cst`, `frs_xcl_dpa`, `frs_lst_dpa`, `rba`, `rvb_fee`, `rvb_odu_fee`, `bf_dd_jin_amt`, `tdy_jin_amt`, `bf_dd_rrs_sba`, `tdy_rrs_sba`, `opt_stl_amt`, `rls_pbl_sba`, `opt_ant_amt`, `opt_erc_pr`, `men_af_csh_rpm_amt`, `men_af_sba_rpm_amt`, `men_af_rpm_tal`, `frs_nsk_wtm_tal`, `frs_nsk_wtm_csh`, `fno_nsk_wtm_tal`, `fno_nsk_wtm_csh`, `opt_pr_wtm_tal`, `pr_cng_wtm_tal`, `pr_cng_wtm_csh`, `srd_cns_wtm_tal`, `srd_cns_wtm_csh`, `min_wtm_tal`, `min_wtm_csh`, `frs_rzt_pls_tal`, `frs_rzt_pls_csh`, `sba_sec_sll_amt`, `sba_sec_sll_tal`, `wrw_pbl_amt_tal`, `cvc_apm_sba_amt`, `ahi_stk_byn_gte_amt`, `rvb_sct_gte_amt`, `lst_stl_dpa`, `sll_amt`, `byn_amt`, `cal_erc_popt_aloc_rit_erc_cst`, `cal_aloc_popt_erc_rit_erc_cst`, `frs_orr_wtm`, `srd_orr_wtm`, `opt_byn_orr_wtm_csh`, `opt_sll_orr_wtm_csh`, `nby_cst`, `nby_csh`, `frs_fee`, `tot_rsk_wtm_tal`, `tot_rsk_wtm_csh`, `tdt_frs_nlo_amt`, `gar_dd_bf_nlo_stl_amt`, `iopt_hld_lmt_qty`, `opt_hld_lmt_qty`, `cus_fnm`, `lst_stl_pr_dfn_bf_wtm_tal`, `lst_stl_pr_dfn_bf_wtm_csh`
+
+### (야간)선물옵션 주문체결 내역조회 — `POST /krfuture/inquiry/v1/nightOrderExecutionHistory`
+국내선물옵션 야간주문 체결내역 조회 API 입니다.  응답 블록은 **데이터가 있을 때만 내려옵니다.** 블록이 없을 수 있으니 존재 여부를 먼저 확인하세요.
+- 요청 `Input_0`: `act_no`* 계좌번호 / 길이 11 / /n2/acctinfo 의 acct_no 사용 (운영은 acct_type=01·02, 모의투자는 03 계좌만 유효), `orr_dt` 주문일자 / 길이 8 / YYYYMMDD, `sby_dit_cd`* 매매구분코드 / 길이 1 / 0.전체 1.매도 2.매수, `cns_dit_cd`* 체결구분코드 / 길이 1 / 0.전체 1.체결 2.미체결, `ost_dit`* 구분 / 길이 1 / 1.주문번호순 2.주문번호역순, `ost_dit_cd`* 구분코드 / 길이 1 / 9.전체 4.코스피200선물 5.코스피200옵션 D.미니코스피200선물 E.미니코스피200옵션 7.주식선물 8.주식옵션 F.코스닥150선물 L.코스닥150옵션 A.변동성지수선물 B.섹터지수선물 G.유로스톡스50선물 K.KRX300선물 N.위클리옵션 P.코스닥글로벌선물 Q.코리아밸류업선물 R.코스닥150위클리옵션
+- 응답 `Output_0` (배열): `fno_orr_no`, `fno_org_orr_no`, `act_no`, `orr_gno_tab_cd`, `act_amn_tab_cd`, `act_amn_mo_tab_cd`, `cus_fnm`, `frs_orr_cnd_dit_cd`, `sby_dit_cd`, `orr_dt`, `fno_mo_orr_no`, `frs_fnd_orr_no`, `cor_can_dit_cd`, `fno_nmn_pr_tp_cd`, `fno_trd_tp_cd`, `fno_iem_cd`, `iem_nm`, `orr_pr`, `orr_qty`, `orr_amt`, `cor_can_qty`, `cor_can_cfm_qty`, `frs_ny_cns_qty`, `frs_cns_qty`, `frs_cns_amt`, `fno_cns_pr`, `fr_mct_cns_amt`, `nr_mct_cns_amt`, `frs_orr_mdi_dit_cd`, `mmb_pcs_hdn`, `ivs_sgy_cd`, `amn_emp_no`, `fnd_amn_emp_no`, `frs_fnd_no`, `fno_rjt_rsn_cd`, `orr_orn_dit_cd`, `wtm_mpi_qty`, `wtm_iny_qty`, `pcs_rlt_msg_cd`, `rsl_amn_tab_cd`, `pcs_tab_cd`, `hts_usr_id`, `orr_rtn_tm`, `egc_orr_dit_cd`, `rgs_emp_no`, `act_amn_tab_nm`, `orr_cnd_dit_cd_nm`, `sby_dit_nm`, `cor_can_dit_nm`, `nmn_pr_tp_cd_nm`, `trd_tp_nm`, `orr_mdi_nm`, `usr_ip_adr`
+- 응답 `Output_1` (객체): `frs_sll_amt`, `frs_sll_qty`, `frs_byn_qty`, `frs_byn_amt`, `opt_byn_amt`, `opt_byn_qty`, `opt_sll_qty`, `opt_sll_amt`
+
+### (야간)선물옵션 잔고현황 — `POST /krfuture/inquiry/v1/nightBalance`
+국내선물옵션 야간잔고조회 API 입니다.  응답 블록은 **데이터가 있을 때만 내려옵니다.** 블록이 없을 수 있으니 존재 여부를 먼저 확인하세요.
+- 요청 `Input_0`: `act_no`* 계좌번호 / 길이 11 / /n2/acctinfo 의 acct_no 사용 (운영은 acct_type=01·02, 모의투자는 03 계좌만 유효), `ost_dit_cd`* 구분코드 / 길이 1 / 9.전체 4.코스피200선물 5.코스피200옵션 D.미니코스피200선물 E.미니코스피200옵션 7.주식선물 8.주식옵션 F.코스닥150선물 L.코스닥150옵션 A.변동성지수선물 B.섹터지수선물 G.유로스톡스50선물 K.KRX300선물 N.위클리옵션 P.코스닥글로벌선물 Q.코리아밸류업선물 R.코스닥150위클리옵션, `ost_dit_cd1`* 구분코드1 / 길이 1 / 9.전체 1.보유
+- 응답 `Output_0` (배열): `fno_iem_cd`, `iem_nm`, `sby_dit_nm`, `tdy_ny_stl_qty`, `byn_cns_qty`, `sll_cns_qty`, `ny_cns_byn_orr_qty`, `ny_cns_sll_orr_qty`, `avg_pr`, `pti_uit_pr`, `now_pr`, `tdt_cns_byn_avg_pr`, `tdt_cns_sll_avg_pr`, `eal_pls_amt`, `frs_pti_eal_pls`, `sby_pls_amt`, `frs_pti_sby_pls`, `tot_pls_sum`, `lqd_qty`, `lqd_pbl_qty`, `opt_eal_amt`, `fno_fee`, `byn_cns_amt`, `sll_cns_amt`, `abk_amt`, `pti_abk_amt`, `sby_pls_rt`, `pti_eal_pft_rt`, `pti_eal_pls`, `frs_fee`, `pti_fee`, `lqd_fee`, `sby_dit_nm2`, `bf_dd_ny_stl_qty`, `bnc_ind_qty`
+- 응답 `Output_1` (객체): `ral_pls_sum`, `tot_pls_sum`, `sby_pls_sum`, `tot_eal_pls`, `pti_tot_pls_sum`, `pti_sby_pls_sum`, `pti_eal_pls_sum`, `pti_eal_pls`, `ral_frs_pls`, `frs_tot_pls`, `frs_sby_pls`, `frs_eal_pls`, `pti_frs_eal_pls`, `frs_pti_sby_pls`, `frs_pti_eal_pls`, `ral_opt_pls`, `opt_tot_pls`, `opt_sby_pls`, `opt_eal_pls`, `idx_opt_pls_amt`, `pti_sby_pls`, `eal_pls_amt`, `fno_eal_amt`, `byn_cst_sum1`, `sum_qty1`, `sll_cst_sum1`, `sum_qty2`, `fee_sum`, `fee_sum_amt`, `frs_byn_amt`, `frs_qty`, `frs_sll_amt`, `qty_sum`, `frs_fee`, `opt_byn_amt`, `sby_qty`, `opt_sll_amt`, `sby_qty1`, `fno_fee`, `dsg_tal`, `orr_pbl_amt_tal`, `brg_wtm_tal`, `nas_tal`, `tot_eal_amt`, `dsg_csh`, `csh_dga`, `orr_pbl_amt_csh`, `brg_wtm_csh`, `nas_csh`, `eal_amt_sum`, `dsg_sba_amt`, `tot_aet_amt`, `tot_byn_amt`, `eal_amt`, `eal_pls1`, `xcl_dpa_sum`, `lst_dfa_amt`, `opt_eal_pls_amt`, `opt_aloc_amt`, `opt_erc_amt`, `bf_dd_sba_sll_amt`, `tdt_sba_sll_amt`, `drn_pbl_amt`, `amn_emp_fnm`, `trd_act_nm`
+
+### (야간)선물옵션 주문가능 조회 — `POST /krfuture/inquiry/v1/nightOrderable`
+국내선물옵션 야간주문가능수량 조회 API 입니다.  응답 블록은 **데이터가 있을 때만 내려옵니다.** 블록이 없을 수 있으니 존재 여부를 먼저 확인하세요.
+- 요청 `Input_0`: `act_no`* 계좌번호 / 길이 11 / /n2/acctinfo 의 acct_no 사용 (운영은 acct_type=01·02, 모의투자는 03 계좌만 유효), `ost_sby_dit`* 매매구분 / 길이 1 / 1.매도 2.매수, `fno_iem_cd`* 선물옵션종목코드 / 길이 12 / 예시> 코스피200 선물 26년9월물일 경우, KA0169000, `orr_uit_pr` 주문단가 / 길이 15.3, `orr_qty` 주문수량 / 길이 18, `ost_orr_tp`* 주문유형 / 길이 1 / B.최유리지정가 C.조건부지정가 L.지정가 M.시장가
+- 응답 `Output_0` (객체): `act_no`, `tot_eal_amt`, `dsg_tal`, `dsg_csh`, `dsg_sba_amt`, `csh_rba`, `brg_wtm_tal`, `brg_wtm_csh`, `orr_pbl_tal`, `orr_pbl_csh`, `frs_xcl_dpa`, `frs_tdt_dpa`, `frs_rwl_dpa`, `opt_sll_amt`, `opt_byn_amt`, `opt_eal_amt`, `ned_dsg_tal`, `ned_dsg_csh`, `wtm_lvy_qty`, `wtm_iny_qty`, `wtm_lvy_uit_pr`, `anw_qty`, `lqd_pbl_qty`, `all_orr_qty`, `ftn_aet_iem_end_pr`, `nas_rt`, `sum_stl_amt`, `max_pbl_bse_qty`, `copt_sll_ny_stl_qty`, `popt_sll_ny_stl_qty`, `krx1_cal_sll_qty`, `krx1_popt_sll_qty`, `orr_pbl_qty`, `orr_pbl_qty1`, `orr_qty`, `orr_amt`, `anw_orr_qty`, `orr_af_dsg_tal`, `orr_af_dsg_csh`, `orr_af_brg_wtm_tal`, `orr_af_brg_wtm_csh`, `orr_af_orr_pbl_tal`, `orr_af_orr_pbl_csh`
+
+### (야간)선물옵션 증거금 상세 — `POST /krfuture/inquiry/v1/nightMargin`
+국내선물옵션 야간증거금 조회 API 입니다.  응답 블록은 **데이터가 있을 때만 내려옵니다.** 블록이 없을 수 있으니 존재 여부를 먼저 확인하세요.
+- 요청 `Input_0`: `act_no`* 계좌번호 / 길이 11 / /n2/acctinfo 의 acct_no 사용 (운영은 acct_type=01·02, 모의투자는 03 계좌만 유효)
+- 응답 `Output_0` (객체): `dsg_csh`, `nxt_dd_amp_dsg_csh`, `nxt2_dd_amp_dsg_csh`, `dsg_sba_amt`, `dsg_tal`, `brg_wtm_csh`, `brg_wtm_tal`, `orr_pbl_amt_csh`, `orr_pbl_amt_tal`, `wrw_pbl_amt_csh`, `mnc_wtm_csh`, `mnc_wtm_tal`, `apd_wtm_csh`, `apd_wtm_tal`, `orr_wtm_tal`, `orr_wtm_csh`, `opt_pr_wtm`, `rrv_wtm`, `sby_pls_amt`, `opt_byn_cst`, `opt_sll_cst`, `frs_xcl_dpa`, `frs_lst_dpa`, `rba`, `rvb_fee`, `rvb_odu_fee`, `bf_dd_jin_amt`, `tdy_jin_amt`, `bf_dd_rrs_sba`, `tdy_rrs_sba`, `opt_stl_amt`, `rls_pbl_sba`, `opt_ant_amt`, `opt_erc_pr`, `men_af_csh_rpm_amt`, `men_af_sba_rpm_amt`, `men_af_rpm_tal`, `frs_nsk_wtm_tal`, `frs_nsk_wtm_csh`, `fno_nsk_wtm_tal`, `fno_nsk_wtm_csh`, `opt_pr_wtm_tal`, `pr_cng_wtm_tal`, `pr_cng_wtm_csh`, `srd_cns_wtm_tal`, `srd_cns_wtm_csh`, `min_wtm_tal`, `min_wtm_csh`, `frs_rzt_pls_tal`, `frs_rzt_pls_csh`, `sba_sec_sll_amt`, `sba_sec_sll_tal`, `wrw_pbl_amt_tal`, `cvc_apm_sba_amt`, `ahi_stk_byn_gte_amt`, `rvb_sct_gte_amt`, `lst_stl_dpa`, `sll_amt`, `byn_amt`, `cal_erc_popt_aloc_rit_erc_cst`, `cal_aloc_popt_erc_rit_erc_cst`, `frs_orr_wtm`, `srd_orr_wtm`, `opt_byn_orr_wtm_csh`, `opt_sll_orr_wtm_csh`, `nby_cst`, `nby_csh`, `frs_fee`, `tot_rsk_wtm_tal`, `tot_rsk_wtm_csh`, `tdt_frs_nlo_amt`, `gar_dd_bf_nlo_stl_amt`, `iopt_hld_lmt_qty`, `opt_hld_lmt_qty`, `cus_fnm`, `lst_stl_pr_dfn_bf_wtm_tal`, `lst_stl_pr_dfn_bf_wtm_csh`
+
+### 선물옵션 잔고평가손익내역 — `POST /krfuture/inquiry/v1/evalPnl`
+국내선물옵션 잔고평가손익 조회 API 입니다.  응답 블록은 **데이터가 있을 때만 내려옵니다.** 블록이 없을 수 있으니 존재 여부를 먼저 확인하세요.
+- 요청 `Input_0`: `act_no`* 계좌번호 / 길이 11 / /n2/acctinfo 의 acct_no 사용 (운영은 acct_type=01·02, 모의투자는 03 계좌만 유효)
+- 응답 `Output_0` (객체): `ost_act_nm`, `ksp_frs_byn_ctc_qty`, `ksp_frs_sll_ctc_qty`, `ksp_frs_byn_ctc_amt`, `ksp_frs_sll_ctc_amt`, `ksp_tdt_pls_amt`, `ksp_frs_fee`, `ksp_opt_byn_ctc_qty`, `ksp_opt_sll_ctc_qty`, `ksp_opt_byn_ctc_amt`, `ksp_opt_sll_ctc_amt`, `iopt_byn_ctc_qty`, `iopt_sll_ctc_qty`, `iopt_byn_ctc_amt`, `iopt_sll_ctc_amt`, `pls_amt`, `iopt_pls_amt`, `opt_byn_amt`, `opt_sll_amt`, `opt_eal_amt`, `opt_fee`, `bf_dd_sba_sll_amt`, `tdt_sba_sll_amt`, `ctc_qty_sum`, `ctc_amt_sum`, `idx_opt_ctc_qty`, `idx_opt_ctc_amt`, `iopt_ctc_qty`, `iopt_ctc_amt`, `tdt_pls_sum`, `fee_sum`, `dca`, `nxt_dd_prv_xcl_dca`, `kar_frs_byn_ctc_qty`, `kar_frs_sll_ctc_qty`, `kar_frs_byn_ctc_amt`, `kar_frs_sll_ctc_amt`, `kar_frs_tdt_pls_amt`, `kar_frs_fee`, `stk_frs_byn_ctc_qty`, `stk_frs_sll_ctc_qty`, `stk_frs_byn_ctc_amt`, `stk_frs_sll_ctc_amt`, `stk_frs_tdt_pls_amt`, `stk_frs_fee`, `vty_idx_frs_byn_ctc_qty`, `vty_idx_frs_sll_ctc_qty`, `vty_idx_frs_byn_ctc_amt`, `vty_idx_frs_sll_ctc_amt`, `vty_idx_frs_tdt_pls_amt`, `vty_idx_frs_fee`, `ser_idx_frs_byn_ctc_qty`, `ser_idx_frs_sll_ctc_qty`, `ser_idx_frs_byn_ctc_amt`, `ser_idx_frs_sll_ctc_amt`, `ser_idx_frs_tdt_pls_amt`, `ser_idx_frs_fee`, `mini_ksp_frs_byn_ctc_qty`, `mini_ksp_frs_sll_ctc_qty`, `mini_ksp_frs_byn_ctc_amt`, `mini_ksp_frs_sll_ctc_amt`, `mini_ksp_tdt_pls_amt`, `mini_ksp_frs_fee`, `mini_ksp_opt_byn_ctc_qty`, `mini_ksp_opt_byn_ctc_amt`, `mini_ksp_opt_sll_ctc_qty`, `mini_ksp_opt_sll_ctc_amt`, `mini_ksp_opt_pls_amt`, `ksq150_frs_byn_ctc_qty`, `ksq150_frs_tdt_pls_amt`, `ksq150_frs_fee`, `ksq150_frs_sll_ctc_amt`, `ksq150_frs_sll_ctc_qty`, `ksq150_frs_byn_ctc_amt`, `ero_50_idx_frs_byn_ctc_qty`, `ero_50_idx_frs_byn_ctc_amt`, `ero_50_idx_frs_sll_ctc_qty`, `ero_50_idx_frs_sll_ctc_amt`, `ero_50_idx_frs_tdt_pls_amt`, `ero_50_idx_frs_fee`, `ksq150_opt_byn_ctc_qty`, `ksq150_opt_sll_ctc_qty`, `ksq150_opt_byn_ctc_amt`, `ksq150_opt_sll_ctc_amt`, `ksq150_opt_tdt_pls_amt`, `ksq150_opt_ctc_amt`, `ksq150_opt_ctc_qty`, `krx300_frs_byn_ctc_qty`, `krx300_frs_sll_ctc_qty`, `krx300_frs_byn_ctc_amt`, `krx300_frs_sll_ctc_amt`, `krx300_frs_tdt_pls_amt`, `krx300_frs_fee`, `ksp200_wky_opt_byn_ctc_qty`, `ksp200_wky_opt_sll_ctc_qty`, `ksp200_wky_opt_byn_ctc_amt`, `ksp200_wky_opt_sll_ctc_amt`, `ksp200_wky_opt_tdt_pls_amt`, `ksp200_wky_opt_ctc_amt`, `ksp200_wky_opt_ctc_qty`, `ksq_gbl_frs_byn_ctc_qty`, `ksq_gbl_frs_sll_ctc_qty`, `ksq_gbl_frs_byn_ctc_amt`, `ksq_gbl_frs_sll_ctc_amt`, `ksq_gbl_frs_tdt_pls_amt`, `ksq_gbl_frs_fee`, `kor_vup_frs_byn_ctc_qty`, `kor_vup_frs_sll_ctc_qty`, `kor_vup_frs_byn_ctc_amt`, `kor_vup_frs_sll_ctc_amt`, `kor_vup_frs_tdt_pls_amt`, `kor_vup_frs_fee`, `ksq150_wky_opt_byn_ctc_qty`, `ksq150_wky_opt_sll_ctc_qty`, `ksq150_wky_opt_byn_ctc_amt`, `ksq150_wky_opt_sll_ctc_amt`, `ksq150_wky_opt_tdt_pls_amt`, `ksq150_wky_opt_ctc_amt`, `ksq150_wky_opt_ctc_qty`, `stk_wky_opt_byn_ctc_qty`, `stk_wky_opt_sll_ctc_qty`, `stk_wky_opt_byn_ctc_amt`, `stk_wky_opt_sll_ctc_amt`, `stk_wky_opt_tdt_pls_amt`, `stk_wky_opt_ctc_amt`, `stk_wky_opt_ctc_qty`
+
+### 선물옵션 기준일체결내역 — `POST /krfuture/inquiry/v1/executionHistory`
+국내선물옵션 기준일자 체결내역 조회 API 입니다.  응답 블록은 **데이터가 있을 때만 내려옵니다.** 블록이 없을 수 있으니 존재 여부를 먼저 확인하세요.  ⚠️ **명세 검증 필요**: 예시 응답에는 명세에 없는 블록(Output_1)이 포함되어 있습니다.
+- 요청 `Input_0`: `act_no`* 계좌번호 / 길이 11 / /n2/acctinfo 의 acct_no 사용 (운영은 acct_type=01·02, 모의투자는 03 계좌만 유효), `orr_dt`* 주문일자 / 길이 8, `sby_dit_cd`* 매매구분코드 / 길이 1 / 0.전체 1.매도 2.매수, `cns_dit_cd`* 체결구분코드 / 길이 1 / 0.전체 1.체결 2.미체결, `fno_orr_no` 선물옵션주문번호 / 길이 10 / 미입력 시 전체, `fno_iem_cd` 선물옵션종목코드 / 길이 12 / 예시> 코스피200 선물 26년9월물일 경우, KA0169000, `ost_dit`* 구분 / 길이 1 / 1.주문번호순 2.주문번호역순, `ost_dit_cd`* 구분코드 / 길이 1 / 9.전체 4.코스피200선물 5.코스피200옵션 D.미니코스피200선물 E.미니코스피200옵션 7.주식선물 8.주식옵션 F.코스닥150선물 L.코스닥150옵션 A.변동성지수선물 B.섹터지수선물 G.유로스톡스50선물 K.KRX300선물 N.위클리옵션 P.코스닥글로벌선물 Q.코리아밸류업선물 R.코스닥150위클리옵션
+- 응답 `Output_0` (배열): `fno_orr_no`, `fno_org_orr_no`, `act_no`, `orr_gno_tab_cd`, `act_amn_tab_cd`, `act_amn_mo_tab_cd`, `cus_fnm`, `frs_orr_cnd_dit_cd`, `sby_dit_cd`, `orr_dt`, `fno_mo_orr_no`, `frs_fnd_orr_no`, `cor_can_dit_cd`, `fno_nmn_pr_tp_cd`, `fno_trd_tp_cd`, `fno_iem_cd`, `iem_nm`, `orr_pr`, `orr_qty`, `orr_amt`, `cor_can_qty`, `cor_can_cfm_qty`, `frs_ny_cns_qty`, `frs_cns_qty`, `frs_cns_amt`, `fno_cns_pr`, `fr_mct_cns_amt`, `nr_mct_cns_amt`, `frs_orr_mdi_dit_cd`, `mmb_pcs_hdn`, `ivs_sgy_cd`, `amn_emp_no`, `fnd_amn_emp_no`, `frs_fnd_no`, `fno_rjt_rsn_cd`, `orr_orn_dit_cd`, `wtm_mpi_qty`, `wtm_iny_qty`, `pcs_rlt_msg_cd`, `rsl_amn_tab_cd`, `pcs_tab_cd`, `hts_usr_id`, `orr_rtn_tm`, `egc_orr_dit_cd`, `rgs_emp_no`, `act_amn_tab_nm`, `orr_cnd_dit_cd_nm`, `sby_dit_nm`, `cor_can_dit_nm`, `nmn_pr_tp_cd_nm`, `trd_tp_nm`, `orr_mdi_nm`, `usr_ip_adr`
+- 응답 `Output_1` (객체): `frs_sll_amt`, `frs_sll_qty`, `frs_byn_qty`, `frs_byn_amt`, `opt_byn_amt`, `opt_byn_qty`, `opt_sll_qty`, `opt_sll_amt`
+
+### 선물옵션기간약정수수료일별 — `POST /krfuture/inquiry/v1/commission`
+국내선물옵션 일별 약정수수료 조회 API 입니다.  응답 블록은 **데이터가 있을 때만 내려옵니다.** 블록이 없을 수 있으니 존재 여부를 먼저 확인하세요.
+- 요청 `Input_0`: `act_no`* 계좌번호 / 길이 11 / /n2/acctinfo 의 acct_no 사용 (운영은 acct_type=01·02, 모의투자는 03 계좌만 유효), `sta_dt`* 시작일자 / 길이 8 / YYYYMMDD, `end_dt`* 종료일자 / 길이 8 / YYYYMMDD
+- 응답 `Output_0` (객체): `cus_fnm`, `frs_byn_ctc_qty`, `frs_sll_ctc_qty`, `frs_byn_ctc_amt`, `frs_sll_ctc_amt`, `frs_pls_amt`, `frs_fee`, `kar_frs_byn_ctc_qty`, `kar_frs_sll_ctc_qty`, `kar_frs_byn_ctc_amt`, `kar_frs_sll_ctc_amt`, `kar_frs_pls_amt`, `kar_frs_fee`, `stk_frs_byn_ctc_qty`, `stk_frs_sll_ctc_qty`, `stk_frs_byn_ctc_amt`, `stk_frs_sll_ctc_amt`, `stk_frs_pls_amt`, `stk_frs_fee`, `idx_opt_byn_ctc_qty`, `idx_opt_sll_ctc_qty`, `idx_opt_byn_ctc_amt`, `idx_opt_sll_ctc_amt`, `iopt_byn_ctc_qty`, `iopt_sll_ctc_qty`, `iopt_byn_ctc_amt`, `iopt_sll_ctc_amt`, `idx_opt_pls_amt`, `iopt_pls_amt`, `opt_fee`, `ctc_qty_sum`, `ctc_amt_sum`, `idx_opt_ctc_qty`, `idx_opt_ctc_amt`, `iopt_ctc_qty`, `iopt_ctc_amt`, `pls_amt_sum`, `fee_sum`, `act_atc_fnm`, `byn_eal_amt`, `sll_eal_amt`, `frs_xcl_dpa`, `kar_xcl_dpa`, `stk_frs_xcl_dpa`, `opt_byn_amt`, `opt_sll_amt`, `opt_eal_amt`, `vty_idx_frs_byn_ctc_qty`, `vty_idx_frs_sll_ctc_qty`, `vty_idx_frs_byn_ctc_amt`, `vty_idx_frs_sll_ctc_amt`, `vty_idx_frs_tdt_pls_amt`, `vty_idx_frs_fee`, `ser_idx_frs_byn_ctc_qty`, `ser_idx_frs_sll_ctc_qty`, `ser_idx_frs_byn_ctc_amt`, `ser_idx_frs_sll_ctc_amt`, `ser_idx_frs_tdt_pls_amt`, `ser_idx_frs_fee`, `mini_ksp_frs_byn_ctc_qty`, `mini_ksp_frs_sll_ctc_qty`, `mini_ksp_frs_byn_ctc_amt`, `mini_ksp_frs_sll_ctc_amt`, `mini_ksp_tdt_pls_amt`, `mini_ksp_frs_fee`, `ksq150_frs_byn_ctc_qty`, `ksq150_frs_sll_ctc_qty`, `ksq150_frs_byn_ctc_amt`, `ksq150_frs_sll_ctc_amt`, `ksq150_frs_tdt_pls_amt`, `ksq150_frs_fee`, `ero_50_idx_frs_byn_ctc_qty`, `ero_50_idx_frs_byn_ctc_amt`, `ero_50_idx_frs_sll_ctc_qty`, `ero_50_idx_frs_sll_ctc_amt`, `ero_50_idx_frs_tdt_pls_amt`, `ero_50_idx_frs_fee`, `ksq150_opt_byn_ctc_qty`, `ksq150_opt_sll_ctc_qty`, `ksq150_opt_byn_ctc_amt`, `ksq150_opt_sll_ctc_amt`, `ksq150_opt_tdt_pls_amt`, `ksq150_opt_ctc_amt`, `ksq150_opt_ctc_qty`, `krx300_frs_byn_ctc_qty`, `krx300_frs_sll_ctc_qty`, `krx300_frs_byn_ctc_amt`, `krx300_frs_sll_ctc_amt`, `krx300_frs_tdt_pls_amt`, `krx300_frs_fee`, `ksp200_wky_opt_byn_ctc_qty`, `ksp200_wky_opt_sll_ctc_qty`, `ksp200_wky_opt_byn_ctc_amt`, `ksp200_wky_opt_sll_ctc_amt`, `ksp200_wky_opt_tdt_pls_amt`, `ksp200_wky_opt_ctc_amt`, `ksp200_wky_opt_ctc_qty`, `ksq_gbl_frs_byn_ctc_qty`, `ksq_gbl_frs_sll_ctc_qty`, `ksq_gbl_frs_byn_ctc_amt`, `ksq_gbl_frs_sll_ctc_amt`, `ksq_gbl_frs_tdt_pls_amt`, `ksq_gbl_frs_fee`, `kor_vup_frs_byn_ctc_qty`, `kor_vup_frs_sll_ctc_qty`, `kor_vup_frs_byn_ctc_amt`, `kor_vup_frs_sll_ctc_amt`, `kor_vup_frs_tdt_pls_amt`, `kor_vup_frs_fee`, `ksq150_wky_opt_byn_ctc_qty`, `ksq150_wky_opt_sll_ctc_qty`, `ksq150_wky_opt_byn_ctc_amt`, `ksq150_wky_opt_sll_ctc_amt`, `ksq150_wky_opt_tdt_pls_amt`, `ksq150_wky_opt_ctc_amt`, `ksq150_wky_opt_ctc_qty`, `stk_wky_opt_byn_ctc_qty`, `stk_wky_opt_sll_ctc_qty`, `stk_wky_opt_byn_ctc_amt`, `stk_wky_opt_sll_ctc_amt`, `stk_wky_opt_tdt_pls_amt`, `stk_wky_opt_ctc_amt`, `stk_wky_opt_ctc_qty`
+
+### 선물옵션 시세주간 — `POST /krfuture/quote/v1/day`
+국내선물옵션 주간시세 조회 API 입니다.  응답 블록은 **데이터가 있을 때만 내려옵니다.** 블록이 없을 수 있으니 존재 여부를 먼저 확인하세요.  ⚠️ **명세 검증 필요**: 예시 응답에는 명세에 없는 블록(Output_2)이 포함되어 있습니다.
+- 요청 `Input_0`: `iem_cd`* 종목코드 / 길이 9 / 예시> 코스피200 선물 26년9월물일 경우, KA0169000
+- 응답 `Output_0` (객체): `iem_cd`, `iem_nm`, `prpr`, `sign`, `vrss`, `ctrt`, `hts_thpr`, `dprt_value`, `dprt`, `acml_vol`, `volrate`, `dscs_lrqn_vol`, `acml_tr_pbmn`, `otst_qty`, `prdy_otst_qty`, `mxpr`, `hgpr`, `oprc`, `lwpr`, `llam`, `dmrs`, `dmsp`, `lstn_medm_hgpr`, `lstn_hgpr_date`, `lstn_medm_lwpr`, `lstn_lwpr_date`, `last_tr_date`, `hts_rmnn_dynu`, `bsop_hour`, `askp1`, `askp2`, `askp3`, `askp4`, `askp5`, `bidp1`, `bidp2`, `bidp3`, `bidp4`, `bidp5`, `askp_rsqn1`, `askp_rsqn2`, `askp_rsqn3`, `askp_rsqn4`, `askp_rsqn5`, `bidp_rsqn1`, `bidp_rsqn2`, `bidp_rsqn3`, `bidp_rsqn4`, `bidp_rsqn5`, `total_askp_rsqn`, `total_bidp_rsqn`, `askp_csnu1`, `askp_csnu2`, `askp_csnu3`, `askp_csnu4`, `askp_csnu5`, `bidp_csnu1`, `bidp_csnu2`, `bidp_csnu3`, `bidp_csnu4`, `bidp_csnu5`, `total_askp_csnu`, `total_bidp_csnu`, `pvt_scnd_dmrs`, `pvt_frst_dmrs`, `pvt_pont`, `pvt_frst_dmsp`, `pvt_scnd_dmsp`, `hts_ints_vltl`, `unas_hist_vltl`, `delta`, `gama`, `vega`, `theta`, `rho`, `sdpr`, `cncc_cls_code`, `antc_cnpr`, `antc_sign`, `antc_vrss`, `antc_ctrt`, `dynmc_uplmtprc`, `dynmc_lwlmtprc`, `dynmc_prc_lmt_yn`, `prc_lmt_exlmtgb`, `prc_lmt_mx_step`, `prc_lmt_ll_step`, `mrkt_basis`, `ther_basis`, `cd_mnrt`, `unas_isnm`, `prdy_hgpr`, `prdy_oprc`, `prdy_lwpr`, `dmix_wrth_val`, `oprc_vrss_sign`, `oprc_vrss`, `cb_bhprice`, `cb_blprice`, `lstn_date`, `antc_cnqn`
+- 응답 `Output_1` (객체): `jisucode`, `unas_prpr`, `unas_sign`, `unas_vrss`, `unas_ctrt`, `unas_vol`
+- 응답 `Output_2` (객체): `starttime`, `endtime`, `svrtime`
+
+### 선물옵션 시세야간 — `POST /krfuture/quote/v1/night`
+국내선물옵션 야간시세 조회 API 입니다.  응답 블록은 **데이터가 있을 때만 내려옵니다.** 블록이 없을 수 있으니 존재 여부를 먼저 확인하세요.  ⚠️ **명세 검증 필요**: 예시 응답에는 명세에 없는 블록(Output_2)이 포함되어 있습니다.
+- 요청 `Input_0`: `iem_cd`* 종목코드 / 길이 9 / 예시> 코스피200 선물 26년9월물일 경우, KA0169000
+- 응답 `Output_0` (객체): `iem_cd`, `iem_nm`, `prpr`, `sign`, `vrss`, `ctrt`, `hts_thpr`, `dprt_value`, `dprt`, `acml_vol`, `volrate`, `dscs_lrqn_vol`, `acml_tr_pbmn`, `otst_qty`, `prdy_otst_qty`, `mxpr`, `hgpr`, `oprc`, `lwpr`, `llam`, `dmrs`, `dmsp`, `lstn_medm_hgpr`, `lstn_hgpr_date`, `lstn_medm_lwpr`, `lstn_lwpr_date`, `last_tr_date`, `hts_rmnn_dynu`, `bsop_hour`, `askp1`, `askp2`, `askp3`, `askp4`, `askp5`, `bidp1`, `bidp2`, `bidp3`, `bidp4`, `bidp5`, `askp_rsqn1`, `askp_rsqn2`, `askp_rsqn3`, `askp_rsqn4`, `askp_rsqn5`, `bidp_rsqn1`, `bidp_rsqn2`, `bidp_rsqn3`, `bidp_rsqn4`, `bidp_rsqn5`, `total_askp_rsqn`, `total_bidp_rsqn`, `askp_csnu1`, `askp_csnu2`, `askp_csnu3`, `askp_csnu4`, `askp_csnu5`, `bidp_csnu1`, `bidp_csnu2`, `bidp_csnu3`, `bidp_csnu4`, `bidp_csnu5`, `total_askp_csnu`, `total_bidp_csnu`, `pvt_scnd_dmrs`, `pvt_frst_dmrs`, `pvt_pont`, `pvt_frst_dmsp`, `pvt_scnd_dmsp`, `hts_ints_vltl`, `unas_hist_vltl`, `delta`, `gama`, `vega`, `theta`, `rho`, `sdpr`, `cncc_cls_code`, `antc_cnpr`, `antc_sign`, `antc_vrss`, `antc_ctrt`, `dynmc_uplmtprc`, `dynmc_lwlmtprc`, `dynmc_prc_lmt_yn`, `prc_lmt_exlmtgb`, `prc_lmt_mx_step`, `prc_lmt_ll_step`, `mrkt_basis`, `ther_basis`, `cd_mnrt`, `unas_isnm`, `prdy_hgpr`, `prdy_oprc`, `prdy_lwpr`, `dmix_wrth_val`, `oprc_vrss_sign`, `oprc_vrss`, `cb_bhprice`, `cb_blprice`, `lstn_date`, `antc_cnqn`
+- 응답 `Output_1` (객체): `jisucode`, `unas_prpr`, `unas_sign`, `unas_vrss`, `unas_ctrt`, `unas_vol`
+- 응답 `Output_2` (객체): `starttime`, `endtime`, `svrtime`
+
+### 선물옵션기간별시세(일/주/월/년)주간 — `POST /krfuture/quote/v1/dayPeriod`
+국내선물옵션 주기별 주간시세 조회 API 입니다.  응답 블록은 **데이터가 있을 때만 내려옵니다.** 블록이 없을 수 있으니 존재 여부를 먼저 확인하세요.
+- 요청 `Input_0`: `iem_cd`* 종목코드 / 길이 9 / 예시> 코스피200 선물 26년9월물일 경우, KA0169000, `mrkt_div_cls_code`* 시장구분 / 길이 1 / F.지수선물 Z.주식선물 C.상품선물 V.변동성지수선물 X.섹터지수선물 K.미니지수선물 A.KRX300선물, `edate` 검색종료일 / 길이 8 / YYYYMMDD, `array_cnt` 조회건수 / 길이 4, `maxavg` 최대이평 / 길이 3, `gubun`* 주기구분 / 길이 1 / 1.일 5.분 6.초 7.틱, `xtick` 조회단위 / 길이 3 / 주기구분 일인경우 001 분/초/틱에서는 별도 설정 가능, `today_cls_code`* 당일조회 / 길이 1 / 1.당일만조회(분/초/틱에서 사용) 0.전체조회, `out1_scale_change`* Out1단위변경 / 길이 1 / Out1기준단위 0.변경안함 1.거래량천단위,거래대금백만단위 2.거래량단주,거래대금만백만단위, `out2_scale_change`* Out2단위변경 / 길이 1 / Out2기준단위 0.변경안함 1.거래량천단위,거래대금백만단위 2.거래량단주,거래대금만백만단위
+- 응답 `Output_0` (객체): `qry_date`, `qry_time`, `iem_cd`, `iem_nm`, `prpr`, `prdy_vrss_sign`, `prdy_vrss`, `prdy_ctrt`, `acml_vol`, `acml_tr_pbmn`, `otst_qty`, `otst_qty_vrss`, `prdy_vol`, `mrkt_basis`, `cttr`, `hts_thpr`, `dprt`, `mxpr`, `llam`, `oprc`, `hgpr`, `lwpr`, `askp1`, `bidp1`, `unas_prpr`, `unas_prdy_vrss`, `unas_prdy_ctrt`, `unas_prdy_sign`, `prdy_oprc`, `prdy_high`, `prdy_low`, `prdy_clpr`, `tdw_oprc`, `tdw_high`, `tdw_low`, `tdm_oprc`, `tdm_high`, `tdm_low`, `start_time`, `end_time`, `bsop_date`, `sdpr`, `ctsz30`, `lasttickcount`, `send_cnt`
+- 응답 `Output_1` (배열): `bsop_date`, `bsop_time`, `oprc`, `hgpr`, `lwpr`, `prpr`, `vol`, `tr_pbmn`, `otst_qty`, `otst_qty_vrss`, `hts_thpr`, `mrkt_basis`, `dprt`
+
+### 선물옵션기간별시세(일/주/월/년)야간 — `POST /krfuture/quote/v1/nightPeriod`
+국내선물옵션 주기별 야간시세 조회 API 입니다.  응답 블록은 **데이터가 있을 때만 내려옵니다.** 블록이 없을 수 있으니 존재 여부를 먼저 확인하세요.
+- 요청 `Input_0`: `iem_cd` 종목코드 / 길이 9 / 예시> 코스피200 선물 26년9월물일 경우, KA0169000, `mrkt_div_cls_code`* 시장구분 / 길이 1 / F.지수선물 Z.주식선물 C.상품선물 V.변동성지수선물 X.섹터지수선물 K.미니지수선물 A.KRX300선물, `edate` 검색종료일 / 길이 8 / YYYYMMDD, `array_cnt` 조회건수 / 길이 4, `maxavg` 최대이평 / 길이 3, `gubun`* 주기구분 / 길이 1 / 1.일 5.분 6.초 7.틱, `xtick` 조회단위 / 길이 3 / 주기구분 일인경우 001 분/초/틱에서는 별도 설정 가능, `today_cls_code`* 당일조회 / 길이 1 / 1.당일만조회(분/초/틱에서 사용) 0.전체조회, `out1_scale_change`* Out1단위변경 / 길이 1 / Out1기준단위 0.변경안함 1.거래량천단위,거래대금백만단위 2.거래량단주,거래대금만백만단위, `out2_scale_change`* Out2단위변경 / 길이 1 / Out2기준단위 0.변경안함 1.거래량천단위,거래대금백만단위 2.거래량단주,거래대금만백만단위
+- 응답 `Output_0` (객체): `qry_date`, `qry_time`, `iem_cd`, `iem_nm`, `prpr`, `prdy_vrss_sign`, `prdy_vrss`, `prdy_ctrt`, `acml_vol`, `acml_tr_pbmn`, `otst_qty`, `otst_qty_vrss`, `prdy_vol`, `mrkt_basis`, `cttr`, `hts_thpr`, `dprt`, `mxpr`, `llam`, `oprc`, `hgpr`, `lwpr`, `askp1`, `bidp1`, `unas_prpr`, `unas_prdy_vrss`, `unas_prdy_ctrt`, `unas_prdy_sign`, `prdy_oprc`, `prdy_high`, `prdy_low`, `prdy_clpr`, `tdw_oprc`, `tdw_high`, `tdw_low`, `tdm_oprc`, `tdm_high`, `tdm_low`, `start_time`, `end_time`, `start_time_n`, `end_time_n`, `bsop_date`, `sdpr`, `ctsz40`, `lasttickcount`, `send_cnt`
+- 응답 `Output_1` (배열): `bsop_date`, `bsop_time`, `oprc`, `hgpr`, `lwpr`, `prpr`, `vol`, `tr_pbmn`, `otst_qty`, `otst_qty_vrss`, `hts_thpr`, `mrkt_basis`, `dprt`, `work_bsop_date`
+
+### 선물옵션 변동거래량 — `POST /krfuture/quote/v1/intradayExpectedTrend`
+국내선물옵션 변동거래량 조회 API 입니다.  응답 블록은 **데이터가 있을 때만 내려옵니다.** 블록이 없을 수 있으니 존재 여부를 먼저 확인하세요.
+- 요청 `Input_0`: `iem_cd`* 종목코드 / 길이 9 / 예시> 코스피200 선물 26년9월물일 경우, KA0169000, `array_cnt` 읽을갯수 / 길이 3
+- 응답 `Output_0` (객체): `iem_cd`, `iem_nm`, `prod_prpr`, `prdy_vrss_sign`, `prdy_vrss`, `prod_askp`, `prod_bidp`, `prod_hgpr`, `prod_lwpr`, `acml_vol`, `prod_sdpr`, `filler`
+- 응답 `Output_1` (배열): `bsop_hour`, `prod_prpr`, `prdy_vrss_sign`, `prdy_vrss`, `prod_askp`, `prod_bidp`, `acml_vol`, `cnqn`, `prdy_ctrt`, `otst_stpl_qty`, `filler`, `next_button`
+
+### 선물옵션 일자별 — `POST /krfuture/quote/v1/daily`
+국내선물옵션 주기별 거래정보 조회 API 입니다.  응답 블록은 **데이터가 있을 때만 내려옵니다.** 블록이 없을 수 있으니 존재 여부를 먼저 확인하세요.
+- 요청 `Input_0`: `iem_cd`* 종목코드 / 길이 9, `sur_gb` 복기구분 / 길이 1 / 0.당일 1.전일, `bsop_date`* 일자 / 길이 8 / YYYYMMDD, `maxavg` 최대이평 / 길이 3, `gubun`* 조회구분 / 길이 1 / 0.초 1.분 2.일 3.틱, `xtick` 분구분 / 길이 3 / 0.30초 1.1분 2.3분 3.5분 4.10분 5.30분 6.60분, `array_cnt` 읽을갯수 / 길이 4
+- 응답 `Output_0` (배열): `bsop_date`, `bsop_hour`, `prod_oprc`, `prod_hgpr`, `prod_lwpr`
+- 응답 `Output_1` (배열): `prod_prpr`, `prdy_vrss_sign`, `prdy_vrss`, `acml_vol`, `acml_tr_pbmn`, `cnqn`, `otst_stpl_qty`, `otst_stpl_icdc`, `hts_thpr`, `basis`, `hts_ints_vltl`, `next_key50`, `next_button`
+
+### 선물옵션 시간대별 투자자 매매현황 — `POST /krfuture/quote/v1/tradingStatus`
+국내선물옵션 시간대별 투자자 매매현황 조회 API 입니다.  응답 블록은 **데이터가 있을 때만 내려옵니다.** 블록이 없을 수 있으니 존재 여부를 먼저 확인하세요.  ⚠️ **명세 검증 필요**: `Output_0` 는 명세상 **Object** 로 선언되어 있으나 예시 응답은 **Array** 입니다. 실제 응답 타입을 확인 후 사용하세요.
+- 요청 `Input_0`: `market_cd`* 시장구분코드 / 길이 3 / KRX/NXT/UNT, `mrkt_cls_code`* 시장구분 / 길이 1 / 1.코스피 2.코스닥 3.선물 4.콜옵션 5.풋옵션 6.코스닥150선물 8.위클리콜 9.위클리풋 J.주식선물 M.미니선물 O.미니콜옵션 P.미니풋옵션 H.코스닥150콜옵션 I.코스닥150풋옵션 Q.Q150위클리콜 R.Q150위클리풋, `cycle_cls_code`* 시간구분 / 길이 1 / 1.30초 2.일별 3.일별누적 4.1분 5.5분(30분) 6.만기누적 7.1분당일것만(티커용), `opt_cls_code`* 옵션구분 / 길이 1 / 1.금액 2.수량, `cnt` 읽을갯수 / 길이 3
+- 응답 `Output_0` (객체): `bsop_hour`, `timez12`, `scrt_val`, `insu_val`, `ivtr_val`, `bank_val`, `mrbn_val`, `fund_val`, `etc_orgt_val`, `prsn_val`, `frgn_val`, `etc_corp_val`, `orgn_val`, `whol_val`, `pe_fund_val`, `filler`, `ctsz8`, `nextbutton`
+
+### 선물옵션 프로그램매매 — `POST /krfuture/quote/v1/timeProgramTrading`
+국내선물옵션 시간대별 프로그램매매현황 조회 API 입니다.  응답 블록은 **데이터가 있을 때만 내려옵니다.** 블록이 없을 수 있으니 존재 여부를 먼저 확인하세요.
+- 요청 `Input_0`: `market_cd`* 시장구분코드 / 길이 3 / KRX/NXT/UNT, `cycle_cls_code`* 주기구분 / 길이 1 / 1.1분 2.일별 3.5분 4.만기누적, `data_cls_code`* 유형구분 / 길이 1 / 1.수치 2.차트, `opt_cls_code`* 옵션구분 / 길이 1 / 1.거래량 2.거래대금, `mrkt_cls_code`* 시장구분 / 길이 1 / 1.코스피 0.코스닥, `array_cnt` 읽을갯수 / 길이 3
+- 응답 `Output_0` (배열): `bsop_date`, `arbt_seln_qty`, `arbt_shnu_qty`, `arbt_ntby_qty`, `nabt_seln_qty`, `nabt_shnu_qty`, `nabt_ntby_qty`, `tot_seln_qty`, `tot_shnu_qty`, `tot_ntby_qty`, `filler`
+- 응답 `Output_1` (배열): `bsop_date`, `arbt_ntby_qty`, `nabt_ntby_qty`, `tot_ntby_qty`, `filler`, `next_key`, `prevbutton`, `nextbutton`, `out1_cnt`, `out2_cnt`, `outCts_cnt`
+
+### 실시간 채널 (48개) — wss://api.nhplug.com:7070/websocket
+포트: 국내 시세 7070 · 해외 시세 7080 · 통보(국내·해외) 7070 · 모의 17070 (통보를 7080 → WSS10006) · 동시 2채널, 채널당 30건
+- `f1` 지수선물 실시간호가KP200 — tr_key `fuitem`, 필드 36개
+- `fH` 지수선물 실시간호가KQ150 — tr_key `fuitem`, 필드 36개
+- `hH` 지수선물 실시간호가미니 — tr_key `fuitem`, 필드 36개
+- `f8` 지수선물 실시간체결가KP200 — tr_key `fuitem`, 필드 29개
+- `fC` 지수선물 실시간체결가KQ150 — tr_key `fuitem`, 필드 29개
+- `hC` 지수선물 실시간체결가미니 — tr_key `fuitem`, 필드 29개
+- `fE` 지수선물 실시간예상체결KP200 — tr_key `fuitem`, 필드 8개
+- `fP` 지수선물 실시간예상체결KQ150 — tr_key `fuitem`, 필드 8개
+- `hE` 지수선물 실시간예상체결미니 — tr_key `fuitem`, 필드 8개
+- `o1` 지수옵션 실시간호가KP200 — tr_key `opitem`, 필드 36개
+- `xH` 지수옵션 실시간호가KQ150 — tr_key `opitem`, 필드 36개
+- `rH` 지수옵션 실시간호가미니 — tr_key `opitem`, 필드 36개
+- `o2` 지수옵션 실시간체결가KP200 — tr_key `opitem`, 필드 53개
+- `xC` 지수옵션 실시간체결가KQ150 — tr_key `opitem`, 필드 53개
+- `rC` 지수옵션 실시간체결가미니 — tr_key `opitem`, 필드 53개
+- `oE` 지수옵션 실시간예상체결KP200 — tr_key `opitem`, 필드 8개
+- `xE` 지수옵션 실시간예상체결KQ150 — tr_key `opitem`, 필드 8개
+- `rE` 지수옵션 실시간예상체결미니 — tr_key `opitem`, 필드 8개
+- `pH` 상품선물 실시간호가 — tr_key `fuitem`, 필드 36개
+- `pC` 상품선물 실시간체결가 — tr_key `fuitem`, 필드 54개
+- `pE` 상품선물 실시간예상체결 — tr_key `code`, 필드 4개
+- `vH` 주식선물 실시간호가 — tr_key `fuitem`, 필드 66개
+- `vC` 주식선물 실시간체결가 — tr_key `fuitem`, 필드 85개
+- `vE` 주식선물 실시간예상체결 — tr_key `expcode`, 필드 8개
+- `v1` 주식옵션 실시간호가 — tr_key `ojitem`, 필드 72개
+- `v2` 주식옵션 실시간체결가 — tr_key `ojitem`, 필드 21개
+- `d2` 선물옵션 실시간체결통보 — tr_key `userid`, 필드 21개 · wss://api.nhplug.com:7070/websocket · 국내파생 주문 체결 시 실시간으로 수신됩니다. 통보 채널 — 국내·해외 모두 포트 7070 사용(7080 사용 시 WSS10006).
+- `d3` 선물옵션 실시간주문내역통보 — tr_key `userid`, 필드 24개 · wss://api.nhplug.com:7070/websocket · 국내파생 주문 접수 시 실시간으로 수신됩니다. 통보 채널 — 국내·해외 모두 포트 7070 사용(7080 사용 시 WSS10006).
+- `1a` KRX야간선물 실시간호가KP200 — tr_key `fuitem`, 필드 36개
+- `2a` KRX야간선물 실시간호가KQ150 — tr_key `fuitem`, 필드 36개
+- `4a` KRX야간선물 실시간호가미니 — tr_key `fuitem`, 필드 36개
+- `1c` KRX야간선물 실시간체결가KP200 — tr_key `fuitem`, 필드 31개
+- `2c` KRX야간선물 실시간체결가KQ150 — tr_key `fuitem`, 필드 31개
+- `4c` KRX야간선물 실시간체결가미니 — tr_key `fuitem`, 필드 31개
+- `1b` KRX야간선물 실시간예상체결KP200 — tr_key `fuitem`, 필드 8개
+- `2b` KRX야간선물 실시간예상체결KQ150 — tr_key `fuitem`, 필드 8개
+- `4b` KRX야간선물 실시간예상체결미니 — tr_key `fuitem`, 필드 8개
+- `5a` KRX야간옵션 실시간호가KP200 — tr_key `opitem`, 필드 36개
+- `7a` KRX야간옵션 실시간호가KQ150 — tr_key `opitem`, 필드 36개
+- `6a` KRX야간옵션 실시간호가미니 — tr_key `opitem`, 필드 36개
+- `5c` KRX야간옵션 실시간체결가KP200 — tr_key `opitem`, 필드 55개
+- `7c` KRX야간옵션 실시간체결가KQ150 — tr_key `opitem`, 필드 55개
+- `6c` KRX야간옵션 실시간체결가미니 — tr_key `opitem`, 필드 55개
+- `5b` KRX야간옵션 실시간예상체결KP200 — tr_key `opitem`, 필드 8개
+- `7b` KRX야간옵션 실시간예상체결KQ150 — tr_key `opitem`, 필드 8개
+- `6b` KRX야간옵션 실시간예상체결미니 — tr_key `opitem`, 필드 8개
+- `dv` 국내야간선물옵션 실시간체결통보 — tr_key `userid`, 필드 21개 · wss://api.nhplug.com:7070/websocket · 국내파생 야간주문 체결 시 실시간으로 수신됩니다. 통보 채널 — 국내·해외 모두 포트 7070 사용(7080 사용 시 WSS10006).
+- `dn` 국내야간선물옵션 실시간주문내역통보 — tr_key `userid`, 필드 24개 · wss://api.nhplug.com:7070/websocket · 국내파생 야간주문 접수 시 실시간으로 수신됩니다. 통보 채널 — 국내·해외 모두 포트 7070 사용(7080 사용 시 WSS10006).
+
+---
+
+## 해외파생 (`gbfuture`)
+
+정본: https://www.nhplug.com/openapi-docs/gbfuture/openapi.json
+
+종목마스터: 해외파생 마스터 — 전체 목록은 headers 참조 — https://www.nhplug.com/instruments/<파일명>.mst (인증 불필요)
+
+### 해외선물옵션 주문 — `POST /gbfuture/order/v1/buy`
+해외선물옵션 주문(매수/매도) API 입니다.  응답 블록은 **데이터가 있을 때만 내려옵니다.** 블록이 없을 수 있으니 존재 여부를 먼저 확인하세요.
+- 요청 `Input_0`: `act_no`* 계좌번호 / 길이 11 / /n2/acctinfo 의 acct_no 사용 (운영은 acct_type=01·02, 모의투자는 03 계좌만 유효), `sll_byn_tp_cd`* 매도매수유형코드 / 길이 1 / 1.매도 2.매수, `iem_cd`* 해외종목코드 / 길이 32 / 예시> E-mini S&P 500 -2609인 경우, ESU26, `orr_qty`* 주문수량 / 길이 18, `fdv_orr_pr` 해외파생주문가격 / 길이 24.9, `fdv_stop_pr` 해외파생STOP가격 / 길이 24.9, `fdv_orr_dit_cd`* 해외파생주문구분코드 / 길이 1 / 0.DAY 2.GTD, `fdv_orr_tp_cd`* 해외파생주문유형코드 / 길이 1 / 1.시장가 2.지정가 3.스탑마켓 4.스탑리밋, `end_dt` 종료일자 / 길이 8 / YYYYMMDD
+- 응답 `Output_0` (객체): `amn_tab_cd`, `fdv_orr_no`, `fdv_orr_pr`, `err_msg_cd`
+
+### 해외선물옵션 정정취소주문정정 — `POST /gbfuture/order/v1/modify`
+해외선물옵션 정정주문 API 입니다.  응답 블록은 **데이터가 있을 때만 내려옵니다.** 블록이 없을 수 있으니 존재 여부를 먼저 확인하세요.
+- 요청 `Input_0`: `act_no`* 계좌번호 / 길이 11 / /n2/acctinfo 의 acct_no 사용 (운영은 acct_type=01·02, 모의투자는 03 계좌만 유효), `iem_cd`* 해외종목코드 / 길이 32 / 예시> E-mini S&P 500 -2609인 경우, ESU26, `fdv_fr_orr_no`* 해외파생원주문번호 / 길이 18, `fdv_orr_pr` 해외파생주문가격 / 길이 24.9, `fdv_stop_pr` 해외파생STOP가격 / 길이 24.9, `fdv_orr_tp_cd`* 해외파생주문유형코드 / 길이 1 / 1.시장가 2.지정가 3.스탑마켓 4.스탑리밋
+- 응답 `Output_0` (객체): `amn_tab_cd`, `fdv_orr_no`, `fdv_orr_pr`, `err_msg_cd`
+
+### 해외선물옵션 정정취소주문취소 — `POST /gbfuture/order/v1/cancel`
+해외선물옵션 취소주문 API 입니다.  응답 블록은 **데이터가 있을 때만 내려옵니다.** 블록이 없을 수 있으니 존재 여부를 먼저 확인하세요.
+- 요청 `Input_0`: `act_no`* 계좌번호 / 길이 11 / /n2/acctinfo 의 acct_no 사용 (운영은 acct_type=01·02, 모의투자는 03 계좌만 유효), `fdv_fr_orr_no`* 해외파생원주문번호 / 길이 18, `iem_cd`* 해외종목코드 / 길이 32 / 예시> E-mini S&P 500 -2609인 경우, ESU26, `fdv_orr_tp_cd` 해외파생주문유형코드 / 길이 1 / 1.시장가 2.지정가 3.스탑마켓 4.스탑리밋
+- 응답 `Output_0` (객체): `amn_tab_cd`, `fdv_orr_no`, `err_msg_cd`
+
+### 해외선물옵션 주문체결조회 — `POST /gbfuture/inquiry/v1/todayOrderHistory`
+해외선물옵션 주문체결내역 조회 API 입니다.  응답 블록은 **데이터가 있을 때만 내려옵니다.** 블록이 없을 수 있으니 존재 여부를 먼저 확인하세요.
+- 요청 `Input_0`: `act_no`* 계좌번호 / 길이 11 / /n2/acctinfo 의 acct_no 사용 (운영은 acct_type=01·02, 모의투자는 03 계좌만 유효), `sta_dt`* 시작일자 / 길이 8 / YYYYMMDD, `end_dt`* 종료일자 / 길이 8 / YYYYMMDD, `iem_cd` 해외종목코드 / 길이 32 / 예시> E-mini S&P 500 -2609인 경우, ESU26, `cns_dit_cd` 체결구분코드 / 길이 1 / 0.전체 1.체결 2.미체결, `fdv_fno_dit_cd` 해외파생선물옵션구분코드 / 길이 1 / A.전체 F.선물 O.옵션 S.주식옵션, `sll_byn_tp_cd` 매도매수유형코드 / 길이 1 / 0.전체 1.매도 2.매수, `cur_cd` 통화코드 / 길이 3 / USD.달러 KRW.원화, `fdv_orr_no` 해외파생주문번호 / 길이 18, `iqr_bse` 조회기준 / 길이 1 / 1.주문기준 2.체결기준, `sot_dit` 정렬구분 / 길이 1 / 1.주문번호순 2.역순, `fdv_excg_cd` 해외파생거래소코드 / 길이 10 / .전체조회 CBOE.Chicago Board Options Exchange CME.Chicago Mercantile Exchange HKEX.Hong Kong Exchanges OPRA.OPRA
+- 응답 `Output_0` (배열): `orr_dt`, `act_amn_tab_cd`, `act_amn_tab_cd_nm`, `fdv_orr_no`, `fdv_fr_orr_no`, `fdv_mo_orr_no`, `act_no`, `act_nm`, `fdv_cns_no`, `fdv_pdt_cd`, `iem_cd`, `iem_nm`, `cur_cd`, `sll_byn_tp_cd`, `sll_byn_tp_nm`, `fdv_orr_tp_cd`, `fdv_orr_tp_cd_nm`, `fdv_orr_dit_cd`, `fdv_orr_dit_cd_nm`, `nmn_pr_sts_dit_cd`, `nmn_pr_sts_dit_cd_nm`, `sgy_orr_dit_cd`, `sgy_orr_dit_cd_nm`, `fdv_orr_pcs_sts_cd`, `fdv_orr_pcs_sts_cd_nm`, `trd_orn_dit_cd`, `trd_orn_dit_cd_nm`, `cuc_mdi_cd`, `cuc_mdi_cd_nm`, `orr_mdi_dit_cd`, `orr_mdi_dit_cd_nm`, `fdv_pr_idc_dit_cd`, `fdv_orr_pr`, `fdv_orr_pr_idc_cts`, `fdv_stop_pr`, `fdv_stop_pr_idc_cts`, `fdv_cns_pr`, `fdv_cns_pr_idc_cts`, `orr_qty`, `fdv_orr_amt`, `cns_qty`, `fdv_cns_amt`, `acl_cns_qty`, `fdv_cor_can_orr_qty`, `can_cfm_qty`, `rmn_orr_qty`, `orr_vdt_dt`, `xrn_dt`, `org_orr_dt`, `orr_pbl_yn`, `opt_sby_cst`, `fdv_brg_fee`, `fdv_fcm_fee`, `fdv_tco_fee`, `fcm_cd`, `fdv_pcs_sts_cd`, `fdv_pcs_sts_cd_nm`, `apm_lqd_dit_cd`, `apm_lqd_dit_cd_nm`, `apm_lqd_cns_pr`, `apm_lqd_cns_pr_idc_cts`, `twap_orr_sts_cd`, `twap_orr_sts_cd_nm`, `twap_cns_dit_cd`, `twap_sta_dt`, `twap_sta_hur`, `twap_end_dt`, `twap_end_hur`, `twap_cns_rt`, `rjt_msg_cts`, `rks`, `usr_ip_adr`, `pcs_tab_cd`, `pcs_tab_cd_nm`, `ode_id`, `orr_dtm`, `cns_dtm`, `fdv_excg_cd`
+
+### 해외선물옵션 주문가능수량조회 — `POST /gbfuture/inquiry/v1/orderable`
+해외선물옵션 주문가능수량/금액 조회 API 입니다.  응답 블록은 **데이터가 있을 때만 내려옵니다.** 블록이 없을 수 있으니 존재 여부를 먼저 확인하세요.  ⚠️ **명세 검증 필요**: `Output_0` 는 명세상 **Array** 로 선언되어 있으나 예시 응답은 **Object** 입니다. 실제 응답 타입을 확인 후 사용하세요.
+- 요청 `Input_0`: `act_no`* 계좌번호 / 길이 11 / /n2/acctinfo 의 acct_no 사용 (운영은 acct_type=01·02, 모의투자는 03 계좌만 유효), `sll_byn_tp_cd`* 매도매수유형코드 / 길이 1 / 1.매도 2.매수, `iem_cd`* 해외종목코드 / 길이 32 / 예시> E-mini S&P 500 -2609인 경우, ESU26, `fdv_orr_pr` 해외파생주문가격 / 길이 24.9, `fdv_stop_pr` 해외파생STOP가격 / 길이 24.9, `fdv_orr_tp_cd`* 해외파생주문유형코드 / 길이 1 / 1.시장가 2.지정가 3.스탑마켓 4.스탑리밋, `opt_byn_erc_bkg_yn` 옵션매수행사예약여부 / 길이 1, `bnc_pr` 잔고가격 / 길이 24.9
+- 응답 `Output_0` (배열): `fdv_orr_pbl_qty`, `fdv_orr_pbl_amt`, `orr_pbl_qty`, `lqd_pbl_qty`
+
+### 해외선물옵션 기간계좌손익 일별 — `POST /gbfuture/inquiry/v1/pnl`
+해외선물옵션 기간 손익 조회 API 입니다.  응답 블록은 **데이터가 있을 때만 내려옵니다.** 블록이 없을 수 있으니 존재 여부를 먼저 확인하세요.
+- 요청 `Input_0`: `iqr_dit_cd`* 조회구분코드 / 길이 2 / 10.종목별 20.상품별, `sta_dt`* 시작일자 / 길이 8 / YYYYMMDD, `end_dt`* 종료일자 / 길이 8 / YYYYMMDD, `act_no`* 계좌번호 / 길이 11 / /n2/acctinfo 의 acct_no 사용 (운영은 acct_type=01·02, 모의투자는 03 계좌만 유효), `fdv_pdt_cd` 해외파생상품코드 / 길이 10, `iem_cd` 해외종목코드 / 길이 32 / 예시> E-mini S&P 500 -2609인 경우, ESU26, `cur_cd` 통화코드 / 길이 3 / USD.달러 KRW.원화, `fdv_fno_dit_cd` 해외파생선물옵션구분코드 / 길이 1 / A.전체 F.선물 O.옵션 S.주식옵션, `sum_iqr_yn` 합계조회여부 / 길이 1, `fdv_excg_cd` 해외파생거래소코드 / 길이 10 / .전체조회 CBOE.Chicago Board Options Exchange CME.Chicago Mercantile Exchange HKEX.Hong Kong Exchanges OPRA.OPRA
+- 응답 `Output_0` (객체): `fdv_lqd_pls`, `fdv_eal_ind_amt`, `fdv_fee`, `fdv_tot_pls`
+- 응답 `Output_1` (배열): `fdv_pdt_cd`, `pdt_nm`, `iem_cd`, `iem_nm`, `cur_cd`, `fdv_lqd_pls`, `fdv_eal_ind_amt`, `fdv_fee`, `fdv_tot_pls`, `fdv_tot_pls_krw_tsl_amt`, `bse_xcg_rt`, `fdv_excg_cd`
+
+### 해외선물옵션 예수금현황 — `POST /gbfuture/inquiry/v1/deposit`
+해외선물옵션 예수금 조회 API 입니다.  응답 블록은 **데이터가 있을 때만 내려옵니다.** 블록이 없을 수 있으니 존재 여부를 먼저 확인하세요.
+- 요청 `Input_0`: `act_no`* 계좌번호 / 길이 11 / /n2/acctinfo 의 acct_no 사용 (운영은 acct_type=01·02, 모의투자는 03 계좌만 유효), `cur_cd`* 통화코드 / 길이 3 / USD.달러 TKR.원화환산, `sls_dt` 영업일자 / 길이 8 / YYYYMMDD
+- 응답 `Output_0` (객체): `cur_cd`, `fdv_dsg_amt`, `fdv_stl_xpn_amt`, `fdv_lqd_pls`, `fdv_opt_sby_cst`, `fdv_fee`, `nxt_dd_dga_rnd`, `frs_ny_stl_eal_pls`, `fdv_fopt_eal_pls_amt`, `fdv_byn_opt_eal_amt`, `fdv_sll_opt_eal_amt`, `fdv_dsg_aet_tot_eal_amt`, `fdv_brg_wtm`, `fdv_mnc_wtm`, `fdv_apd_wtm`, `fdv_orr_pbl_amt`, `fdv_wrw_pbl_amt`, `sby_bse_xcg_rt`, `krw_sba_fc_eal_amt`, `fdv_xny_xpn_amt`, `fdv_rvb_amt`, `fdv_rpm_amt`, `fdv_drn_amt`, `fdvf_amt`, `fdv_ny_stl_eal_pls`, `fdv_opt_eal_amt`, `atf_wtm_use_krw_amt`, `fdv_tot_rsk_rt`, `brg_osf_dit_cd`, `atf_wtm_dit_cd`, `fdv_oln_ofl_dit_cd`
+
+### 해외선물옵션 증거금상세 — `POST /gbfuture/inquiry/v1/margin`
+해외선물옵션 증거금 조회 API 입니다.  응답 블록은 **데이터가 있을 때만 내려옵니다.** 블록이 없을 수 있으니 존재 여부를 먼저 확인하세요.
+- 요청 `Input_0`: `sls_dt`* 영업일자 / 길이 8, `act_no`* 계좌번호 / 길이 11 / /n2/acctinfo 의 acct_no 사용 (운영은 acct_type=01·02, 모의투자는 03 계좌만 유효), `cur_cd`* 통화코드 / 길이 3 / USD.달러 KRW.원화
+- 응답 `Output_0` (객체): `fdv_hge_dit_cd`, `fdv_brg_wtm`, `fdv_ny_stl_wtm`, `fdv_orr_wtm`
+- 응답 `Output_1` (배열): `cur_cd`, `iem_cd`, `fdv_byn_ny_cns_qty`, `fdv_sll_ny_cns_qty`, `ny_cns_orr_qty`, `byn_ny_stl_bnc_qty`, `sll_ny_stl_bnc_qty`, `ny_stl_qty`, `opt_byn_orr_amt`, `fdv_edn_amt`, `fdv_brg_wtm`, `fdv_ny_stl_wtm`, `fdv_orr_wtm`
+
+### 해외선물종목현재가 — `POST /gbfuture/quote/v1/current`
+해외선물옵션 현재가 조회 API 입니다.  응답 블록은 **데이터가 있을 때만 내려옵니다.** 블록이 없을 수 있으니 존재 여부를 먼저 확인하세요.
+- 요청 `Input_0`: `exnm`* 거래소코드 / 길이 8 / FCME.CME지수선물 OOPR.OPRA주식옵션 OCME.CME지수옵션 FHKE.HKEX선물 OHKE.HKEX옵션, `iem_cd`* 내부종목코드 / 길이 32 / 예시> E-mini S&P 500 -2609인 경우, ESU26
+- 응답 `Output_0` (객체): `exnm`, `symb`, `iem_cd`, `inrt`, `iem_nm`, `snam_notuse`, `knam`, `pind`, `last`, `diff`, `sign`, `rate`, `open`, `high`, `low`, `ropen`, `rhigh`, `rlow`, `pbid`, `pask`, `bvol`, `svol`, `tvol`, `setp`, `sday`, `bday`, `tdtm`, `hipr_notuse`, `hidy_notuse`, `lopr_notuse`, `lody_notuse`, `pcls`, `cur`, `exch`
+
+### 해외선물종목상세 — `POST /gbfuture/quote/v1/symbolDetail`
+해외선물옵션 종목상세정보 조회 API 입니다.  응답 블록은 **데이터가 있을 때만 내려옵니다.** 블록이 없을 수 있으니 존재 여부를 먼저 확인하세요.
+- 요청 `Input_0`: `exnm`* 거래소코드 / 길이 8 / FCME.CME지수선물 OOPR.OPRA주식옵션 OCME.CME지수옵션 FHKE.HKEX선물 OHKE.HKEX옵션, `iem_cd`* 내부종목코드 / 길이 32 / 예시> E-mini S&P 500 -2609인 경우, ESU26
+- 응답 `Output_0` (객체): `symb`, `iem_cd`, `seqn`, `inrt`, `root`, `gsym_notuse`, `clrs_notuse`, `csym`, `cfic_notuse`, `iem_nm`, `snam_notuse`, `knam`, `ecym`, `kcym`, `exid`, `exnm`, `stat_notuse`, `trdf`, `unpd`, `unps`, `pmul`, `xdiv`, `ydiv`, `zdiv`, `pind`, `aval`, `sect`, `styp`, `cur1`, `cur2`, `cur3`, `exym`, `lymd`, `zymd`, `jjis`, `minv_notuse`, `maxv_notuse`, `csiz_notuse`, `ndpt`, `adjv`, `tval`, `pinc`, `uplp`, `dnlp`, `base`, `clos_notuse`, `hipr_notuse`, `hidy_notuse`, `lopr_notuse`, `lody_notuse`, `hian_notuse`, `hdan_notuse`, `loan_notuse`, `ldan_notuse`, `opts`, `corp`, `atmf`, `strk`, `conv_notuse`, `impv_notuse`, `levg_notuse`, `gear_notuse`, `delt_notuse`, `gama_notuse`, `vega_notuse`, `thet_notuse`, `lreg_notuse`, `kfrhm`, `psect_notuse`, `psymd`, `ppymd_notuse`, `pbase_notuse`, `popen`, `phigh`, `plow`, `plast`, `psetp`, `psign_notuse`, `pdiff_notuse`, `prate_notuse`, `ptvol`, `popin_notuse`, `pcvol`, `puymd_notuse`, `puhms_notuse`, `upvo_notuse`, `dnvo_notuse`, `upno_notuse`, `dnno_notuse`, `frhm`, `tohm`, `hfhm_notuse`, `hthm_notuse`, `fwdy`, `twdy`, `tfhm_notuse`, `feed_notuse`, `pymd`, `tymd`, `oymd`, `cymd`, `uymd`, `uhms`, `jchk_notuse`, `sind`, `sad1`, `sad2`, `sfmt`, `sdiv`, `kymda1`, `khmsa1`, `datea1`, `basea1`, `kymda2_notuse`, `khmsa2_notuse`, `datea2_notuse`, `basea2_notuse`, `kymdb1`, `khmsb1`, `dateb1`, `baseb1`, `kymdb2_notuse`, `khmsb2_notuse`, `dateb2_notuse`, `baseb2_notuse`, `unps2`
+
+### 해외선물 호가 — `POST /gbfuture/quote/v1/quote`
+해외선물옵션 호가 조회 API 입니다.  응답 블록은 **데이터가 있을 때만 내려옵니다.** 블록이 없을 수 있으니 존재 여부를 먼저 확인하세요.
+- 요청 `Input_0`: `exnm`* 거래소코드 / 길이 8 / FCME.CME지수선물 OOPR.OPRA주식옵션 OCME.CME지수옵션 FHKE.HKEX선물 OHKE.HKEX옵션, `iem_cd`* 내부종목코드 / 길이 32 / 예시> E-mini S&P 500 -2609인 경우, ESU26
+- 응답 `Output_0` (객체): `exnm`, `symb`, `iem_cd`, `inrt`, `pind`, `last`, `diff`, `sign`, `rate`, `open`, `high`, `low`, `setp`, `pcls`, `tvol`, `cvol`, `htim`, `pask1`, `vask1`, `nask1`, `cask1`, `rask1`, `pbid1`, `vbid1`, `nbid1`, `cbid1`, `rbid1`, `pask2`, `vask2`, `nask2`, `cask2`, `rask2`, `pbid2`, `vbid2`, `nbid2`, `cbid2`, `rbid2`, `pask3`, `vask3`, `nask3`, `cask3`, `rask3`, `pbid3`, `vbid3`, `nbid3`, `cbid3`, `rbid3`, `pask4`, `vask4`, `nask4`, `cask4`, `rask4`, `pbid4`, `vbid4`, `nbid4`, `cbid4`, `rbid4`, `pask5`, `vask5`, `nask5`, `cask5`, `rask5`, `pbid5`, `vbid5`, `nbid5`, `cbid5`, `rbid5`, `vask`, `nask`, `cask`, `vbid`, `nbid`, `cbid`, `fprc_notuse`, `exch`
+
+### 해외선물 분봉조회 — `POST /gbfuture/quote/v1/minute`
+해외선물옵션 분봉 조회 API 입니다.  응답 블록은 **데이터가 있을 때만 내려옵니다.** 블록이 없을 수 있으니 존재 여부를 먼저 확인하세요.
+- 요청 `Input_0`: `exnm`* 거래소코드 / 길이 8 / FCME.CME지수선물 OOPR.OPRA주식옵션 OCME.CME지수옵션 FHKE.HKEX선물 OHKE.HKEX옵션, `iem_cd`* 내부종목코드 / 길이 32 / 예시> E-mini S&P 500 -2609인 경우, ESU26, `kymd` 한국일자 / 길이 8 / YYYYMMDD, `req_cnt` 요청건수 / 길이 4
+- 응답 `Output_0` (배열): `symb`, `iem_cd`, `kymd`, `khms`, `xymd`, `xhms`, `tymd`, `open`, `high`, `low`, `clos`, `cvol`, `tvol`, `tamt`, `flush_notuse`, `bvol`, `svol`, `upvo`, `dnvo`, `upno`, `dnno`, `pcls`, `opin_notuse`, `seqn_notuse`, `sseq_notuse`, `kfrhm`, `nextbutton`, `ctsz52`
+
+### 해외선물 체결추이(틱) — `POST /gbfuture/quote/v1/executionTrendTick`
+해외선물옵션 틱봉 조회 API 입니다.  응답 블록은 **데이터가 있을 때만 내려옵니다.** 블록이 없을 수 있으니 존재 여부를 먼저 확인하세요.  ⚠️ **명세 검증 필요**: `Output_0` 는 명세상 **Array** 로 선언되어 있으나 예시 응답은 **Object** 입니다. 실제 응답 타입을 확인 후 사용하세요.  ⚠️ **명세 검증 필요**: 예시 응답에는 명세에 없는 블록(Output_1)이 포함되어 있습니다.
+- 요청 `Input_0`: `exnm`* 거래소코드 / 길이 8 / FCME.CME지수선물 OOPR.OPRA주식옵션 OCME.CME지수옵션 FHKE.HKEX선물 OHKE.HKEX옵션, `iem_cd`* 내부종목코드 / 길이 32 / 예시> E-mini S&P 500 -2609인 경우, ESU26, `kymd` 한국일자 / 길이 8 / YYYYMMDD, `req_cnt` 요청건수 / 길이 4
+- 응답 `Output_0` (배열): `symb`, `iem_cd`, `kymd`, `khms`, `sseq`, `tymd`, `seqn`, `xymd`, `xhms`, `last`, `sign`, `diff`, `rate`, `cvol`, `tvol`, `tamt`, `side`, `dirf`, `pask`, `pbid`, `bvol`, `svol`, `opin_notuse`, `pcls`, `udtx`, `nextbutton`, `ctsz52`
+
+### 해외선물 체결추이(일간) — `POST /gbfuture/quote/v1/executionTrendDaily`
+해외선물옵션 일봉 조회 API 입니다.  응답 블록은 **데이터가 있을 때만 내려옵니다.** 블록이 없을 수 있으니 존재 여부를 먼저 확인하세요.  ⚠️ **명세 검증 필요**: 예시 응답에는 명세에 없는 블록(Output_0)이 포함되어 있습니다.
+- 요청 `Input_0`: `exnm`* 거래소코드 / 길이 8 / FCME.CME지수선물 OOPR.OPRA주식옵션 OCME.CME지수옵션 FHKE.HKEX선물 OHKE.HKEX옵션, `iem_cd`* 내부종목코드 / 길이 32 / 예시> E-mini S&P 500 -2609인 경우, ESU26, `ssymd`* 검색시작일자 / 길이 8 / YYYYMMDD, `quotyn`* 현재가포함여부 / 길이 1 / Y.포함 N.미포함, `req_cnt` 요청건수 / 길이 4
+- 응답 `Output_0` (배열): `symb`, `iem_cd`, `tymd`, `zdiv`, `open`, `high`, `low`, `last`, `setp`, `clos`, `sign`, `diff`, `rate`, `tvol`, `tamt`, `opin_notuse`, `seqn_notuse`, `upvo`, `dnvo`, `upno`, `dnno`, `shms`, `ehms`, `sseq_notuse`, `nextbutton`, `ctsz40`
+
+### 해외선물 체결추이(주간) — `POST /gbfuture/quote/v1/executionTrendWeekly`
+해외선물옵션 주봉 조회 API 입니다.  응답 블록은 **데이터가 있을 때만 내려옵니다.** 블록이 없을 수 있으니 존재 여부를 먼저 확인하세요.
+- 요청 `Input_0`: `exnm`* 거래소코드 / 길이 8 / FCME.CME지수선물 OOPR.OPRA주식옵션 OCME.CME지수옵션 FHKE.HKEX선물 OHKE.HKEX옵션, `iem_cd`* 내부종목코드 / 길이 32 / 예시> E-mini S&P 500 -2609인 경우, ESU26, `kymd` 한국일자 / 길이 8 / YYYYMMDD, `req_cnt` 요청건수 / 길이 4
+- 응답 `Output_0` (배열): `symb`, `iem_cd`, `wsymd`, `weymd`, `nday`, `open`, `high`, `low`, `clos`, `sign`, `diff`, `rate`, `tvol`, `tamt`, `nextbutton`, `ctsz40`
+
+### 해외선물 체결추이(월간) — `POST /gbfuture/quote/v1/executionTrendMonthly`
+해외선물옵션 월봉 조회 API 입니다.  응답 블록은 **데이터가 있을 때만 내려옵니다.** 블록이 없을 수 있으니 존재 여부를 먼저 확인하세요.
+- 요청 `Input_0`: `exnm`* 거래소코드 / 길이 8 / FCME.CME지수선물 OOPR.OPRA주식옵션 OCME.CME지수옵션 FHKE.HKEX선물 OHKE.HKEX옵션, `iem_cd`* 내부종목코드 / 길이 32 / 예시> E-mini S&P 500 -2609인 경우, ESU26, `kymd`* 한국일자 / 길이 8 / YYYYMMDD, `req_cnt` 요청건수 / 길이 4
+- 응답 `Output_0` (배열): `symb`, `iem_cd`, `msymd`, `nday`, `open`, `high`, `low`, `clos`, `sign`, `diff`, `rate`, `tvol`, `tamt`, `nextbutton`, `ctsz40`
+
+### 해외선물 상품기본정보 — `POST /gbfuture/quote/v1/productInfo`
+해외선물옵션 상품기본정보 조회 API 입니다.  응답 블록은 **데이터가 있을 때만 내려옵니다.** 블록이 없을 수 있으니 존재 여부를 먼저 확인하세요.
+- 요청 `Input_0`: `exid`* 거래소ID / 길이 3 / ALL.전체 E01.CME E16.OPRA E03.HKEX, `sect`* 상품그룹코드 / 길이 2 / 00.전체 30.지수 80.주식옵션 90.지수옵션, `exnm`* 거래소코드 / 길이 8 / ALL.전체 FCME.CME지수선물 OOPR.OPRA주식옵션 OCME.CME지수옵션 FHKE.HKEX선물 OHKE.HKEX옵션, `req_cnt` 요청건수 / 길이 4
+- 응답 `Output_0` (배열): `exnm`, `root`, `inrt`, `exid`, `iem_cd`, `knam`, `styp`, `sect`, `pind`, `pinc`, `tval`, `bsnsd`, `skhms`, `ekhms`, `opbr`, `oppb`, `oppo`, `opbv`, `opov`, `fsmc`, `feamt`, `curcd`, `exch`, `apamt`, `npup`, `npua`, `pgcef`, `nextbutton`, `ctsz40`
+
+### 해외선물옵션 장운영시간 — `POST /gbfuture/quote/v1/marketOperationInfo`
+해외선물옵션 장운영시간 조회 API 입니다.  응답 블록은 **데이터가 있을 때만 내려옵니다.** 블록이 없을 수 있으니 존재 여부를 먼저 확인하세요.
+- 요청 `Input_0`: `fdv_excg_cd` 해외파생거래소코드 / 길이 10 / CME CBOE HKEX OPRA, `fdv_pdt_cd` 해외파생상품코드 / 길이 10
+- 응답 `Output_0` (배열): `fdv_excg_cd`, `fdv_pdt_cd`, `pdt_nm`, `smi_yn`, `mpn_kor_hur`, `mls_kor_hur`, `mpn_kor_smi_hur`, `mls_kor_smi_hur`, `mpn_lcl_hur`, `mls_lcl_hur`, `nxt_dd_trd_sta_kor_hur`, `nxt_dd_trd_end_kor_hur`, `nxt_dd_trd_sta_kor_smi_hur`, `nxt_dd_trd_end_kor_smi_hur`, `nxt_dd_trd_lcl_sta_hur`, `nxt_dd_trd_lcl_end_hur`, `nom_mpn_kor_hur`, `nom_mls_kor_hur`, `nom_mpn_kor_smi_hur`, `nom_mls_kor_smi_hur`, `nom_mpn_lcl_hur`, `nom_mls_lcl_hur`
+
+### 실시간 채널 (6개) — wss://api.nhplug.com:7080/websocket
+포트: 국내 시세 7070 · 해외 시세 7080 · 통보(국내·해외) 7070 · 모의 17070 (통보를 7080 → WSS10006) · 동시 2채널, 채널당 30건
+- `FH` 해외선물옵션 실시간호가 — tr_key `isym`, 필드 43개 · 유료시세 사용 약정 고객만 이용 가능합니다.
+- `fh` 해외선물옵션 지연호가 — tr_key `isym`, 필드 43개
+- `FC` 해외선물옵션 실시간체결가 — tr_key `isym`, 필드 19개 · 유료시세 사용 약정 고객만 이용 가능합니다.
+- `fc` 해외선물옵션 지연체결가 — tr_key `isym`, 필드 19개
+- `dk` 해외선물옵션 실시간체결통보 — tr_key `userid`, 필드 21개 · wss://api.nhplug.com:7070/websocket · 해외파생 주문 체결 시 실시간으로 수신됩니다. 통보 채널 — 국내·해외 모두 포트 7070 사용(7080 사용 시 WSS10006).
+- `dj` 해외선물옵션 실시간주문내역통보 — tr_key `userid`, 필드 26개 · wss://api.nhplug.com:7070/websocket · 해외파생 주문 접수 시 실시간으로 수신됩니다. 통보 채널 — 국내·해외 모두 포트 7070 사용(7080 사용 시 WSS10006).
+
+---
+
+## 국내채권 (`krbond`)
+
+정본: https://www.nhplug.com/openapi-docs/krbond/openapi.json
+
+종목마스터: bond_hts.mst (장내채권) · 구조체 bond_hts.h — https://www.nhplug.com/instruments/<파일명>.mst (인증 불필요)
+
+### 장내채권 매수주문 — `POST /krbond/order/v1/bondBuy`
+장내채권 매수주문 API 입니다.  응답 블록은 **데이터가 있을 때만 내려옵니다.** 블록이 없을 수 있으니 존재 여부를 먼저 확인하세요.
+- 요청 `Input_0`: `act_no`* 계좌번호 / 길이 11 / /n2/acctinfo 의 acct_no 사용 (운영은 acct_type=01·02, 모의투자는 03 계좌만 유효), `iem_cd`* 종목코드 / 길이 12 / 예시> 국고02000-3106(21-5)인 경우, C03502GB6, `orr_qty`* 주문수량 / 길이 18, `orr_pr`* 주문가격 / 길이 15.3, `sam_mkt_end_smo_sby_yn` 소액시장종료동시매매여부 / 길이 1 / Y.동시매매 N.일반
+- 응답 `Output_0` (객체): `orr_gno_tab_cd`, `mkt_orr_no`
+
+### 장내채권 매도주문 — `POST /krbond/order/v1/bondSell`
+장내채권 매도주문 API 입니다.  응답 블록은 **데이터가 있을 때만 내려옵니다.** 블록이 없을 수 있으니 존재 여부를 먼저 확인하세요.
+- 요청 `Input_0`: `act_no`* 계좌번호 / 길이 11 / /n2/acctinfo 의 acct_no 사용 (운영은 acct_type=01·02, 모의투자는 03 계좌만 유효), `iem_cd`* 종목코드 / 길이 12 / 예시> 국고02000-3106(21-5)인 경우, C03502GB6, `orr_qty`* 주문수량 / 길이 18, `orr_pr`* 주문가격 / 길이 15.3, `sam_mkt_end_smo_sby_yn` 소액시장종료동시매매여부 / 길이 1 / Y.동시매매 N.일반, `byn_dt`* 매수일자 / 길이 8 / YYYYMMDD, `syn_ttn_dit_cd`* 종합과세구분코드 / 길이 1 / 1.종합과세 2.분리과세
+- 응답 `Output_0` (객체): `orr_gno_tab_cd`, `mkt_orr_no`
+
+### 장내채권 정정주문 — `POST /krbond/order/v1/bondModify`
+장내채권 정정주문 API 입니다.  응답 블록은 **데이터가 있을 때만 내려옵니다.** 블록이 없을 수 있으니 존재 여부를 먼저 확인하세요.
+- 요청 `Input_0`: `act_no`* 계좌번호 / 길이 11 / /n2/acctinfo 의 acct_no 사용 (운영은 acct_type=01·02, 모의투자는 03 계좌만 유효), `org_mkt_orr_no`* 원시장주문번호 / 길이 10, `all_pat_dit_cd`* 전체일부구분코드 / 길이 1 / 1.잔량(전체) 2.일부, `iem_cd`* 종목코드 / 길이 12 / 예시> 국고02000-3106(21-5)인 경우, C03502GB6, `cor_qty` 정정수량 / 길이 18, `cor_pr`* 정정가격 / 길이 15.3
+- 응답 `Output_0` (객체): `orr_gno_tab_cd`, `mkt_orr_no`
+
+### 장내채권 취소주문 — `POST /krbond/order/v1/bondCancel`
+장내채권 취소주문 API 입니다.  응답 블록은 **데이터가 있을 때만 내려옵니다.** 블록이 없을 수 있으니 존재 여부를 먼저 확인하세요.
+- 요청 `Input_0`: `act_no`* 계좌번호 / 길이 11 / /n2/acctinfo 의 acct_no 사용 (운영은 acct_type=01·02, 모의투자는 03 계좌만 유효), `org_mkt_orr_no`* 원시장주문번호 / 길이 10, `all_pat_dit_cd`* 전체일부구분코드 / 길이 1 / 1.잔량(전체) 2.일부, `iem_cd`* 종목코드 / 길이 12 / 예시> 국고02000-3106(21-5)인 경우, C03502GB6, `cor_qty` 정정수량 / 길이 18
+- 응답 `Output_0` (객체): `orr_gno_tab_cd`, `mkt_orr_no`
+
+### 장내채권 대용매도주문 — `POST /krbond/order/v1/bondSubstituteSell`
+장내채권 대용매도주문 API 입니다.  응답 블록은 **데이터가 있을 때만 내려옵니다.** 블록이 없을 수 있으니 존재 여부를 먼저 확인하세요.
+- 요청 `Input_0`: `act_no`* 계좌번호 / 길이 11 / /n2/acctinfo 의 acct_no 사용 (운영은 acct_type=01·02, 모의투자는 03 계좌만 유효), `iem_cd`* 종목코드 / 길이 12, `orr_qty`* 주문수량 / 길이 18, `orr_pr`* 주문가격 / 길이 15.3, `sam_mkt_end_smo_sby_yn` 소액시장종료동시매매여부 / 길이 1 / Y.동시매매 N.일반, `byn_dt`* 매수일자 / 길이 8 / YYYYMMDD, `syn_ttn_dit_cd`* 종합과세구분코드 / 길이 1 / 1.종합과세 2.분리과세
+- 응답 `Output_0` (객체): `orr_gno_tab_cd`, `mkt_orr_no`
+
+### 장내채권 주문가능수량 조회 — `POST /krbond/inquiry/v1/bondOrderableQuantity`
+장내채권 주문가능수량/금액 조회 API 입니다.  응답 블록은 **데이터가 있을 때만 내려옵니다.** 블록이 없을 수 있으니 존재 여부를 먼저 확인하세요.
+- 요청 `Input_0`: `act_no`* 계좌번호 / 길이 11 / /n2/acctinfo 의 acct_no 사용 (운영은 acct_type=01·02, 모의투자는 03 계좌만 유효), `orr_mkt_cd`* 주문시장코드 / 길이 8 / 11.일반채권 12.소액채권, `iem_cd`* 종목코드 / 길이 1, `sby_dit_cd`* 매매구분코드 / 길이 12 / 1.매도 2.매수, `orr_amt`* 주문금액 / 길이 18, `orr_pr`* 주문가격 / 길이 15.3
+- 응답 `Output_0` (객체): `sby_fee`, `fee_rt`, `orr_pbl_amt`, `orr_pbl_qty`, `orr_pbl_qty1`
+
+### 장내채권 주문체결내역 조회 — `POST /krbond/inquiry/v1/bondModifiableOrder`
+장내채권 주문체결내역 조회 API 입니다.  응답 블록은 **데이터가 있을 때만 내려옵니다.** 블록이 없을 수 있으니 존재 여부를 먼저 확인하세요.
+- 요청 `Input_0`: `orr_dt`* 주문일자 / 길이 8 / YYYYMMDD, `act_no`* 계좌번호 / 길이 11 / /n2/acctinfo 의 acct_no 사용 (운영은 acct_type=01·02, 모의투자는 03 계좌만 유효), `itg_orr_no` 통합주문번호 / 길이 10, `orr_mkt_cd` 주문시장코드 / 길이 2 / 00.전체 11.장내채권 12.소액채권, `ost_cns_dit`* 체결구분 / 길이 1 / 0.전체 1.미체결 2.체결
+- 응답 `Output_0` (배열): `itg_orr_no`, `orr_mkt_cd_nm`, `mo_itg_orr_no`, `org_itg_orr_no`, `iem_cd`, `iem_nm`, `sby_dit_cd_nm`, `cor_can_dit_cd_nm`, `lon_dt`, `cfd_lon_cd`, `nmn_pr_tp_cd_nm`, `orr_cnd_dit_cd_nm`, `orr_qty`, `orr_pr`, `tot_cns_qty`, `cns_avg_uit_pr`, `cns_amt`, `cns_cnt`, `ny_cns_qty`, `cor_qty`, `can_qty`, `orr_tm`, `orr_mdi`, `bnd_byn_dt`, `syn_ttn_dit_cd_nm`, `orr_rjt_rsn_cd_nm`, `pcs_emp_no`, `rmt_mkt_cd`, `sor_mkt_sli_yn`, `krx_lnt_opi_sec_co_cd`, `krx_lnt_opi_act_no`, `krx_lnt_cnf_cpl_hur`
+
+### 장내채권 잔고조회 — `POST /krbond/inquiry/v1/bondBalance`
+장내채권 잔고조회 API 입니다.  응답 블록은 **데이터가 있을 때만 내려옵니다.** 블록이 없을 수 있으니 존재 여부를 먼저 확인하세요.
+- 요청 `Input_0`: `act_no`* 계좌번호 / 길이 11 / /n2/acctinfo 의 acct_no 사용 (운영은 acct_type=01·02, 모의투자는 03 계좌만 유효), `iqr_dt`* 조회일자 / 길이 8 / YYYYMMDD, `iqr_dit`* 조회구분 / 길이 1 / 0.매수일별 조회 1.종목별조회
+- 응답 `Output_0` (객체): `cus_fnm`, `rnm_cfm_no`, `act_atv_tp_dtl_cd`, `act_amn_tab_cd`, `act_pdt_llf_cd`, `amn_emp_fnm`, `tot_aet_amt`, `tot_byn_amt`, `tot_eal_amt`, `tot_eal_pls`, `dca`, `tot_lon_amt`
+- 응답 `Output_1` (배열): `pdt_tp_nm`, `iem_cd`, `iem_nm`, `byn_dt`, `cur_cd`, `itg_bnc_qty`, `itg_ny_stl_qty`, `itg_bnc_qty_sum`, `nsv_qty`, `avg_phs_uit_pr`, `phs_pr`, `eal_amt`, `eal_pls_amt`, `xrn_dt`, `byn_pft_rt`, `svl_dd_cnt`, `xrn_rdp_amt`, `syn_ttn_dit_cd`, `syn_ttn_dit_cd_nm`, `tax_sum`, `cfd_eal_ogt_cfd_grd_cd1`, `tp_cd_nm`, `fc_sec_trd_nat_cd`, `nat_cd_nm`, `pft_rt`
+
+### 장내채권 대용잔고조회 — `POST /krbond/inquiry/v1/bondSubstituteBalance`
+장내채권 대용잔고조회 API 입니다.  응답 블록은 **데이터가 있을 때만 내려옵니다.** 블록이 없을 수 있으니 존재 여부를 먼저 확인하세요.
+- 요청 `Input_0`: `frs_act_no`* 선물계좌번호 / 길이 11, `ahi_act_no` 현물계좌번호 / 길이 11
+- 응답 `Output_0` (배열): `act_no`, `iem_cd`, `iem_nm`, `bnc_qty`, `sba_pbl_qty`, `frs_sba_apm_qty`, `syn_ttn_dit_cd`, `syn_ttn_dit_cd_nm`, `byn_dt`, `xrn_dt`, `sba_pr`
+
+### 장내채권 현재가 — `POST /krbond/quote/v1/bondCurrent`
+장내채권 현재가 조회 API 입니다.  응답 블록은 **데이터가 있을 때만 내려옵니다.** 블록이 없을 수 있으니 존재 여부를 먼저 확인하세요.
+- 요청 `Input_0`: `iem_cd`* 업체코드 / 길이 9 / 예시> 국민주택 1종 23-05일 경우, C01501DD5, `market`* 시장구분 / 길이 1 / 소액채권일때만 0.일반채권 1.소액채권
+- 응답 `Output_0` (객체): `iem_nm`, `bond_stnd_iscd`, `iem_cd`, `pblc_date`, `rdmp_date`, `lstn_date`, `cnvr_stck_iscd`, `cnvsdatez8`, `cnvedatez8`, `dvdn_rckn_date`, `gurn_istu_name`, `pblc_amt`, `lstn_amt`, `srfc_mnrt`, `sspr`, `evnt_rate`, `mtrt_guar_ert`, `cnvr_amt`, `bond_prpr`, `bond_oprc`, `bond_hgpr`, `bond_lwpr`, `acml_vol`, `acml_tr_pbmn`, `bond_askp1`, `askp_rsqn1`, `askp_ert1`, `bond_bidp1`, `bidp_rsqn1`, `bidp_ert1`, `bond_askp2`, `askp_rsqn2`, `askp_ert2`, `bond_bidp2`, `bidp_rsqn2`, `bidp_ert2`, `bond_askp3`, `askp_rsqn3`, `askp_ert3`, `bond_bidp3`, `bidp_rsqn3`, `bidp_ert3`, `bond_askp4`, `askp_rsqn4`, `askp_ert4`, `bond_bidp4`, `bidp_rsqn4`, `bidp_ert4`, `bond_askp5`, `askp_rsqn5`, `askp_ert5`, `bond_bidp5`, `bidp_rsqn5`, `bidp_ert5`, `total_askp_rsqn`, `total_bidp_rsqn`, `shrn_iscd`, `bond_prdy_clpr`, `prdy_vrss_sign`, `prdy_vrss`, `bond_dryy_hgpr`, `bond_dryy_lwpr`, `bond_cls_code`, `spcl_cond`, `bsop_hour`, `bondgbz1`, `stopgbz1`, `bond_cnpr_unit`, `bond_cnpr_unit2`, `warngbz1`, `avrg_prtx_unpr`, `filler`
+- 응답 `Output_1` (객체): `shrn_iscd`, `iem_cd`, `stck_prpr`, `prdy_vrss_sign`, `prdy_vrss`, `acml_vol`, `parityz7`, `new_volumez12`, `filler`
+- 응답 `Output_2` (배열): `cntg_hour`, `bond_prpr`, `prdy_vrss_sign`, `prdy_vrss`, `bond_askp1`, `bond_bidp1`, `cntg_qty`, `acml_vol`, `filler`
+
+### 장내채권 상세정보 조회 — `POST /krbond/quote/v1/bondDetail`
+장내채권 상세정보 조회 API 입니다.  응답 블록은 **데이터가 있을 때만 내려옵니다.** 블록이 없을 수 있으니 존재 여부를 먼저 확인하세요.
+- 요청 `Input_0`: `iem_cd`* 종목코드 / 길이 12 / 예시> 국민주택 1종 23-05일 경우, C01501DD5
+- 응답 `Output_0` (객체): `iem_cd`, `iem_nm`, `bnd_iem_eng_nm`, `grt_ogt_cd_nm`, `cco_ogt_cd_nm`, `pym_agy_ogt_cd_nm`, `pbs_ogt_cd_nm`, `tct_ogt_cd_nm`, `std_iem_cd`, `iem_cd1`, `pbs_dt`, `rnu_dt`, `ltg_dt`, `xrn_dt`, `int_pym_mtd_tp_cd_nm`, `srf_int_rt`, `crp_bnd_dc_rt`, `int_pym_uit_te_cnt`, `int_dd_bse_tp_cd`, `fst_int_pym_dt`, `rlr_rbf_int_pym_dt`, `rlr_ntm_int_pym_dt`, `bnk_hdy_pia_pym_mtd_cd`, `obj_iem_cd`, `obj_stk_iem_nm`, `stk_crp_bnd_dit_cd`, `rit_dit_cd`, `xrn_rdp_rt`, `erc_pr`, `asr_pft_rt`, `erc_rt`, `bnd_tp_cd_nm`, `abs_dit_cd`, `ltg_nst_tp_cd_nm`, `rdp_mtd_nm`, `dfm_te_cnt`, `sli_rdp_nbt`, `rnu_tp_cd`, `pre_rnu_ptm_int_pym_mtd_cd`, `aay_tp_cd`, `int_won_uit_udr_pcs_dit_cd`, `sri_erc_af_iem_cd`, `erc_oum_dt`, `erc_end_dt`, `krw_sba_pr`, `pot_sba_pr`, `bnd_pbs_tal`, `cfd_grd_cd`, `add_irt`, `trd_sop_ssp_rop_tp_cd`, `bnd_trd_sop_rsn_cd`, `ltg_aot_rsn_cd`, `opt_knd_cd_nm`, `xrn_dfn_int_rt`, `osf_fds_amn_tp_cd_nm`, `sby_fbd_dit_cd_nm`, `lon_pbl_yn_nm`, `nat_bnd_sby_obj_yn_nm`, `plt_cnd_nm`, `int_rt_dsn_bse_irt_knd_cts`
+
+### 장내채권 매매현황 — `POST /krbond/quote/v1/bondTradingStatus`
+장내채권 매매현황 조회 API 입니다.  응답 블록은 **데이터가 있을 때만 내려옵니다.** 블록이 없을 수 있으니 존재 여부를 먼저 확인하세요.  ⚠️ **명세 검증 필요**: `Output_0` 는 명세상 **Object** 로 선언되어 있으나 예시 응답은 **Array** 입니다. 실제 응답 타입을 확인 후 사용하세요.
+- 요청 `Input_0`: `gubun`* INPUT / 길이 1 / 1,종목코드 2.거래량 3.패리티 5.호가종목전체
+- 응답 `Output_0` (객체): `entcodez4`, `iem_nm`, `bond_prpr`, `bond_askp`, `askp_rsqn`, `bond_bidp`, `bidp_rsqn`, `acml_vol`, `parity`, `cnvr_amt`, `shrn_iscd`, `stck_prpr`, `bond_stnd_iscd`, `iem_cd`, `rate`, `askp_ert`, `bidp_ert`, `rdmp_date`, `srfc_mnrt`, `bond_prdy_clpr`, `bondgb`, `filler`
+
+### 장내채권 일자별시세 — `POST /krbond/quote/v1/bondDaily`
+장내채권 일별 시세 조회 API 입니다.  응답 블록은 **데이터가 있을 때만 내려옵니다.** 블록이 없을 수 있으니 존재 여부를 먼저 확인하세요.
+- 요청 `Input_0`: `iem_cd`* 종목코드 / 길이 9 / 예시> 국민주택 1종 23-05일 경우, C01501DD5, `input_date`* 조회일자 / 길이 8 / YYYYMMDD, `array_cnt` 읽을갯수 / 길이 3 / 80 125 250 375, `market_gb` 시장구분 / 길이 1 / 소액채권일때만 0.일반채권 1.소액채권
+- 응답 `Output_0` (객체): `iem_cd`, `iem_nm`, `bond_stnd_iscd`, `base_date`, `bond_gb`
+- 응답 `Output_1` (배열): `bsop_date`, `bond_oprc`, `bond_hgpr`, `bond_lwpr`, `bond_clpr`, `prdy_vrss_sign`, `prdy_vrss`, `prdy_ctrt`, `acml_vol`, `acml_tr_pbmn`, `vol_prdy_rt`, `oprc_ert`, `hgpr_ert`, `lwpr_ert`, `clpr_ert`, `filler`, `next_key`, `nextbutton`
+
+### 장내채권 발행현황 — `POST /krbond/quote/v1/bondIssuance`
+장내채권 발행현황 조회 API 입니다.  응답 블록은 **데이터가 있을 때만 내려옵니다.** 블록이 없을 수 있으니 존재 여부를 먼저 확인하세요.  ⚠️ **명세 검증 필요**: `Output_0` 는 명세상 **Object** 로 선언되어 있으나 예시 응답은 **Array** 입니다. 실제 응답 타입을 확인 후 사용하세요.
+- 요청 `Input_0`: `gubun`* 입력구분 / 길이 1 / A.전체 1.전환사체 2.신주인수권부사채 3.교환사채 4.국채 5.통안채 6.금융채 7.비금융특수채 8.회사채 9.지방채 0.기타
+- 응답 `Output_0` (객체): `iem_cd`, `bond_stnd_iscd`, `iem_nm`, `srfc_mnrt`, `pblc_date`, `rdmp_date`, `bond_prdy_clpr`, `filler`, `next_key`, `nextbutton`
+
+### 장내채권 민간평가단가조회 — `POST /krbond/quote/v1/bondFairValue`
+장내채권 민평단가 조회 API 입니다.  응답 블록은 **데이터가 있을 때만 내려옵니다.** 블록이 없을 수 있으니 존재 여부를 먼저 확인하세요.
+- 요청 `Input_0`: `iem_cd`* 종목코드 / 길이 12 / 예시> 국민주택 1종 23-05일 경우, C01501DD5, `iqr_sta_dt`* 조회시작일자 / 길이 8 / YYYYMMDD, `iqr_end_dt`* 조회종료일자 / 길이 8 / YYYYMMDD
+- 응답 `Output_0` (배열): `bse_dt`, `avg_pft_rt`, `avg_btx_uit_pr`, `cng_amt`, `avg_bnd_uit_pr`, `avg_eal_pft_rt`, `vty_rt`, `bnd_pft_rt1`, `btx_uit_pr1`, `bnd_pft_rt2`, `btx_uit_pr2`, `bnd_pft_rt3`, `btx_uit_pr3`, `bnd_pft_rt4`, `btx_uit_pr4`, `bnd_pft_rt5`, `btx_uit_pr5`, `bse_dt_ifo`, `pft_rt_cts`
+
+### 물가연동채권물가계수일괄조회 — `POST /krbond/quote/v1/inflationBond`
+장내채권 물가연동채권 물가계수 일괄조회 API 입니다.  응답 블록은 **데이터가 있을 때만 내려옵니다.** 블록이 없을 수 있으니 존재 여부를 먼저 확인하세요.
+- 요청 `Input_0`: `iem_cd`* 종목코드 / 길이 12 / 예시> 국민주택 1종 23-05일 경우, C01501DD5, `iqr_dt`* 조회일자 / 길이 8 / YYYYMMDD
+- 응답 `Output_0` (배열): `aly_dt`, `iem_cd`, `iem_nm`, `cpr_lkg_cef1`, `cpr_lkg_cef2`, `cpr_lkg_cef3`
+
+### 채권 수익률 추이 — `POST /krbond/quote/v1/yieldTrend`
+장내채권 수익률 추이 조회 API 입니다.  응답 블록은 **데이터가 있을 때만 내려옵니다.** 블록이 없을 수 있으니 존재 여부를 먼저 확인하세요.  ⚠️ **명세 검증 필요**: `Output_0` 는 명세상 **Object** 로 선언되어 있으나 예시 응답은 **Array** 입니다. 실제 응답 타입을 확인 후 사용하세요.
+- 요청 `Input_0`: `bsop_date`* 조회일자 / 길이 8
+- 응답 `Output_0` (객체): `iem_cd`, `iem_nm`, `zandate`, `price1`, `price2`, `ovrs_prpr`, `prdy_vrss`, `prdy_ctrt`, `prdy_clpr`, `spread`, `ovrs_dryy_hgpr`, `ovrs_dryy_lwpr`, `bsop_date`, `symbolnamez48`, `filler`
+
+### 채권 금리 스프레드 일별 수익률 — `POST /krbond/quote/v1/rateSpreadDailyYield`
+장내채권 금리 스프레드 일별 수익률 조회 API 입니다.  응답 블록은 **데이터가 있을 때만 내려옵니다.** 블록이 없을 수 있으니 존재 여부를 먼저 확인하세요.
+- 요청 `Input_0`: `iem_cd1`* 종목코드 / 길이 12 / 예시> 국고채권(3년)일 경우, EN92301, `iem_cd2`* 비교종목코드 / 길이 12 / 예시> 국고채권(1년)일 경우, EN92313, `gubun`* 기간구분 / 길이 1 / 0.기간지정 1.1개월 2.3개월 3.6개월 4.1년, `sdate` 시작일자 / 길이 8 / YYYYMMDD, `edate` 종료일자 / 길이 8 / YYYYMMDD
+- 응답 `Output_0` (배열): `iem_cd1`, `iem_nm1`, `bsop_date1`, `bsop_date2`, `ovrs_prpr1`, `prdy_vrss`, `prdy_ctrt`, `filler`
+- 응답 `Output_1` (배열): `iem_cd1`, `iem_nm1`, `iem_cd2`, `iem_nm2`, `bsop_date2`, `ovrs_prpr1`, `ovrs_prpr2`, `spread`, `filler`
+
+### 채권 유형별 수익률 비교 — `POST /krbond/quote/v1/yieldComparisonByType`
+장내채권 유형별 수익률 비교 API 입니다.  응답 블록은 **데이터가 있을 때만 내려옵니다.** 블록이 없을 수 있으니 존재 여부를 먼저 확인하세요.
+- 요청 `Input_0`: `iem_cd1`* 종목코드1 / 길이 12 / 예시> 국고채권(1년)일 경우, EN92313, `iem_cd2`* 종목코드2 / 길이 12 / 예시> 국고채권(3년)일 경우, EN92301, `iem_cd3`* 종목코드3 / 길이 12 / 예시> 국고채권(5년)일 경우, EN92310, `sdate`* 시작일자 / 길이 8 / YYYYMMDD, `edate`* 종료일자 / 길이 8 / YYYYMMDD
+- 응답 `Output_0` (배열): `bsop_date1`, `bsop_date2`, `iem_cd1`, `iem_nm1`, `ovrs_prpr1`, `prdy_vrss1`, `iem_cd2`, `iem_nm2`, `ovrs_prpr2`, `prdy_vrss2`, `iem_cd3`, `iem_nm3`, `ovrs_prpr3`, `prdy_vrss3`, `filler`, `sdatez8`, `edatez8`
+
+### 채권 시가평가 수익률(민평) — `POST /krbond/quote/v1/fairValueYield`
+장내채권 시가평가 수익률(민평) 조회 API 입니다.  응답 블록은 **데이터가 있을 때만 내려옵니다.** 블록이 없을 수 있으니 존재 여부를 먼저 확인하세요.
+- 요청 `Input_0`: `bse_dt`* 기준일자 / 길이 8 / YYYYMMDD, `pve_eal_ogt_cd`* 민간평가기관코드 / 길이 2 / 01.KIS 02.KBP(한채평) 03.NICE(한신평) 04.KNP(에프엔자산평가) 98.민간평가평균단가(4사평균) 99.민간평가평균단가
+- 응답 `Output_0` (배열): `coi_yn`, `bnd_lknd_cd`, `bnd_lknd_nm`, `bnd_mknd_cd`, `bnd_mknd_nm`, `bnd_sknd_cd`, `bnd_sknd_nm`, `pve_eal_ogt_cd`, `bse_mar_pft_rt`, `bse_jne_pft_rt`, `bse_sep_pft_rt`, `bse_yr1_pft_rt`, `bse_yr1_jne_pft_rt`, `bse_yr2_pft_rt`, `bse_yr2_jne_pft_rt`, `bse_yr3_pft_rt`, `yr4_bnd_pft_rt`, `bse_yr5_pft_rt`, `yr7_bnd_pft_rt`, `yr10_pft_rt`, `yr15_pft_rt`, `bse_yr20_pft_rt`, `yr30_pft_rt`
+
+### 소액채권발행현황 — `POST /krbond/quote/v1/smallBondIssuance`
+장내채권 소액채권 발행현황 조회 API 입니다.  응답 블록은 **데이터가 있을 때만 내려옵니다.** 블록이 없을 수 있으니 존재 여부를 먼저 확인하세요.
+- 요청 `Input_0`: `bnd_sby_knd_dit_cd`* 채권매매종류구분코드 / 길이 1 / 1.국민주택 2.서울철도 3.지역개발 4.지방철도
+- 응답 `Output_0` (배열): `bnd_iem_krl_nm`, `iem_std_cd`, `iem_cd`, `pbs_dt`, `rnu_dt`, `xrn_dt`, `crp_bnd_dc_rt`, `srf_int_rt`, `int_pym_mtd_tp_cd_nm`
+
+### 소액채권호가매매현황 — `POST /krbond/quote/v1/smallBondQuoteTrading`
+장내채권 소액채권 호가매매현황 조회 API 입니다.  응답 블록은 **데이터가 있을 때만 내려옵니다.** 블록이 없을 수 있으니 존재 여부를 먼저 확인하세요.
+- 요청 `Input_0`: `bond_cls_code`* 매매종류구분 / 길이 1 / 1.국민주택 2.서울철도 3.지역개발 4.지방철도 5.지역개발1
+- 응답 `Output_0` (배열): `iem_nm`, `bond_cntg_ert`, `bond_prpr`, `askp_ert1`, `bond_askp1`, `bidp_ert1`, `bond_bidp1`, `filler`
+- 응답 `Output_1` (배열): `iem_nm`, `bond_cntg_ert`, `bond_prpr`, `bond_oprc`, `bond_hgpr`, `bond_lwpr`, `acml_vol`, `filler`
+
+### 소액채권시간대별현재가 — `POST /krbond/quote/v1/smallBondTimeCurrent`
+장내채권 소액채권 시간대별 현재가 조회 API 입니다.  응답 블록은 **데이터가 있을 때만 내려옵니다.** 블록이 없을 수 있으니 존재 여부를 먼저 확인하세요.
+- 요청 `Input_0`: `data_cls_code`* 조회구분 / 길이 1 / 1.국민주택 2.서울철도 3.지역개발 4.지방철도 5.지역개발1, `array_cnt`* 읽을갯수 / 길이 3
+- 응답 `Output_0` (배열): `cntg_hour`, `bond_cntg_ert1`, `acml_vol1`, `bond_cntg_ert2`, `acml_vol2`, `filler`, `next_key`, `prevbutton`, `nextbutton`
+
+### 소액채권신고수익률 — `POST /krbond/quote/v1/smallBondReportedYield`
+장내채권 소액채권 신고 수익률 조회 API 입니다.  응답 블록은 **데이터가 있을 때만 내려옵니다.** 블록이 없을 수 있으니 존재 여부를 먼저 확인하세요.  ⚠️ **명세 검증 필요**: `Output_0` 는 명세상 **Array** 로 선언되어 있으나 예시 응답은 **Object** 입니다. 실제 응답 타입을 확인 후 사용하세요.  ⚠️ **명세 검증 필요**: 예시 응답에는 명세에 없는 블록(Output_1)이 포함되어 있습니다.
+- 요청 `Input_0`: `bsop_date`* 일자 / 길이 8
+- 응답 `Output_0` (배열): `bsop_date`, `pre_date`, `next_date`, `filler`
+- 응답 `Output_1` (객체): `gubun_nm`, `pre_ert`, `pre_prc`, `today_ert`, `today_prc`, `next_ert`, `next_prc`, `filler`
+
+### 실시간 채널 (6개) — wss://api.nhplug.com:7070/websocket
+포트: 국내 시세 7070 · 해외 시세 7080 · 통보(국내·해외) 7070 · 모의 17070 (통보를 7080 → WSS10006) · 동시 2채널, 채널당 30건
+- `c1` 장내채권 실시간 호가소액 — tr_key `expcode`, 필드 35개 · 장내채권 실시간 호가(소액채권) 서비스 입니다.
+- `c3` 장내채권 실시간 호가전환 — tr_key `expcode`, 필드 34개 · 장내채권 실시간 호가(전환사채) 서비스 입니다.
+- `c2` 장내채권 실시간 체결가소액 — tr_key `expcode`, 필드 15개 · 장내채권 실시간 체결가(소액채권) 서비스 입니다.
+- `c4` 장내채권 실시간 체결가전환 — tr_key `expcode`, 필드 14개 · 장내채권 실시간 체결가(전환사채) 서비스 입니다.
+- `de` 장내채권 실시간 체결내역 통보 — tr_key `userid`, 필드 12개 · wss://api.nhplug.com:7070/websocket · 장내채권 주문 체결 시 실시간으로 수신됩니다. 통보 채널 — 국내·해외 모두 포트 7070 사용(7080 사용 시 WSS10006).
+- `d3` 장내채권 실시간 주문내역 통보 — tr_key `userid`, 필드 24개 · wss://api.nhplug.com:7070/websocket · 장내채권 주문 접수 시 실시간으로 수신됩니다. 통보 채널 — 국내·해외 모두 포트 7070 사용(7080 사용 시 WSS10006).
+
+---
+
+## 국내금현물 (`krgold`)
+
+정본: https://www.nhplug.com/openapi-docs/krgold/openapi.json
+
+종목마스터 없음 — 전문(IVOGLDREQ01) 조회. 종목코드: 금 1kg=M04020000, 미니금 100g=M04020100
+
+### 금현물 매수주문 — `POST /krgold/order/v1/goldBuy`
+금현물 매수주문 API 입니다. 거래 가능한 종목코드는 다음과 같습니다.  * 금 1kg - M04020000 * 미니금 100g - M04020100  응답 블록은 **데이터가 있을 때만 내려옵니다.** 블록이 없을 수 있으니 존재 여부를 먼저 확인하세요.
+- 요청 `Input_0`: `act_no`* 계좌번호 / 길이 11 / /n2/acctinfo 의 acct_no 사용 (운영은 acct_type=01·02, 모의투자는 03 계좌만 유효), `iem_cd`* 종목코드 / 길이 12 / 예시> 금 1kg인 경우, M04020000, `orr_qty`* 주문수량 / 길이 18, `orr_pr`* 주문가격 / 길이 15.3, `orr_amt` 주문금액 / 길이 18, `orr_cnd_dit_cd`* 주문조건구분코드 / 길이 2 / 00.없음 01.IOC 02.FOK, `ivs_uag_yn`* 투자용도여부 / 길이 1 / 1.산업용 2.투자용
+- 응답 `Output_0` (객체): `orr_gno_tab_cd`, `mkt_orr_no`
+
+### 금현물 매도주문 — `POST /krgold/order/v1/goldSell`
+금현물 매도주문 API 입니다. 거래 가능한 종목코드는 다음과 같습니다.  * 금 1kg - M04020000 * 미니금 100g - M04020100  응답 블록은 **데이터가 있을 때만 내려옵니다.** 블록이 없을 수 있으니 존재 여부를 먼저 확인하세요.
+- 요청 `Input_0`: `act_no`* 계좌번호 / 길이 11 / /n2/acctinfo 의 acct_no 사용 (운영은 acct_type=01·02, 모의투자는 03 계좌만 유효), `iem_cd`* 종목코드 / 길이 12 / 예시> 금 1kg인 경우, M04020000, `orr_qty`* 주문수량 / 길이 18, `orr_pr`* 주문가격 / 길이 15.3, `orr_amt` 주문금액 / 길이 18, `orr_cnd_dit_cd`* 주문조건구분코드 / 길이 2 / 00.없음 01.IOC 02.FOK, `ivs_uag_yn`* 투자용도여부 / 길이 1 / 1.산업용 2.투자용
+- 응답 `Output_0` (객체): `orr_gno_tab_cd`, `mkt_orr_no`
+
+### 금현물 정정주문 — `POST /krgold/order/v1/goldModify`
+금현물 정정주문 API 입니다. 거래 가능한 종목코드는 다음과 같습니다.  * 금 1kg - M04020000 * 미니금 100g - M04020100  응답 블록은 **데이터가 있을 때만 내려옵니다.** 블록이 없을 수 있으니 존재 여부를 먼저 확인하세요.
+- 요청 `Input_0`: `act_no`* 계좌번호 / 길이 11 / /n2/acctinfo 의 acct_no 사용 (운영은 acct_type=01·02, 모의투자는 03 계좌만 유효), `org_mkt_orr_no`* 원시장주문번호 / 길이 10, `all_pat_dit_cd`* 전체일부구분코드 / 길이 1 / 1.잔량(전체) 2.일부, `iem_cd`* 종목코드 / 길이 12 / 예시> 금 1kg인 경우, M04020000, `cor_qty` 정정수량 / 길이 18, `cor_pr`* 정정가격 / 길이 15.3
+- 응답 `Output_0` (객체): `orr_gno_tab_cd`, `mkt_orr_no`
+
+### 금현물 취소주문 — `POST /krgold/order/v1/goldCancel`
+금현물 취소주문 API 입니다. 거래 가능한 종목코드는 다음과 같습니다.  * 금 1kg - M04020000 * 미니금 100g - M04020100  응답 블록은 **데이터가 있을 때만 내려옵니다.** 블록이 없을 수 있으니 존재 여부를 먼저 확인하세요.
+- 요청 `Input_0`: `act_no`* 계좌번호 / 길이 11 / /n2/acctinfo 의 acct_no 사용 (운영은 acct_type=01·02, 모의투자는 03 계좌만 유효), `org_mkt_orr_no`* 원시장주문번호 / 길이 10, `all_pat_dit_cd`* 전체일부구분코드 / 길이 1 / 1.잔량(전체) 2.일부, `iem_cd`* 종목코드 / 길이 12 / 예시> 금 1kg인 경우, M04020000, `cor_qty` 정정수량 / 길이 18
+- 응답 `Output_0` (객체): `orr_gno_tab_cd`, `mkt_orr_no`
+
+### 금현물 주문가능수량조회 — `POST /krgold/inquiry/v1/goldOrderableQuantity`
+금현물 주문가능수량/금액 조회 API 입니다. 조회 가능한 종목코드는 다음과 같습니다.  * 금 1kg - M04020000 * 미니금 100g - M04020100  응답 블록은 **데이터가 있을 때만 내려옵니다.** 블록이 없을 수 있으니 존재 여부를 먼저 확인하세요.
+- 요청 `Input_0`: `act_no`* 계좌번호 / 길이 11 / /n2/acctinfo 의 acct_no 사용 (운영은 acct_type=01·02, 모의투자는 03 계좌만 유효), `sby_dit_cd`* 매매구분코드 / 길이 1 / 1.매도 2.매수, `orr_pr` 주문가격 / 길이 15.3, `iem_cd`* 종목코드 / 길이 12 / 예시> 금 1kg인 경우, M04020000
+- 응답 `Output_0` (객체): `orr_pbl_qty`, `orr_pbl_amt`
+
+### 금현물 주문체결조회 — `POST /krgold/inquiry/v1/goldExecution`
+금현물 주문체결내역조회 API 입니다.  응답 블록은 **데이터가 있을 때만 내려옵니다.** 블록이 없을 수 있으니 존재 여부를 먼저 확인하세요.
+- 요청 `Input_0`: `orr_dt`* 주문일자 / 길이 8 / YYYYMMDD, `act_no`* 계좌번호 / 길이 11 / /n2/acctinfo 의 acct_no 사용 (운영은 acct_type=01·02, 모의투자는 03 계좌만 유효), `itg_orr_no` 통합주문번호 / 길이 10, `orr_mkt_cd` 주문시장코드 / 길이 2 / 08.금현물, `ost_cns_dit`* 체결구분 / 길이 1 / 0.전체 1.미체결 2.체결
+- 응답 `Output_0` (배열): `itg_orr_no`, `orr_mkt_cd_nm`, `mo_itg_orr_no`, `org_itg_orr_no`, `iem_cd`, `iem_nm`, `sby_dit_cd_nm`, `cor_can_dit_cd_nm`, `lon_dt`, `cfd_lon_cd`, `nmn_pr_tp_cd_nm`, `orr_cnd_dit_cd_nm`, `orr_qty`, `orr_pr`, `tot_cns_qty`, `cns_avg_uit_pr`, `cns_amt`, `cns_cnt`, `ny_cns_qty`, `cor_qty`, `can_qty`, `orr_tm`, `orr_mdi`, `bnd_byn_dt`, `syn_ttn_dit_cd_nm`, `orr_rjt_rsn_cd_nm`, `pcs_emp_no`, `rmt_mkt_cd`, `sor_mkt_sli_yn`, `krx_lnt_opi_sec_co_cd`, `krx_lnt_opi_act_no`, `krx_lnt_cnf_cpl_hur`
+
+### 금현물 잔고조회 — `POST /krgold/inquiry/v1/goldDepositAndBalance`
+금현물 잔고조회 API 입니다.  응답 블록은 **데이터가 있을 때만 내려옵니다.** 블록이 없을 수 있으니 존재 여부를 먼저 확인하세요.
+- 요청 `Input_0`: `act_no`* 계좌번호 / 길이 11 / /n2/acctinfo 의 acct_no 사용 (운영은 acct_type=01·02, 모의투자는 03 계좌만 유효)
+- 응답 `Output_0` (객체): `dca`, `nxt_dd_dca`, `nxt2_dd_dca`, `fc_dca`, `fc_mgg_amt`, `fc_orr_pbl_amt`, `drn_pbl_amt`, `fnn_amt`, `mgg_rt`, `rit_eal_amt`, `orr_pbl_amt`, `nas_amt`, `tot_aet_amt`, `tot_byn_amt`, `tot_eal_amt`, `tot_eal_pls`, `pft_rt`, `rba`, `int_ny_pmt_amt`, `ny_rdp_amt`, `ect_lga`, `lon_amt`, `sba_amt`, `orr_pbl_amt1`, `orr_pbl_amt2`, `orr_pbl_amt3`, `orr_pbl_amt4`, `slo_mgg_amt`, `csh_wtm`, `sba_wtm`, `sll_edn_amt`, `cfd_pdt_tp_nm`, `act_atv_tp_dtl_cd`, `act_no`
+- 응답 `Output_1` (배열): `pdt_tp_nm`, `iem_nm`, `iem_cd`, `tp_cd_nm`, `itg_bnc_qty`, `ny_stl_qty`, `rsdl_qty`, `phs_pr`, `now_pr`, `byn_amt`, `eal_amt`, `eal_pls_amt`, `sll_amt`, `sll_pls_amt`, `pft_rt`, `syn_ttn_dit_cd`, `syn_ttn_dit_cd_nm`, `crm_aet_cfc_cd`, `ctc_int_rt`, `lon_byn_dt`, `xrn_dt`, `wtm_rt`, `lon_bnc_amt`, `iem_mlf_cd`, `itg_bnc_tp_cd`
+
+### 금현물 현재가 — `POST /krgold/quote/v1/goldCurrent`
+금현물 현재가 조회 API 입니다. 조회 가능한 종목코드는 다음과 같습니다.  * 금 1kg - M04020000 * 미니금 100g - M04020100  응답 블록은 **데이터가 있을 때만 내려옵니다.** 블록이 없을 수 있으니 존재 여부를 먼저 확인하세요.
+- 요청 `Input_0`: `iem_cd`* 종목코드 / 길이 9 / 예시> 금 1kg인 경우, M04020000
+- 응답 `Output_0` (객체): `iem_cd`, `iem_nm`, `stop`, `stck_sdpr`, `stck_sspr`, `stck_prdy_clpr`, `stck_mxpr`, `stck_llam`, `d5_hgpr`, `d5_hgpr_date`, `d5_lwpr`, `d5_lwpr_date`, `d20_hgpr`, `d20_hgpr_date`, `d20_lwpr`, `d20_lwpr_date`, `w52_hgpr`, `w52_hgpr_date`, `w52_lwpr`, `w52_lwpr_date`, `bsop_hour`, `stck_prpr`, `prdy_vrss_sign`, `prdy_vrss`, `prdy_ctrt`, `stck_oprc`, `stck_hgpr`, `stck_lwpr`, `acml_vol`, `acml_tr_pbmn`, `min_askp1`, `min_bidp1`, `h_bsop_hour`, `askp1`, `askp2`, `askp3`, `askp4`, `askp5`, `askp6`, `askp7`, `askp8`, `askp9`, `askp10`, `bidp1`, `bidp2`, `bidp3`, `bidp4`, `bidp5`, `bidp6`, `bidp7`, `bidp8`, `bidp9`, `bidp10`, `askp_rsqn1`, `askp_rsqn2`, `askp_rsqn3`, `askp_rsqn4`, `askp_rsqn5`, `askp_rsqn6`, `askp_rsqn7`, `askp_rsqn8`, `askp_rsqn9`, `askp_rsqn10`, `bidp_rsqn1`, `bidp_rsqn2`, `bidp_rsqn3`, `bidp_rsqn4`, `bidp_rsqn5`, `bidp_rsqn6`, `bidp_rsqn7`, `bidp_rsqn8`, `bidp_rsqn9`, `bidp_rsqn10`, `total_askp_rsqn`, `total_bidp_rsqn`, `marcket1z16`, `marcket2z16`, `marcket3z16`, `aspr_cls_code`, `antc_cnpr`, `antc_vrss_sign`, `antc_cntg_vrss`, `antc_prdy_ctrt`, `antc_vol`, `lbmaprice`, `prdy_vol`, `tenforeprice`, `dscs_bltr_vol`, `massvalue`, `lp_askp_rsqn1`, `lp_askp_rsqn2`, `lp_askp_rsqn3`, `lp_askp_rsqn4`, `lp_askp_rsqn5`, `lp_askp_rsqn6`, `lp_askp_rsqn7`, `lp_askp_rsqn8`, `lp_askp_rsqn9`, `lp_askp_rsqn10`, `lp_bidp_rsqn1`, `lp_bidp_rsqn2`, `lp_bidp_rsqn3`, `lp_bidp_rsqn4`, `lp_bidp_rsqn5`, `lp_bidp_rsqn6`, `lp_bidp_rsqn7`, `lp_bidp_rsqn8`, `lp_bidp_rsqn9`, `lp_bidp_rsqn10`, `filler`
+- 응답 `Output_1` (배열): `bsop_hour`, `stck_prpr`, `prdy_vrss_sign`, `prdy_vrss`, `prdy_ctrt`, `askp1`, `bidp1`, `cntg_vol`, `acml_vol`, `filler`
+
+### 금현물 일별투자매매현황 — `POST /krgold/quote/v1/goldDailyInvestorTrade`
+금현물 일별투자자 매매현황 조회 API 입니다. 조회 가능한 종목코드는 다음과 같습니다.  * 금 1kg - M04020000 * 미니금 100g - M04020100  응답 블록은 **데이터가 있을 때만 내려옵니다.** 블록이 없을 수 있으니 존재 여부를 먼저 확인하세요.
+- 요청 `Input_0`: `iem_cd`* 종목코드 / 길이 9 / 예시> 금 1kg인 경우, M04020000, `cnt`* 읽을갯수 / 길이 3 / 030
+- 응답 `Output_0` (배열): `bsop_date`, `stck_prpr`, `prdy_vrss_sign`, `prdy_vrss`, `prdy_ctrt`, `acml_vol`, `t0001z9`, `t0002z9`, `t0003z9`, `t0004z9`, `t0005z9`, `t0006z9`, `t0007z9`, `t0008z9`, `t0009z9`, `t0015z9`, `t0010z9`, `t0011z9`, `t0013z9`, `filler`, `ctsz8`, `nextbuttonz1`
+
+### 금현물 일별추이 — `POST /krgold/quote/v1/goldDailyTrend`
+금현물 일별 시세추이 조회 API 입니다. 조회 가능한 종목코드는 다음과 같습니다.  * 금 1kg - M04020000 * 미니금 100g - M04020100  응답 블록은 **데이터가 있을 때만 내려옵니다.** 블록이 없을 수 있으니 존재 여부를 먼저 확인하세요.
+- 요청 `Input_0`: `iem_cd`* 종목코드 / 길이 9 / 예시> 금 1kg인 경우, M04020000, `sdate` 시작일자 / 길이 8 / YYYYMMDD, `edate` 종료일자 / 길이 8 / YYYYMMDD, `gubun` 금액구분 / 길이 1 / 0.백만원 1.원
+- 응답 `Output_0` (배열): `bsop_date`, `stck_oprc`, `stck_hgpr`, `stck_lwpr`, `stck_prpr`, `prdy_vrss_sign`, `prdy_vrss`, `prdy_ctrt`, `acml_vol`, `acml_tr_pbmn`, `lbma_pmprice`, `lbma_sign`, `lbma_change`, `lbma_chrate`, `filler`, `sdatez8`, `edatez8`
+
+### 금현물 변동거래 — `POST /krgold/quote/v1/goldVolatilityTrade`
+금현물 변동량/관련거래 조회 API 입니다. 조회 가능한 종목코드는 다음과 같습니다.  * 금 1kg - M04020000 * 미니금 100g - M04020100  응답 블록은 **데이터가 있을 때만 내려옵니다.** 블록이 없을 수 있으니 존재 여부를 먼저 확인하세요.
+- 요청 `Input_0`: `iem_cd`* 종목코드 / 길이 9, `array_cnt`* 조회개수 / 길이 3
+- 응답 `Output_0` (배열): `bsop_hour`, `stck_prpr`, `prdy_vrss_sign`, `prdy_vrss`, `prdy_ctrt`, `askp`, `bidp`, `cntg_vol`, `acml_vol`
+
+### 실시간 채널 (5개) — wss://api.nhplug.com:7070/websocket
+포트: 국내 시세 7070 · 해외 시세 7080 · 통보(국내·해외) 7070 · 모의 17070 (통보를 7080 → WSS10006) · 동시 2채널, 채널당 30건
+- `g5` 금현물 실시간 호가 — tr_key `shcode`, 필드 65개 · 금현물 실시간 호가 서비스 입니다.
+조회 가능한 종목코드는 다음과 같습니다. 
+* 금 1kg - M04020000
+* 미니금 100g - M04020100
+- `g4` 금현물 실시간 체결가 — tr_key `shcode`, 필드 14개 · 금현물 실시간 체결가 서비스 입니다.
+조회 가능한 종목코드는 다음과 같습니다. 
+* 금 1kg - M04020000
+* 미니금 100g - M04020100
+- `gE` 금현물 실시간 예상체결가 — tr_key `shcode`, 필드 8개 · 금현물 실시간 예상체결가 서비스 입니다.
+조회 가능한 종목코드는 다음과 같습니다. 
+* 금 1kg - M04020000
+* 미니금 100g - M04020100
+- `de` 금현물 실시간 체결내역 통보 — tr_key `userid`, 필드 12개 · wss://api.nhplug.com:7070/websocket · 금현물 주문 체결 시 실시간으로 수신됩니다.
+조회 가능한 종목코드는 다음과 같습니다. 
+* 금 1kg - M04020000
+* 미니금 100g - M04020100 통보 채널 — 국내·해외 모두 포트 7070 사용(7080 사용 시 WSS10006).
+- `d3` 금현물 실시간 주문내역 통보 — tr_key `userid`, 필드 24개 · wss://api.nhplug.com:7070/websocket · 금현물 주문 접수 시 실시간으로 수신됩니다.
+조회 가능한 종목코드는 다음과 같습니다. 
+* 금 1kg - M04020000
+* 미니금 100g - M04020100 통보 채널 — 국내·해외 모두 포트 7070 사용(7080 사용 시 WSS10006).
+
+---
+
