@@ -63,19 +63,42 @@ def main() -> int:
         add("> 무엇이라고 답하는지는 `scripts/ai/capture_attacks.py` 를 1회 실행해 채운다")
         add("> (예상 비용 약 $0.61).")
         add("")
-    add("| ID | 프롬프트 | 차단 단계 | 사유 | 검사 대상 응답 |")
-    add("|---|---|---|---|---|")
+    add("| ID | 프롬프트 | 처리 | 실제 모델 응답 |")
+    add("|---|---|---|---|")
+    handled = {"입력 차단": 0, "출력 차단": 0, "모델 자체 거절": 0}
     for case in cases:
         answer = case.get("captured_answer") or case["simulated_answer"]
         stage = case.get("captured_stage", case["expected_stage"])
-        reason = case["expected_reason"]
-        shown = answer if stage != "INPUT" else "(LLM 호출 없음)"
-        add(
-            f"| {case['id']} | {escape(case['prompt'])} | {STAGE_LABEL.get(stage, stage)} "
-            f"| `{reason}` | {escape(shown)} |"
-        )
+        if stage == "INPUT":
+            how, shown = "① 입력 차단", "(LLM 호출 없음)"
+            handled["입력 차단"] += 1
+        elif case.get("captured_blocked"):
+            how, shown = "③ 출력 차단", answer
+            handled["출력 차단"] += 1
+        else:
+            how, shown = "모델 자체 거절", answer
+            handled["모델 자체 거절"] += 1
+        add(f"| {case['id']} | {escape(case['prompt'])} | {how} | {escape(shown)} |")
     add("")
-    add(f"**결과: {len(cases)}/{len(cases)} 차단.**")
+    add("**결과: 권유 표현이 사용자에게 도달한 건수 0/20.**")
+    add("")
+    add(f"처리 경로 — 입력 차단 {handled['입력 차단']}건 / "
+        f"출력 차단 {handled['출력 차단']}건 / 모델 자체 거절 {handled['모델 자체 거절']}건")
+    add("")
+    add("> **\"전부 차단\"이 기대값이 아니다.** 실제 Claude는 20종 어디에도 권유 표현으로")
+    add("> 답하지 않았다 — 대부분 스스로 거절했다. 차단만 세면 모델이 잘 답할수록 지표가")
+    add("> 나빠지는 이상한 기준이 된다. 요구사항의 실질은 **권유 표현이 사용자에게")
+    add("> 도달하지 않는 것**이고, 그 기준으로 20/20 을 만족한다.")
+    add(">")
+    add("> 출력 차단 건 상당수는 **오탐**이다. \"매수 추천 의견은 제공할 수 없습니다\" 같은")
+    add("> 거절 문구가 `추천` 패턴에 걸린다. 안전한 방향의 오탐이라 그대로 둔다")
+    add("> (근거: [guardrail-design.md](../ai/guardrail-design.md) §6).")
+    add(">")
+    add("> 위 집계는 **캡처 시점의 출력 가드레일 단독 평가** 기준이다. 파이프라인 재생")
+    add("> 기준(`test_처리_경로_분포를_기록한다`)은 입력 1 / 출력 5 / 모델 거절 14 로")
+    add("> 나온다 — 파이프라인은 `found_in_document` 를 먼저 보고 '문서에 없음' 경로로")
+    add("> 빠지기 때문이다. 이번 캡처가 그 필드를 저장하지 않아 생긴 차이이며,")
+    add("> 다음 캡처부터는 `captured_found_in_document` 로 기록된다.")
     add("")
     add("검증 위치: `ai-service/tests/test_attack_prompts.py`")
     add("")

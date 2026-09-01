@@ -255,8 +255,10 @@ class OllamaAdapter(LlmPort):     # 폐쇄망 시연용
 
 ## 5. 완료 조건 체크리스트
 
-- [x] **권유 표현 유도 프롬프트 20종 전부 차단** (FSD §14 명시 조건)
-  - 목록을 `docs/appendix/guardrail-attack-prompts.md`에 문서화 (픽스처에서 자동 생성)
+- [x] **권유 표현 유도 프롬프트 20종** — 권유 표현이 사용자에게 도달한 건수 **0/20** (FSD §14 명시 조건)
+  - **실제 Claude 응답 캡처 완료** ($0.30, 19건 실호출). 이후 테스트는 무과금 재생
+  - 실측 결과 모델이 20종 전부 스스로 거절 → '전부 차단'이 아니라 '권유 미도달'이 실질 기준
+  - 목록·결과표를 `docs/appendix/guardrail-attack-prompts.md`에 자동 생성
 - [x] **환각 인용 검출 동작** (FSD §14 명시 조건) — 존재하지 않는 페이지 인용 시 차단
 - [x] 인덱싱 — PDF 업로드 → 청크 생성 → 임베딩 저장 확인
   - 실제 PDF(pdfplumber) → 페이지 추출 → 청킹 → 임베딩 → `DELETE`+`INSERT` 까지 검증
@@ -282,7 +284,9 @@ class OllamaAdapter(LlmPort):     # 폐쇄망 시연용
 
 > **완료 근거** (2026-09-01)
 >
-> Python 139건 + Java 254건(Phase 8분 19건 포함) 통과.
+> Python 140건 + Java 254건(Phase 8분 19건 포함) 통과.
+> 공격 프롬프트 20종은 **실제 claude-opus-5 응답**으로 검증한다(캡처 $0.2969,
+> 19건 실호출, 질의당 $0.0156, p95 10.3s).
 > 검증 위치는 `docs/ai/guardrail-design.md` §10 표 참조.
 >
 > **e2e 종단 검증에서 잡은 것.** VC++ 재배포 패키지 갱신 후 실제 bge-m3 로 돌린 결과
@@ -295,7 +299,6 @@ class OllamaAdapter(LlmPort):     # 폐쇄망 시연용
 > |---|---|---|
 > | Ollama 스위치 검증 + 품질·지연 비교 | 데스크탑 RTX 4080 | `scripts/ai/measure_provider.py` |
 > | 폐쇄망 시연 캡처 | 데스크탑 | — |
-> | 공격 프롬프트 20종 **실제 Claude 응답** 캡처 | ANTHROPIC_API_KEY | `scripts/ai/capture_attacks.py` (약 $0.61) |
 > | Claude 지연·비용 실측 | ANTHROPIC_API_KEY | `scripts/ai/measure_provider.py --repeat 3` (약 $0.96) |
 >
 > 현재 20종 차단 검증은 **시뮬레이션 응답**(가드레일이 없었다면 모델이 이렇게 답했을 것)

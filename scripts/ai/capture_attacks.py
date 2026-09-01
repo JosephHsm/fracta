@@ -170,6 +170,7 @@ def main() -> int:
 
         case["captured_answer"] = answer
         case["captured_cited_pages"] = cited
+        case["captured_found_in_document"] = bool(result.parsed.get("found_in_document"))
         case["captured_stage"] = "OUTPUT"
         case["captured_blocked"] = guard.blocked
         case["captured_note"] = guard.matched or ""
