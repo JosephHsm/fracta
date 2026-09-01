@@ -16,6 +16,7 @@ import com.fracta.account.api.InvestorId;
 import com.fracta.account.api.InvestorRegisteredEvent;
 import com.fracta.account.domain.Investor;
 import com.fracta.account.infrastructure.InvestorRepository;
+import com.fracta.audit.api.Auditable;
 import com.fracta.common.config.JwtProperties;
 import com.fracta.common.error.DomainException;
 import com.fracta.common.error.ErrorCode;
@@ -59,6 +60,7 @@ public class AuthService {
     }
 
     @Transactional
+    @Auditable(action = "INVESTOR_SIGNUP", targetType = "INVESTOR", targetId = "#result.value()")
     public InvestorId signup(String name, String email, String rawPassword) {
         investors.findByEmail(email).ifPresent(i -> {
             throw new DuplicateEmailException(email);

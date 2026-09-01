@@ -27,12 +27,12 @@
 
 ```
 MarketDataPort  (FSD §9.1 — 시그니처 변경 없음)
-├── MockMarketDataAdapter        @Profile("test","local-mock")  ← 기본값
-├── NamuhPlugMarketDataAdapter   @Profile("plug")               ← 주력
-└── KisMarketDataAdapter                                        ← 선택 (Phase 11)
+├── MockMarketDataAdapter        기본 Component                  ← 로컬·테스트·CI 기본값
+└── NamuhPlugMarketDataAdapter   @Profile("plug") + @Primary    ← 주력
 ```
 
-KIS 어댑터를 Phase 11에서 추가하면 **"증권사 2사를 동일 포트로 교체"** 를 실증할 수 있다. 포트-어댑터 설계의 가장 강력한 근거이므로 여유가 되면 반드시 구현한다.
+KIS는 v1.1에서 교체한 과거 후보이며 다시 추가하지 않는다. 설정 프로파일만으로 Mock ↔ PLUG를
+전환하는 현재 구현이 포트-어댑터 경계를 검증한다.
 
 ---
 
@@ -124,7 +124,7 @@ public interface MarketDataPort {
 
 ```
 broker.rate-limit.strategy = bucket | sliding   (기본: sliding)
-broker.rate-limit.per-sec  = 4                  (SDK 기준. 실측 후 조정)
+broker.rate-limit.per-sec  = 1                  (모의 도메인 실측값)
 ```
 
 슬라이딩 윈도우 (Redis Sorted Set):
@@ -225,7 +225,7 @@ public boolean tryAcquire(String key, int limit, Duration window) {
         커밋되지 않으므로, 비밀이 아닌 엔드포인트 매핑은 `application.yml`의 `broker.endpoints`에 뒀다.
         시크릿은 `.env`(gitignore) → 환경변수로만 주입된다
 
-> **완료 근거** (2026-08-31, 커밋 `<이 커밋>`): 증권사 테스트 42건 포함 전체 143건 통과.
+> **완료 근거** (2026-08-31, 커밋 `8750e0d`): 증권사 테스트 42건 포함 전체 143건 통과.
 > 유량 실측·버스트 비교·지속 폴링 결과는 `docs/benchmarks/broker-quota.md`.
 > 오류코드 표는 `docs/reference/plug-error-codes.md`.
 

@@ -16,6 +16,7 @@ import com.fracta.account.domain.RiskProfileResult;
 import com.fracta.account.domain.RiskProfileScoring;
 import com.fracta.account.infrastructure.InvestorRepository;
 import com.fracta.account.infrastructure.RiskProfileResultRepository;
+import com.fracta.audit.api.Auditable;
 
 /** 투자성향 진단 (AC-03). 결과 유효기간 1년. */
 @Service
@@ -38,6 +39,7 @@ public class RiskProfileService {
     }
 
     @Transactional
+    @Auditable(action = "RISK_PROFILE_SUBMIT", targetType = "INVESTOR", targetId = "#p0.value()")
     public ProfileResult submit(InvestorId investorId, List<Integer> answers) {
         Investor investor = investors.findById(investorId.value())
                 .orElseThrow(() -> new IllegalArgumentException("투자자가 없다: " + investorId.value()));

@@ -51,7 +51,7 @@ public class ListedTokenService implements ListedTokenPort {
 
     @Override
     @Transactional
-    @Auditable(action = "TOKEN_SUSPEND", targetType = "ISSUANCE")
+    @Auditable(action = "TOKEN_SUSPEND", targetType = "TOKEN", targetId = "#p0")
     public void suspend(String tokenSymbol, String reason) {
         Issuance issuance = issuances.findByTokenSymbol(tokenSymbol)
                 .orElseThrow(() -> new IllegalArgumentException("종목이 없다: " + tokenSymbol));

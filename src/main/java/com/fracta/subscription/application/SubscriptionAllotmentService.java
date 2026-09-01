@@ -63,7 +63,7 @@ public class SubscriptionAllotmentService {
     }
 
     @Transactional
-    @Auditable(action = "SUBSCRIPTION_FINALIZE", targetType = "ISSUANCE")
+    @Auditable(action = "SUBSCRIPTION_FINALIZE", targetType = "ISSUANCE", targetId = "#p0")
     public FinalizeResult finalizeAllotment(long issuanceId) {
         IssuanceInfo info = issuances.info(issuanceId);
         if (!"ALLOTTING".equals(info.status())) {

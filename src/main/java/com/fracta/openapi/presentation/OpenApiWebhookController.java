@@ -49,7 +49,8 @@ public class OpenApiWebhookController {
                     + "\"secret\":\"whsec_xxx\"}")
     @PostMapping({"/open/v1/webhooks", "/open/sandbox/v1/webhooks"})
     @ResponseStatus(HttpStatus.CREATED)
-    @Auditable(action = "WEBHOOK_REGISTER", targetType = "WEBHOOK_ENDPOINT")
+    @Auditable(action = "WEBHOOK_REGISTER", targetType = "WEBHOOK_ENDPOINT",
+            targetId = "#result.data()['webhookId']")
     public ApiResponse<Map<String, Object>> register(
             @Valid @RequestBody RegisterWebhookRequest request) {
         Set<WebhookEvent> events = request.events().stream()

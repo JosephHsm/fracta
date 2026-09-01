@@ -29,7 +29,8 @@
 1. **프로젝트 스캐폴딩**
    - Spring Boot 3.3.x, Java 21, Gradle Wrapper 포함
    - 의존성: web, data-jpa, validation, actuator, redis, batch(선언만), querydsl, flyway, springdoc
-   - `application.yml` + `application-local.yml` + `application-test.yml`
+   - 운영 기본값은 `src/main/resources/application.yml`, 테스트 오버라이드는
+     `src/test/resources/application-test.yml`로 분리
 
 2. **docker-compose.yml**
    ```
@@ -64,7 +65,7 @@
 7. **`requestId` 필터** — `OncePerRequestFilter`에서 UUID 생성 후 MDC 주입. 응답 헤더 `X-Request-Id`에도 반영.
 
 8. **감사 로그 AOP**
-   - `@Auditable(action, targetType)` 애노테이션
+   - `@Auditable(action, targetType, targetId)` 애노테이션
    - `@Around` 어드바이스가 before/after 상태를 JSON 직렬화하여 `audit_log` INSERT
    - `channel`은 MDC에서 판별 (WEB/API/BATCH/ADMIN)
    - **마스킹 필터**: 토큰·시크릿·주민번호·`ci_hash` 필드명 패턴은 `***`로 치환 후 저장
@@ -107,10 +108,11 @@ fracta/
 ├── docker/postgres/init.sql
 ├── src/main/java/com/fracta/
 │   ├── FractaApplication.java
-│   ├── common/{money,error,response,event,config,logging}/
+│   ├── common/{money,error,response,config,logging,ratelimit}/
 │   └── {issuance,subscription,trading,ledger,settlement,account,openapi,audit,external,ai,batch}/  (빈 패키지 + package-info)
-├── src/main/resources/{application.yml,application-local.yml,logback-spring.xml}
+├── src/main/resources/{application.yml,logback-spring.xml}
 ├── src/main/resources/db/migration/V1__audit_log.sql
+├── src/test/resources/application-test.yml
 └── src/test/java/com/fracta/{common/money,support/IntegrationTestBase}/
 ```
 

@@ -30,6 +30,10 @@ FSD §10.4의 `model = "claude-sonnet-4-6"` 기준으로 설계하면 두 군데
 `effort`, `stop_reason == "refusal"` 선확인, `fallbacks="default"` + `server-side-fallback-2026-07-01`)는
 문서 서술이 정확했다.
 
+모델 활성 상태와 단가는 2026-09-01 기준 Anthropic 공식
+[모델 상태](https://docs.anthropic.com/en/docs/about-claude/model-deprecations)와
+[가격 문서](https://docs.anthropic.com/en/docs/about-claude/pricing)를 다시 대조했다.
+
 
 ### 모델 선택
 
@@ -105,14 +109,15 @@ PDF → 페이지별 텍스트 추출 (pdfplumber)
 
 ```
 질문 → 임베딩 → 코사인 유사도 top-5
-     → 최고 유사도 < 0.6 이면 LLM 호출 없이 즉시 "문서에서 찾을 수 없습니다"
+     → 최고 유사도 < 0.48 이면 LLM 호출 없이 즉시 "문서에서 찾을 수 없습니다"
      → 컨텍스트 + 질문 → LLM
      → 가드레일 검사
      → 응답 + 인용 페이지 번호
 ```
 
 - **임계값 미달 시 LLM을 호출하지 않는다.** 비용·환각 양쪽에서 이득
-- 임계값 `0.6`은 설정값. 실측 후 조정하고 근거를 문서화
+- 초기 임계값 `0.6`을 bge-m3로 실측한 뒤 `0.48`로 조정했다. 근거는
+  `docs/ai/similarity-threshold.md`에 보존한다
 
 ### 3.3 LLM 호출 (Python SDK)
 
@@ -121,9 +126,9 @@ from anthropic import Anthropic
 
 client = Anthropic()   # ANTHROPIC_API_KEY 또는 ant auth 프로필 자동 인식
 
-resp = client.messages.create(
+resp = client.beta.messages.create(
     model=settings.ai_model,               # 기본 "claude-opus-5"
-    max_tokens=4096,
+    max_tokens=settings.ai_max_tokens,      # 기본 16000
     system=PROSPECTUS_SYSTEM_PROMPT,
     messages=[{"role": "user", "content": prompt}],
     output_config={
@@ -213,7 +218,8 @@ def guard_output(answer: str, cited_pages: list[int], chunks: list) -> GuardResu
 ```python
 class LlmPort(ABC):
     @abstractmethod
-    def complete(self, system: str, messages: list, max_tokens: int) -> LlmResult: ...
+    def complete_json(self, system: str, user_prompt: str,
+                      schema: dict, max_tokens: int) -> LlmResult: ...
 
 class ClaudeAdapter(LlmPort):     # 기본값
     # model = settings.ai_model   (기본 "claude-opus-5")
@@ -284,7 +290,7 @@ class OllamaAdapter(LlmPort):     # 폐쇄망 시연용
 
 > **완료 근거** (2026-09-01)
 >
-> Python 140건 + Java 254건(Phase 8분 19건 포함) 통과.
+> Python 140건 + Java 255건(Phase 8분 19건 포함) 통과.
 > 공격 프롬프트 20종은 **실제 claude-opus-5 응답**으로 검증한다(캡처 $0.2969,
 > 19건 실호출, 질의당 $0.0156, p95 10.3s).
 > 검증 위치는 `docs/ai/guardrail-design.md` §10 표 참조.

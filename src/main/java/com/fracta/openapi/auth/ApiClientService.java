@@ -49,7 +49,8 @@ public class ApiClientService {
     }
 
     @Transactional
-    @Auditable(action = "API_CLIENT_REGISTER", targetType = "API_CLIENT")
+    @Auditable(action = "API_CLIENT_REGISTER", targetType = "API_CLIENT",
+            targetId = "#result.clientId()")
     public RegisteredClient register(String name, long ownerInvestorId, Set<ApiScope> scopes,
                                      ApiEnv env, int perSec, int perDay) {
         String clientId = "cli_" + randomToken(16);
@@ -66,7 +67,7 @@ public class ApiClientService {
 
     /** 재발급 — 반환 시점부터 기존 시크릿은 즉시 무효다. */
     @Transactional
-    @Auditable(action = "API_CLIENT_ROTATE_SECRET", targetType = "API_CLIENT")
+    @Auditable(action = "API_CLIENT_ROTATE_SECRET", targetType = "API_CLIENT", targetId = "#p0")
     public RegisteredClient rotateSecret(String clientId) {
         ApiClient client = clients.findByClientId(clientId)
                 .orElseThrow(() -> new OpenApiExceptions.InvalidClientException(clientId));

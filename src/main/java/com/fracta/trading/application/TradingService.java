@@ -17,6 +17,7 @@ import com.fracta.account.api.RiskProfileRequiredException;
 import com.fracta.account.api.SuitabilityMismatchException;
 import com.fracta.account.api.SuitabilityPort;
 import com.fracta.account.api.SuitabilityResult;
+import com.fracta.audit.api.Auditable;
 import com.fracta.common.money.Money;
 import com.fracta.common.money.Units;
 import com.fracta.issuance.api.ListedTokenPort;
@@ -158,6 +159,8 @@ public class TradingService {
      * 주문 접수 트랜잭션. 매도면 잠금이 선행하고, 잠금이 실패하면 주문 레코드가 생기지 않는다.
      */
     @Transactional
+    @Auditable(action = "ORDER_ACCEPT", targetType = "TRADE_ORDER",
+            targetId = "#result.bookOrder().orderId()")
     public AcceptedOrder acceptOrder(String tokenSymbol, InvestorId investorId, OrderSide side,
                                      OrderType orderType, Long price, long units,
                                      String idempotencyKey) {
@@ -231,6 +234,7 @@ public class TradingService {
      * 체결마다 새 트랜잭션({@code REQUIRES_NEW})이라 한 건이 실패해도 앞선 체결은 유지된다.
      */
     @Transactional(propagation = org.springframework.transaction.annotation.Propagation.REQUIRES_NEW)
+    @Auditable(action = "EXECUTION_SETTLE", targetType = "TRADE_EXECUTION", targetId = "#result")
     public long settleAndRecord(String tokenSymbol, Match match, BigDecimal premium) {
         var result = settlement.settle(new SettlementService.SettleCommand(
                 tokenSymbol, match.buyOrderId(), match.sellOrderId(),
@@ -269,6 +273,7 @@ public class TradingService {
      * 오더북 되돌리기는 {@code OrderBook.submit} 이 이미 처리했으므로 여기서는 DB 상태만 바꾼다.
      */
     @Transactional
+    @Auditable(action = "ORDER_REJECT", targetType = "TRADE_ORDER", targetId = "#p0.buyOrderId()")
     public void rejectAfterSettlementFailure(Match match) {
         orders.findById(match.buyOrderId()).ifPresent(TradeOrder::reject);
         log.warn("결제 실패로 매수 주문 거절: buyOrderId={} sellOrderId={}",
@@ -280,6 +285,7 @@ public class TradingService {
      * 이미 REJECTED 로 표시된 주문은 그대로 둔다.
      */
     @Transactional
+    @Auditable(action = "ORDER_FINALIZE", targetType = "TRADE_ORDER", targetId = "#p0")
     public PlaceResult finalizeOrder(long orderId, List<Long> executionIds) {
         TradeOrder order = orders.findById(orderId).orElseThrow();
         if (order.status().isOpenOnBook() && order.orderType() == OrderType.MARKET
@@ -296,6 +302,7 @@ public class TradingService {
     // ── 주문 취소 (TR-03) ────────────────────────────────────
 
     @Transactional
+    @Auditable(action = "ORDER_CANCEL", targetType = "TRADE_ORDER", targetId = "#p0")
     public PlaceResult cancel(long orderId, InvestorId investorId) {
         TradeOrder order = orders.findById(orderId)
                 .orElseThrow(() -> new IllegalArgumentException("주문이 없다: " + orderId));
@@ -344,6 +351,7 @@ public class TradingService {
 
     /** 거래 중단 시 미체결 주문 전량 취소 + 잠금 해제 (TR-08 정책). */
     @Transactional
+    @Auditable(action = "ORDERS_CANCEL_ALL", targetType = "TOKEN", targetId = "#p0")
     public int cancelAllOpenOrders(String tokenSymbol, String reason) {
         List<TradeOrder> open = orders.findOpenOrdersOfSymbol(tokenSymbol,
                 List.of(OrderStatus.OPEN, OrderStatus.PARTIALLY_FILLED));

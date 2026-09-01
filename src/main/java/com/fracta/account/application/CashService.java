@@ -10,6 +10,7 @@ import com.fracta.account.api.InvestorId;
 import com.fracta.account.domain.CashTransaction;
 import com.fracta.account.infrastructure.CashTransactionRepository;
 import com.fracta.account.infrastructure.InvestorRepository;
+import com.fracta.audit.api.Auditable;
 import com.fracta.common.money.Money;
 
 /** 예치금 가상 입출금 (AC-05) + 내부 이동(증거금·정산, CashPort). */
@@ -28,6 +29,7 @@ public class CashService implements com.fracta.account.api.CashPort {
     }
 
     @Transactional
+    @Auditable(action = "CASH_DEPOSIT", targetType = "INVESTOR", targetId = "#p0.value()")
     public Money deposit(InvestorId investorId, Money amount) {
         requirePositive(amount);
         int updated = investors.deposit(investorId.value(), amount.amount());
@@ -41,6 +43,7 @@ public class CashService implements com.fracta.account.api.CashPort {
     }
 
     @Transactional
+    @Auditable(action = "CASH_WITHDRAW", targetType = "INVESTOR", targetId = "#p0.value()")
     public Money withdraw(InvestorId investorId, Money amount) {
         requirePositive(amount);
         int updated = investors.withdraw(investorId.value(), amount.amount());

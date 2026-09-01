@@ -1,5 +1,6 @@
 package com.fracta.issuance.application;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
@@ -16,6 +17,7 @@ import com.fracta.common.config.AdvisoryLockIds;
 import com.fracta.common.money.Money;
 import com.fracta.common.money.Units;
 import com.fracta.external.broker.MarketDataPort;
+import com.fracta.external.broker.PriceConverter;
 import com.fracta.issuance.api.ProspectusUploadedEvent;
 import com.fracta.issuance.domain.Issuance;
 import com.fracta.issuance.domain.IssuanceStatus;
@@ -36,7 +38,7 @@ public class IssuanceService {
     public static final long MAX_TOTAL_UNITS = 1_000_000;
     public static final long MIN_UNIT_PRICE = 100;
     public static final long MAX_TOTAL_AMOUNT = 10_000_000_000L; // 100억원
-    private static final double PREMIUM_WARN_PERCENT = 30.0;
+    private static final BigDecimal PREMIUM_WARN_PERCENT = new BigDecimal("30");
 
     private static final Logger log = LoggerFactory.getLogger(IssuanceService.class);
 
@@ -67,6 +69,7 @@ public class IssuanceService {
     // ── 생성 (IS-02, IS-05) ─────────────────────────────────────
 
     @Transactional
+    @Auditable(action = "ISSUANCE_CREATE", targetType = "ISSUANCE", targetId = "#result.issuanceId()")
     public CreateResult create(long assetId, long totalUnits, long unitPrice,
                                Instant subscriptionStartAt, Instant subscriptionEndAt) {
         return create(assetId, totalUnits, unitPrice, subscriptionStartAt, subscriptionEndAt,
@@ -74,6 +77,7 @@ public class IssuanceService {
     }
 
     @Transactional
+    @Auditable(action = "ISSUANCE_CREATE", targetType = "ISSUANCE", targetId = "#result.issuanceId()")
     public CreateResult create(long assetId, long totalUnits, long unitPrice,
                                Instant subscriptionStartAt, Instant subscriptionEndAt,
                                Issuance.AllotmentMethod allotmentMethod, int riskGrade) {
@@ -110,12 +114,14 @@ public class IssuanceService {
         if (asset.brokerTicker() == null || asset.brokerTicker().isBlank()) {
             return warnings;
         }
-        long marketPrice = marketData.getCurrentPrice(asset.brokerTicker()).price().amount();
-        long referencePrice = Math.max(1, Math.round((double) marketPrice / asset.splitRatio()));
-        double premium = (unitPrice - referencePrice) * 100.0 / referencePrice;
-        if (Math.abs(premium) > PREMIUM_WARN_PERCENT) {
-            String warning = "발행가(%d원)가 시세 환산 참조가(%d원) 대비 %.1f%% 괴리 — ±30%% 초과 (경고, 차단 아님)"
-                    .formatted(unitPrice, referencePrice, premium);
+        Money referencePrice = PriceConverter.referencePrice(
+                marketData.getCurrentPrice(asset.brokerTicker()).price(), asset.splitRatio());
+        BigDecimal premium = PriceConverter
+                .premiumRate(Money.of(unitPrice), referencePrice)
+                .orElse(BigDecimal.ZERO);
+        if (premium.abs().compareTo(PREMIUM_WARN_PERCENT) > 0) {
+            String warning = "발행가(%d원)가 시세 환산 참조가(%d원) 대비 %s%% 괴리 — ±30%% 초과 (경고, 차단 아님)"
+                    .formatted(unitPrice, referencePrice.amount(), premium.stripTrailingZeros().toPlainString());
             warnings.add(warning);
             log.warn("issuance premium warning: assetCode={} {}", asset.assetCode(), warning);
         }
@@ -147,23 +153,25 @@ public class IssuanceService {
     // ── 상태 전이 (IS-04, IS-06, IS-07) ─────────────────────────
 
     @Transactional
+    @Auditable(action = "ISSUANCE_SUBMIT", targetType = "ISSUANCE", targetId = "#p0")
     public TransitionResult submit(long issuanceId) {
         return transition(issuanceId, IssuanceStatus.PENDING_APPROVAL);
     }
 
     @Transactional
-    @Auditable(action = "ISSUANCE_APPROVE", targetType = "ISSUANCE")
+    @Auditable(action = "ISSUANCE_APPROVE", targetType = "ISSUANCE", targetId = "#p0")
     public TransitionResult approve(long issuanceId) {
         return transition(issuanceId, IssuanceStatus.APPROVED);
     }
 
     @Transactional
-    @Auditable(action = "ISSUANCE_REJECT", targetType = "ISSUANCE")
+    @Auditable(action = "ISSUANCE_REJECT", targetType = "ISSUANCE", targetId = "#p0")
     public TransitionResult reject(long issuanceId) {
         return transition(issuanceId, IssuanceStatus.REJECTED);
     }
 
     @Transactional
+    @Auditable(action = "ISSUANCE_OPEN_SUBSCRIPTION", targetType = "ISSUANCE", targetId = "#p0")
     public TransitionResult openSubscription(long issuanceId) {
         Issuance issuance = load(issuanceId);
         if (Instant.now().isBefore(issuance.subscriptionStartAt())) {
@@ -173,6 +181,7 @@ public class IssuanceService {
     }
 
     @Transactional
+    @Auditable(action = "ISSUANCE_START_ALLOTMENT", targetType = "ISSUANCE", targetId = "#p0")
     public TransitionResult startAllotment(long issuanceId) {
         return transition(issuanceId, IssuanceStatus.ALLOTTING);
     }
@@ -182,7 +191,7 @@ public class IssuanceService {
      * 실제로는 Phase 4 배정 완료 후 상장이다 — Phase 3에서는 ADMIN 수동 경로만 열어둔다.
      */
     @Transactional
-    @Auditable(action = "ISSUANCE_LIST", targetType = "ISSUANCE")
+    @Auditable(action = "ISSUANCE_LIST", targetType = "ISSUANCE", targetId = "#p0")
     public TransitionResult listIssuance(long issuanceId) {
         Issuance issuance = load(issuanceId);
         UnderlyingAsset asset = assets.findById(issuance.assetId())
@@ -197,6 +206,7 @@ public class IssuanceService {
     }
 
     @Transactional
+    @Auditable(action = "PROSPECTUS_ATTACH", targetType = "ISSUANCE", targetId = "#p0")
     public void attachProspectus(long issuanceId, String fileKey) {
         Issuance issuance = load(issuanceId);
         issuance.attachProspectus(fileKey);

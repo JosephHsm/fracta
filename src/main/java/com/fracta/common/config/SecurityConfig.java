@@ -88,7 +88,7 @@ public class SecurityConfig {
 
     @Bean
     PasswordEncoder passwordEncoder(
-            @org.springframework.beans.factory.annotation.Value("${security.bcrypt-strength:10}") int strength) {
+            @org.springframework.beans.factory.annotation.Value("${security.bcrypt-strength:12}") int strength) {
         return new BCryptPasswordEncoder(strength);
     }
 

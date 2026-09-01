@@ -57,7 +57,7 @@ public class KycMockProcessor {
         }
 
         @Transactional
-        @Auditable(action = "KYC_VERIFY", targetType = "INVESTOR")
+        @Auditable(action = "KYC_VERIFY", targetType = "INVESTOR", targetId = "#p0.value()")
         public long verify(InvestorId investorId) {
             investors.findById(investorId.value()).ifPresent(investor -> investor.verifyKyc());
             return investorId.value();

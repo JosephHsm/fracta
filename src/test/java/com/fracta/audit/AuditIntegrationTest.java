@@ -29,7 +29,7 @@ class AuditIntegrationTest extends IntegrationTestBase {
         dummyService.update(new DummyCommand("acct-777", "hello-memo", "pw-1234", "top-secret", "CI_ABC"));
 
         Map<String, Object> row = jdbcTemplate.queryForMap("""
-                SELECT actor, action, target_type, channel,
+                SELECT actor, action, target_type, target_id, channel,
                        before_state::text AS before_state, after_state::text AS after_state
                 FROM audit_log
                 WHERE action = ? AND before_state::text LIKE '%acct-777%'
@@ -38,11 +38,31 @@ class AuditIntegrationTest extends IntegrationTestBase {
 
         assertThat(row.get("action")).isEqualTo("DUMMY_UPDATE");
         assertThat(row.get("target_type")).isEqualTo("DUMMY");
+        assertThat(row.get("target_id")).isEqualTo("acct-777");
         assertThat(row.get("actor")).isEqualTo("system");
         // 웹 요청 밖(직접 호출)이므로 MDC 채널이 없어 BATCH로 기록된다
         assertThat(row.get("channel")).isEqualTo("BATCH");
         assertThat((String) row.get("before_state")).contains("acct-777").contains("hello-memo");
         assertThat((String) row.get("after_state")).contains("UPDATED");
+    }
+
+    @Test
+    @DisplayName("스칼라 인자가 여러 개여도 파라미터명 기준으로 민감값을 마스킹한다")
+    void scalarArgumentsKeepNamesForMasking() {
+        dummyService.updateWithScalarArgs("acct-999", "memo", "raw-password-123");
+
+        Map<String, Object> row = jdbcTemplate.queryForMap("""
+                SELECT target_id, before_state::text AS before_state
+                FROM audit_log
+                WHERE action = 'DUMMY_MULTI_ARG'
+                ORDER BY id DESC LIMIT 1
+                """);
+
+        assertThat(row.get("target_id")).isEqualTo("acct-999");
+        assertThat((String) row.get("before_state"))
+                .contains("accountRef")
+                .doesNotContain("raw-password-123")
+                .contains("***");
     }
 
     @Test

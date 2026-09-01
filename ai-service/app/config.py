@@ -32,7 +32,7 @@ class Settings(BaseSettings):
 
     # 실측으로 조정한 값 (FSD §10.2 기본값 0.6 → 0.48).
     # bge-m3 기준 관련 질문 0.527~0.654 / 주제 무관 질문 0.350~0.429 로 갈렸다.
-    # 0.6 을 그대로 쓰면 답할 수 있는 질문의 절반이 임계값에서 잘렸다.
+    # 0.6 을 그대로 쓰면 답할 수 있는 질문 10건 중 4건이 임계값에서 잘렸다.
     # 근거와 측정표: docs/ai/similarity-threshold.md
     similarity_threshold: float = 0.48
     top_k: int = 5

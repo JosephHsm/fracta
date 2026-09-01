@@ -18,4 +18,10 @@ public @interface Auditable {
 
     /** 대상 타입. 예: SUBSCRIPTION */
     String targetType();
+
+    /**
+     * 대상 식별자를 구하는 SpEL. 메서드 인자는 {@code #p0}, {@code #p1}, 반환값은
+     * {@code #result} 로 참조한다.
+     */
+    String targetId() default "";
 }

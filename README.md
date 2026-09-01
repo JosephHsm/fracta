@@ -6,7 +6,7 @@
 
 > **현재 상태: Phase 1~7 완료 + Phase 8 AI·Claude 실측 완료**
 > (기반 · 원장 · 계좌/발행 · 청약 · 증권사 연동 · 유통/결제 · 오픈 API · AI 가드레일)
-> 테스트 **394건** 전부 통과 — Java 254건(Testcontainers) + Python 140건(pytest).
+> 테스트 **395건** 전부 통과 — Java 255건(Testcontainers) + Python 140건(pytest).
 > 실측 자료는 아래 [실측 기록](#실측-기록) 참조.
 > Phase 8은 폐쇄망(Ollama) 품질·지연 비교와 캡처만 남았습니다 — RTX 4080 데스크탑에서
 > 측정합니다. 추정치로 표를 채우지 않습니다.
@@ -18,7 +18,7 @@
 
 | 문서 | 내용 |
 |---|---|
-| [`docs/FSD.md`](docs/FSD.md) | 기능 사양서 (v1.1) — **단일 진실 공급원(SSOT)** |
+| [`docs/FSD.md`](docs/FSD.md) | 기능 사양서 (v1.1.1) — **단일 진실 공급원(SSOT)** |
 | [`docs/phases/README.md`](docs/phases/README.md) | Phase 11개 인덱스 및 의존 관계 |
 | [`CLAUDE.md`](CLAUDE.md) | AI 개발 에이전트용 프로젝트 규칙 |
 | [`docs/reference/plug-error-codes.md`](docs/reference/plug-error-codes.md) | namuh PLUG 게이트웨이 오류코드와 처리 정책 |
@@ -193,14 +193,14 @@ def verify_webhook(secret: str, raw_body: bytes, signature: str) -> bool:
 
 ---
 
-## 로컬 실행 (Phase 1 완료 후)
+## 로컬 실행
 
 ```bash
 docker compose up -d          # PostgreSQL / Redis / MinIO / ai-service
 ./gradlew build
 ./gradlew test
 
-# AI 서비스 테스트 (DB·임베딩 모델·LLM 없이 전 경로가 돕니다)
+# AI 서비스 테스트 (DB·임베딩 모델·LLM 없이 전 경로가 동작합니다)
 cd ai-service && .venv/Scripts/python.exe -m pytest -q
 
 # 폐쇄망 모드 (선택 — 기본 기동에서 제외)

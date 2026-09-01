@@ -73,10 +73,13 @@ class IssuanceLifecycleIntegrationTest extends IntegrationTestBase {
 
         // 승인 감사 로그: actor/before/after
         Map<String, Object> audit = jdbc.queryForMap("""
-                SELECT actor, before_state::text AS before_state, after_state::text AS after_state
+                SELECT actor, target_id, channel,
+                       before_state::text AS before_state, after_state::text AS after_state
                 FROM audit_log WHERE action = 'ISSUANCE_APPROVE' ORDER BY id DESC LIMIT 1
                 """);
         assertThat(audit.get("actor")).isEqualTo("999999");
+        assertThat(audit.get("target_id")).isEqualTo(String.valueOf(id));
+        assertThat(audit.get("channel")).isEqualTo("ADMIN");
         assertThat((String) audit.get("before_state")).contains(String.valueOf(id));
         assertThat((String) audit.get("after_state")).contains("PENDING_APPROVAL").contains("APPROVED");
 

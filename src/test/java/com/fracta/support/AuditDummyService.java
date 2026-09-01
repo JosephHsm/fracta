@@ -14,8 +14,13 @@ public class AuditDummyService {
     public record DummyResult(String accountRef, String status, String token) {
     }
 
-    @Auditable(action = "DUMMY_UPDATE", targetType = "DUMMY")
+    @Auditable(action = "DUMMY_UPDATE", targetType = "DUMMY", targetId = "#result.accountRef()")
     public DummyResult update(DummyCommand command) {
         return new DummyResult(command.accountRef(), "UPDATED", "tok-9999");
+    }
+
+    @Auditable(action = "DUMMY_MULTI_ARG", targetType = "DUMMY", targetId = "#result.accountRef()")
+    public DummyResult updateWithScalarArgs(String accountRef, String memo, String rawPassword) {
+        return new DummyResult(accountRef, "UPDATED", "tok-9999");
     }
 }

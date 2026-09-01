@@ -7,6 +7,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.fracta.ai.IndexResult;
 import com.fracta.ai.LlmPort;
+import com.fracta.audit.api.Auditable;
 import com.fracta.common.response.ApiResponse;
 import com.fracta.issuance.application.IssuanceService;
 import com.fracta.issuance.domain.Issuance;
@@ -30,6 +31,7 @@ public class AdminAiController {
     }
 
     @PostMapping("/issuances/{id}/index")
+    @Auditable(action = "PROSPECTUS_REINDEX", targetType = "ISSUANCE", targetId = "#p0")
     public ApiResponse<IndexResult> reindex(@PathVariable("id") long issuanceId) {
         Issuance issuance = issuanceService.get(issuanceId);
         String fileKey = issuance.prospectusFileKey();

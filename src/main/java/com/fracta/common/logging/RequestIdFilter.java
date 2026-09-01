@@ -48,6 +48,9 @@ public class RequestIdFilter extends OncePerRequestFilter {
     }
 
     private String resolveChannel(String uri) {
+        if (uri.startsWith("/api/v1/admin/")) {
+            return "ADMIN";
+        }
         return uri.startsWith("/open") ? "API" : "WEB";
     }
 }

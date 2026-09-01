@@ -65,7 +65,7 @@ public class SuitabilityService implements SuitabilityPort {
 
     /** 부적합 확인 서명 — 서명한 등급 이하 상품을 커버. 감사 로그 필수. */
     @Transactional
-    @Auditable(action = "SUITABILITY_ACK", targetType = "INVESTOR")
+    @Auditable(action = "SUITABILITY_ACK", targetType = "INVESTOR", targetId = "#p0.value()")
     public long acknowledge(InvestorId investorId, RiskGrade productGrade) {
         acks.save(new SuitabilityAck(investorId.value(), productGrade.level()));
         return investorId.value();

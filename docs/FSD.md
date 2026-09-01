@@ -4,8 +4,8 @@
 >
 > | 항목 | 내용 |
 > |---|---|
-> | 문서 버전 | v1.1 |
-> | 작성일 | 2026-08-20 (v1.1 개정: 2026-08-31) |
+> | 문서 버전 | v1.1.1 |
+> | 작성일 | 2026-08-20 (v1.1.1 개정: 2026-09-01) |
 > | 문서 목적 | AI 개발 에이전트가 이 문서만으로 전체 구현이 가능하도록 하는 단일 진실 공급원(SSOT) |
 > | 프로젝트 성격 | 1인 개발 포트폴리오 / 금융IT 직무 지원용 |
 
@@ -176,7 +176,8 @@ com.fracta
 ├── common/              # 공통 (에러, 응답 포맷, Money, 유틸)
 │   ├── error/
 │   ├── money/           # Money, Units 값객체
-│   └── event/
+│   ├── ratelimit/       # Redis 원자적 슬라이딩 윈도우 (Phase 5·7 공용)
+│   └── logging/
 ├── issuance/
 │   ├── api/             # 다른 모듈에 노출하는 인터페이스 + DTO
 │   ├── domain/          # 엔티티, 값객체, 도메인 서비스
@@ -192,15 +193,18 @@ com.fracta
 ├── account/
 ├── openapi/
 │   ├── auth/            # OAuth2, API Key
-│   ├── quota/           # Rate Limit
+│   ├── gateway/         # 인증·Scope·Rate Limit 게이트웨이
 │   ├── idempotency/
-│   └── webhook/
+│   ├── log/
+│   ├── sandbox/
+│   ├── webhook/
+│   └── presentation/
 ├── audit/
 ├── external/
 │   └── broker/          # 증권사 API 어댑터
 │       ├── MarketDataPort.java
-│       ├── NamuhPlugMarketDataAdapter.java
-│       └── MockMarketDataAdapter.java
+│       ├── MockMarketDataAdapter.java
+│       └── plug/NamuhPlugMarketDataAdapter.java
 ├── ai/
 │   └── LlmPort.java
 └── batch/
@@ -514,7 +518,7 @@ public interface LedgerPort {
 | OA-01 | API 클라이언트 등록 | `client_id`/`client_secret` 발급. secret은 해시 저장, 최초 1회만 평문 노출 |
 | OA-02 | OAuth2 토큰 발급 | Client Credentials Grant. access_token 유효 1시간 |
 | OA-03 | Scope 권한 | `market:read`, `account:read`, `order:write`, `subscription:write` |
-| OA-04 | Rate Limit | 토큰 버킷. 기본 초당 10건 / 일 10,000건 |
+| OA-04 | Rate Limit | Redis 원자적 슬라이딩 윈도우. 기본 초당 10건 / 일 10,000건 |
 | OA-05 | 쿼터 응답 헤더 | `X-RateLimit-Limit`, `-Remaining`, `-Reset` |
 | OA-06 | **멱등성** | `Idempotency-Key` 헤더. §8.5 |
 | OA-07 | 웹훅 등록 | URL + 시크릿. 이벤트 구독 선택 |
@@ -530,14 +534,15 @@ X-RateLimit-Remaining: 0
 X-RateLimit-Reset: 1755676800
 Retry-After: 1
 
-{"code":"RATE_LIMIT_EXCEEDED","message":"초당 호출 한도를 초과했습니다."}
+{"error":{"code":"RATE_LIMIT_EXCEEDED","message":"초당 호출 한도를 초과했습니다.","details":{}},
+ "meta":{"requestId":"uuid","timestamp":"..."}}
 ```
 
 ### 6.8 audit — 감사
 
 | ID | 기능 | 설명 |
 |---|---|---|
-| AU-01 | 자동 기록 | AOP로 `@Auditable` 메서드 가로채 before/after JSON 저장 |
+| AU-01 | 자동 기록 | AOP로 `@Auditable` 메서드 가로채 대상 ID와 before/after JSON 저장 |
 | AU-02 | 채널 구분 | WEB / API / BATCH / ADMIN |
 | AU-03 | 조회 API | 대상·기간·행위자별 필터 |
 | AU-04 | 불변성 | audit_log는 UPDATE/DELETE 권한 자체를 DB 레벨에서 제거 |
@@ -561,7 +566,7 @@ Retry-After: 1
 { "data": { ... }, "meta": { "requestId": "uuid", "timestamp": "..." } }
 
 // 실패
-{ "error": { "code": "INSUFFICIENT_UNITS", "message": "...", "details": {...} },
+{ "error": { "code": "FUND_INSUFFICIENT_UNITS", "message": "...", "details": {...} },
   "meta": { "requestId": "uuid", "timestamp": "..." } }
 ```
 
@@ -820,20 +825,22 @@ public interface MarketDataPort {
 }
 ```
 
-**어댑터 2종**
-- `NamuhPlugMarketDataAdapter` — 실제 연동 (주력)
-- `KisMarketDataAdapter` — 선택. 포트 교체 가능성 실증용 (Phase 11)
-- `MockMarketDataAdapter` — 랜덤워크 시뮬레이터 (테스트·CI용, `@Profile("test")`)
+**구현 어댑터 2종**
+- `NamuhPlugMarketDataAdapter` — `plug` 프로파일의 조회 전용 주력 어댑터
+- `MockMarketDataAdapter` — 기본 랜덤워크 시뮬레이터(로컬·테스트·CI)
+
+KIS는 v1.1에서 교체된 과거 후보이며 추가 구현 대상이 아니다. 포트 교체 가능성은 위 두
+어댑터와 프로파일 전환으로 검증한다.
 
 ### 9.2 연동 요구사항
 
 | 항목 | 처리 방법 |
 |---|---|
 | **접근토큰 24시간 만료** | 발급 시각 저장. 만료 30분 전 선제 갱신 스케줄러. 갱신 중 요청은 대기 |
-| **초당 호출 제한** | 공식 SDK가 4건/초로 스로틀(하드 리밋 5건/초). 공식 수치 미공개 → **실측 후 설정값 조정** |
+| **초당 호출 제한** | 모의 도메인 실측 실효 한도 약 1건/초. 기본값 `1`; SDK 문서값 4~5와 다른 근거는 `docs/benchmarks/broker-quota.md` |
 | **제한 방식 불확실** | 공식 문서에 수치 미공개. 토큰버킷으로 시작 → `IGW42901~42903` 발생 시 슬라이딩 윈도우로 전환. **두 구현 모두 유지하고 설정으로 스위치** |
 | **토큰 발급 도메인 상이** | 토큰 발급은 **실전 도메인에서만** 가능. 데이터 조회는 모의 도메인. 두 클라이언트를 분리 구성 |
-| **엔드포인트 매핑** | `application-{profile}.yml`에 엔드포인트 매핑 테이블 분리. 하드코딩 금지 |
+| **엔드포인트 매핑** | 비밀이 아닌 경로는 `application.yml`의 `broker.endpoints`에 설정. 시크릿은 환경변수로만 주입. 하드코딩 금지 |
 | **도메인 분리** | 모의 `moapi.nhplug.com:8443` (계좌구분 `03`), 실전 `api.nhplug.com:8443` (계좌구분 `01`/`02`). 도메인-계좌구분 쌍이 어긋나면 전부 실패 |
 | **모의투자 미지원 API** | 호출 전 지원 여부 체크. 미지원 시 Mock으로 폴백 + WARN 로그 |
 | **WebSocket 재연결** | 지수 백오프(1s→2s→4s→...→60s). 재연결 시 구독 목록 자동 복원 |
@@ -883,6 +890,7 @@ POST /ai/prospectus/index      # 투자설명서 인덱싱
 POST /ai/prospectus/ask        # 질의응답
 POST /ai/devportal/ask         # 개발자 어시스턴트
 GET  /ai/health
+GET  /ai/metrics
 ```
 
 ### 10.2 RAG 파이프라인
@@ -896,11 +904,14 @@ PDF → 페이지별 텍스트 추출 (pdfplumber)
 
 [질의]
 질문 → 임베딩 → 코사인 유사도 top-5 검색
-     → 유사도 임계값 0.6 미만이면 즉시 "문서에서 찾을 수 없습니다" 반환 (LLM 호출 안 함)
+     → 유사도 임계값 0.48 미만이면 즉시 "문서에서 찾을 수 없습니다" 반환 (LLM 호출 안 함)
      → 컨텍스트 + 질문 → LLM
      → 가드레일 검사
      → 응답 + 인용 페이지 번호
 ```
+
+임계값 `0.48`은 bge-m3 실측 조정값이다. 초기값 `0.6`은 정상 질문 10건 중 4건을
+LLM 호출 전에 잘못 차단했다. 측정 데이터와 조정 근거는 `docs/ai/similarity-threshold.md`에 둔다.
 
 ### 10.3 가드레일 ★차별 포인트
 
@@ -923,7 +934,7 @@ PDF → 페이지별 텍스트 추출 (pdfplumber)
 - 위험 관련 질문에는 해당 위험요인 원문 요약을 우선 제시
 ```
 
-**출력 단계 (코드로 검증, LLM 신뢰 금지)**
+**출력 단계 (구조화 출력 + 코드 검증, LLM 신뢰 금지)**
 ```python
 BLOCKED_PATTERNS = [
     r"(사|매수|투자)(하세요|하시길|추천)",
@@ -932,24 +943,26 @@ BLOCKED_PATTERNS = [
     r"(오를|상승할).{0,5}(것|겁니다)",
 ]
 
-def guard_output(text: str, chunks: list) -> GuardResult:
+def guard_output(answer: str, cited_pages: list[int], chunks: list) -> GuardResult:
     # 1. 금지 표현 검사
     for p in BLOCKED_PATTERNS:
-        if re.search(p, text):
+        if re.search(p, answer):
             return GuardResult(blocked=True, reason="INVESTMENT_SOLICITATION")
 
     # 2. 인용 존재 검사
-    if not re.search(r"\[p\.\d+\]", text):
+    if not cited_pages:
         return GuardResult(blocked=True, reason="NO_CITATION")
 
     # 3. 인용 페이지가 실제 검색 결과에 포함되는지 검사
-    cited = set(re.findall(r"\[p\.(\d+)\]", text))
-    valid = {str(c.page_no) for c in chunks}
-    if not cited.issubset(valid):
+    valid = {c.page_no for c in chunks}
+    if not set(cited_pages).issubset(valid):
         return GuardResult(blocked=True, reason="HALLUCINATED_CITATION")
 
     return GuardResult(blocked=False)
 ```
+
+구조화된 `cited_pages` 검증 뒤에도 답변 본문의 `[p.N]`을 다시 추출해 검색 결과 밖 페이지가
+없는지 2차 검사한다. 모델이 구조화 필드와 본문을 다르게 쓰는 경우도 통과시키지 않는다.
 
 **차단 시 응답**: 고정 문구 반환 + 사유를 감사 로그에 기록. LLM 재시도는 1회만.
 
@@ -960,7 +973,8 @@ def guard_output(text: str, chunks: list) -> GuardResult:
 ```python
 class LlmPort(ABC):
     @abstractmethod
-    def complete(self, system: str, messages: list, max_tokens: int) -> str: ...
+    def complete_json(self, system: str, user_prompt: str,
+                      schema: dict, max_tokens: int) -> LlmResult: ...
 
 class ClaudeAdapter(LlmPort):    # 기본값, 개발용
     model = settings.ai_model   # 기본 "claude-opus-5"
@@ -1124,7 +1138,7 @@ Retry: 없음 (재실행은 수동)
 - 가드레일 전 단계
 - `LlmPort` 2어댑터
 - 개발자 어시스턴트
-- **완료 조건**: 권유 표현 유도 프롬프트 20종 전부 차단, 환각 인용 검출 동작
+- **완료 조건**: 권유 표현 유도 프롬프트 20종에서 권유 표현 사용자 도달 0건, 환각 인용 검출 동작
 
 ### Phase 9 — 배치 (0.5주)
 - 대사·체인검증·정산 Job
@@ -1204,7 +1218,7 @@ BROKER_APP_KEY=
 BROKER_APP_SECRET=
 BROKER_ACCOUNT_NO=
 BROKER_ACCOUNT_PRODUCT_CODE=03                # 03=모의. 01/02(실전)는 부팅 시 거부
-BROKER_RATE_LIMIT_PER_SEC=4                   # 공식 SDK 기준. 실측 후 조정
+BROKER_RATE_LIMIT_PER_SEC=1                   # 모의 도메인 실측값
 BROKER_RATE_LIMIT_STRATEGY=sliding            # bucket | sliding
 BROKER_ALLOW_LIVE=false                       # 실전 연동 안전장치. true 로 바꾸지 않는다
 
@@ -1212,9 +1226,13 @@ BROKER_ALLOW_LIVE=false                       # 실전 연동 안전장치. true
 AI_SERVICE_URL=http://localhost:8000
 AI_PROVIDER=claude               # claude | ollama
 AI_MODEL=claude-opus-5           # 하드코딩 금지
+AI_EFFORT=medium
+AI_MAX_TOKENS=16000
+AI_TIMEOUT_SECONDS=120
+SIMILARITY_THRESHOLD=0.48        # bge-m3 실측 조정값
 ANTHROPIC_API_KEY=
 OLLAMA_HOST=http://localhost:11434
-OLLAMA_MODEL=
+OLLAMA_MODEL=qwen3:14b           # RTX 4080 실측 전 후보 기본값
 
 # Ledger
 LEDGER_ADAPTER=hashchain         # hashchain | (future: blockchain)
@@ -1243,5 +1261,6 @@ LEDGER_ADAPTER=hashchain         # hashchain | (future: blockchain)
 |---|---|---|
 | v1.0 | 2026-08-20 | 최초 작성 |
 | v1.1 | 2026-08-31 | ① 증권사 연동을 KIS → **NH투자증권 namuh PLUG**로 전환 (근거: `docs/phases/phase-05-broker-integration.md` §0)<br>② 증권사 API를 **시세 조회 전용**으로 축소 — 자체 오더북이 있으므로 외부 주문 불필요<br>③ AI 기본 모델을 `claude-opus-5`로 갱신. 어시스턴트 프리필 금지·구조화 출력 반영 (`docs/phases/phase-08-ai.md` §0)<br>④ §14 로드맵을 `docs/phases/*.md` 11개 문서로 분할 |
+| v1.1.1 | 2026-09-01 | Phase 1~8 구현 대조 정정: Open API 슬라이딩 윈도우, PLUG 실측 기본 1건/초, RAG 임계값 0.48, 구조화 AI 출력·현행 `LlmPort`, 환경변수 기본값과 감사 채널을 실제 사양에 동기화 |
 
 *문서 끝. 변경 시 버전을 올리고 변경 이력을 남길 것.*

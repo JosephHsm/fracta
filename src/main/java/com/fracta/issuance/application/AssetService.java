@@ -8,6 +8,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.fracta.issuance.domain.UnderlyingAsset;
 import com.fracta.issuance.infrastructure.UnderlyingAssetRepository;
+import com.fracta.audit.api.Auditable;
 
 /** 기초자산 등록 (IS-01). */
 @Service
@@ -22,6 +23,7 @@ public class AssetService {
     }
 
     @Transactional
+    @Auditable(action = "ASSET_CREATE", targetType = "UNDERLYING_ASSET", targetId = "#result.id()")
     public UnderlyingAsset create(long issuerId, String name, UnderlyingAsset.AssetType type,
                                   String assetCode, String brokerTicker, long splitRatio, String description) {
         if (splitRatio <= 0) {

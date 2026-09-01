@@ -136,8 +136,8 @@ RTX 4080은 NVIDIA라 vLLM도 기술적으로 가능하다. 그럼에도 Ollama�
 | 모델 교체 | `ollama pull` 한 줄. 위 §4의 3종 비교가 쉬워진다 |
 | 사양 | FSD §10.4와 phase-08 §3.5가 `OllamaAdapter` 를 명시한다 |
 
-바꾸더라도 `LlmPort` 뒤라 어댑터 한 개 추가로 끝난다. Phase 5에서 KIS 어댑터를
-포트 교체 가능성 증명용으로 남겨 둔 것과 같은 구조다.
+바꾸더라도 `LlmPort` 뒤라 어댑터 한 개 추가로 끝난다. Phase 5에서 동일
+`MarketDataPort` 뒤의 Mock ↔ namuh PLUG를 프로파일로 교체하는 것과 같은 구조다.
 
 ---
 

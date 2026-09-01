@@ -35,6 +35,7 @@ springdoc:
     path: /swagger-ui.html
 
 security:
+  bcrypt-strength: ${BCRYPT_STRENGTH:12}
   jwt:
     # 로컬 개발 기본값. 운영은 JWT_SECRET 환경변수로 주입 (32바이트 이상)
     secret: ${JWT_SECRET:fracta-local-dev-jwt-secret-key-0123456789}

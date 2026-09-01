@@ -97,6 +97,8 @@ public class SubscriptionService {
     }
 
     @Transactional
+    @Auditable(action = "SUBSCRIPTION_APPLY", targetType = "SUBSCRIPTION_ORDER",
+            targetId = "#result.orderId()")
     public ApplyResult applyTx(long issuanceId, InvestorId investorId, long units, String idempotencyKey) {
         if (units <= 0) {
             throw new com.fracta.ledger.api.InvalidUnitsRangeException(units);
@@ -135,7 +137,7 @@ public class SubscriptionService {
 
     /** 청약 취소 (SB-04) — 청약 기간 내에만. 증거금 전액 환불 + 잔여 수량 복구. */
     @Transactional
-    @Auditable(action = "SUBSCRIPTION_CANCEL", targetType = "SUBSCRIPTION_ORDER")
+    @Auditable(action = "SUBSCRIPTION_CANCEL", targetType = "SUBSCRIPTION_ORDER", targetId = "#p0")
     public ApplyResult cancel(long orderId, InvestorId investorId) {
         SubscriptionOrder order = orders.findById(orderId)
                 .orElseThrow(() -> new IllegalArgumentException("청약이 없다: " + orderId));

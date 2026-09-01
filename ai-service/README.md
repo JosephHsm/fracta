@@ -56,7 +56,7 @@ python -m venv .venv
     pydantic-settings "psycopg[binary,pool]" pgvector anthropic pdfplumber minio \
     pytest pytest-asyncio httpx
 
-# 테스트 (DB·임베딩 모델·LLM 없이 전 경로가 돈다)
+# 테스트 (DB·임베딩 모델·LLM 없이 전 경로가 동작한다)
 .venv/Scripts/python.exe -m pytest -q
 
 # 컨테이너로 기동 (임베딩 모델 포함)

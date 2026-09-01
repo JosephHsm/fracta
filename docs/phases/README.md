@@ -42,11 +42,13 @@ Phase 8은 폐쇄망(Ollama) 품질·지연 비교가 데스크탑(RTX 4080) 환
 기본 증권사를 **KIS → NH투자증권 namuh PLUG**로 변경했다. 근거와 상세는 [phase-05](phase-05-broker-integration.md) §0 참조.
 
 ```
-MarketDataPort / BrokerOrderPort
+MarketDataPort
 ├── MockMarketDataAdapter        ← 기본값. Phase 1~4 및 CI 전 구간
-├── NamuhPlugMarketDataAdapter   ← 주력 (Phase 5)
-└── KisMarketDataAdapter         ← 선택. 포트 교체 가능성 증명용 (Phase 11)
+└── NamuhPlugMarketDataAdapter   ← `plug` 프로파일의 주력 (Phase 5)
 ```
+
+KIS는 v1.1에서 교체한 과거 후보이며 재도입하지 않는다. 증권사 API는 주문이 아닌 시세 조회
+전용이고, 포트 교체는 Mock ↔ PLUG 프로파일 전환으로 검증한다.
 
 ## 문서 변경 이력
 
