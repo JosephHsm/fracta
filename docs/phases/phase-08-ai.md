@@ -299,13 +299,11 @@ class OllamaAdapter(LlmPort):     # 폐쇄망 시연용
 > |---|---|---|
 > | Ollama 스위치 검증 + 품질·지연 비교 | 데스크탑 RTX 4080 | `scripts/ai/measure_provider.py` |
 > | 폐쇄망 시연 캡처 | 데스크탑 | — |
-> | Claude 지연·비용 실측 | ANTHROPIC_API_KEY | `scripts/ai/measure_provider.py --repeat 3` (약 $0.96) |
 >
-> 현재 20종 차단 검증은 **시뮬레이션 응답**(가드레일이 없었다면 모델이 이렇게 답했을 것)
-> 으로 돈다. 증명하는 것은 "권유 표현이 담긴 응답은 어떤 경로로도 사용자에게 도달하지
-> 못한다"이고, "실제 모델이 그 질문에 무엇이라 답하는가"는 캡처 후에 증명된다.
-> 캡처하면 같은 테스트가 실제 응답을 재생하므로 이후 추가 과금이 없다
-> (Phase 5의 `scripts/plug/capture.ps1` 과 같은 방식).
+> Claude 비교 실측도 완료했다(30건, p50 4.429s, p95 6.031s, $0.3045,
+> 가드레일 30/30 통과, JSON 파싱 실패 0건). 정확 인용률은 15/30으로,
+> 존재하지 않는 페이지가 아니라 보조 페이지를 함께 드는 과잉 인용이 한계로 확인됐다.
+> 상세는 `docs/ai/provider-comparison.md`.
 
 ## 6. 흔한 실수
 
@@ -347,5 +345,7 @@ class OllamaAdapter(LlmPort):     # 폐쇄망 시연용
 
 ## 8. 다음 Phase 진입 전 확인
 
-- [ ] `/ai/prospectus/ask` 응답에 인용 페이지가 포함되는가? Phase 10의 "인용 클릭 → 해당 페이지 이동" UI가 이걸 쓴다
-- [ ] 개발자 어시스턴트가 Phase 7의 OpenAPI 스펙을 컨텍스트로 받는가
+- [x] `/ai/prospectus/ask` 응답에 인용 페이지가 포함되는가? Phase 10의 "인용 클릭 → 해당 페이지 이동" UI가 이걸 쓴다
+      → 응답의 `cited_pages`와 본문 `[p.N]`을 함께 검증한다. Claude 실측 30건도 전부 인용을 반환했다.
+- [x] 개발자 어시스턴트가 Phase 7의 OpenAPI 스펙을 컨텍스트로 받는가
+      → `SpecLoader`가 `/v3/api-docs`를 압축·선별해 전달하며 `test_devportal.py`가 고정한다.
