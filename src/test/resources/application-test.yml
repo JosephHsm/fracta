@@ -20,3 +20,7 @@ issuance:
 
 security:
   bcrypt-strength: 4   # 테스트 속도 — 다수 계정 생성 시 인코딩 비용 절감
+
+batch:
+  scheduling:
+    enabled: false   # 통합 테스트 데이터에 스케줄러가 개입하지 않게 JobLauncher로 직접 실행

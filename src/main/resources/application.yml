@@ -17,7 +17,7 @@ spring:
       port: ${REDIS_PORT:6379}
   batch:
     job:
-      enabled: false          # 배치는 선언만 (Phase 9)
+      enabled: false          # 시작 시 자동 실행 금지 — Phase 9 스케줄러가 JobParameters와 락을 부여
     jdbc:
       initialize-schema: never
 
@@ -101,3 +101,14 @@ minio:
   access-key: ${MINIO_ACCESS_KEY:minioadmin}
   secret-key: ${MINIO_SECRET_KEY:minioadmin}
   bucket: ${MINIO_BUCKET:prospectus}
+
+batch:
+  scheduling:
+    enabled: ${BATCH_SCHEDULING_ENABLED:true}
+  schedule:
+    reconciliation: ${BATCH_RECONCILIATION_CRON:0 0 23 * * *}
+    chain-verification: ${BATCH_CHAIN_CRON:0 30 23 * * *}
+    settlement-report: ${BATCH_SETTLEMENT_CRON:0 0 18 * * *}
+    broker-token-refresh: ${BATCH_BROKER_TOKEN_CRON:0 0/30 * * * *}
+    allotment-scan-delay: ${BATCH_ALLOTMENT_SCAN_DELAY:60000}
+    api-log-archive: ${BATCH_API_ARCHIVE_CRON:0 0 2 * * SUN}

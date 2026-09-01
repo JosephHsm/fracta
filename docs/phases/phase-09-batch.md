@@ -89,27 +89,27 @@ Retry:       없음        ← 재실행은 수동
 
 ## 완료 조건 체크리스트
 
-- [ ] **의도적 데이터 훼손 후 배치가 검출** (FSD §14 명시 조건)
-  - [ ] `ledger_balance.units` 직접 UPDATE → `DailyReconciliationJob`이 INV-1 위반 검출
-  - [ ] `ledger_transaction.units` 직접 UPDATE → `ChainVerificationJob`이 검출 + 최초 불일치 seq 정확
-  - [ ] `investor.cash_balance` 직접 UPDATE → INV-6 위반 검출
-- [ ] 6개 Job 전부 구현 및 스케줄 등록 확인
-- [ ] INV-1 ~ INV-6 **각각의 위반 상황을 개별 검출** (FSD §15.1 — 통합 테스트)
-- [ ] 위반 검출 시 해당 토큰이 `SUSPENDED`로 전환됨
-- [ ] 체인 위반 검출 시 **전체** 토큰이 `SUSPENDED`로 전환됨
-- [ ] 위반 시 자동 복구를 **시도하지 않음** (코드 확인)
-- [ ] `reconciliation_result`에 어떤 불변식이 깨졌는지 식별 가능하게 기록됨
-- [ ] Skip policy가 명시적으로 비활성화됨 (설정 확인)
-- [ ] Retry가 명시적으로 비활성화됨 (`DailyReconciliationJob`)
-- [ ] **10만 잔고 기준 대사 배치 5분 이내** (FSD §13.1)
-- [ ] `ChainVerificationJob`이 10만 건에서 OOM 없이 완료 (스트리밍 확인)
-- [ ] 동일 일자 중복 실행 시도 → 두 번째 실행이 거부됨
-- [ ] `SettlementReportJob` 실패 시 3회 재시도 동작
-- [ ] `BrokerTokenRefreshJob`이 만료 30분 전 갱신 (Phase 5 로직 재사용 확인)
-- [ ] `SubscriptionAllotmentJob` 실패 시 완전 롤백 (부분 배정 없음)
-- [ ] `ApiLogArchiveJob` — 90일 경과 로그만 아카이브, 미경과 로그 보존
-- [ ] 메트릭 `fracta.ledger.invariant.violation` 동작
-- [ ] 모든 배치 실행이 `audit_log`에 `channel=BATCH`로 기록됨
+- [x] **의도적 데이터 훼손 후 배치가 검출** (FSD §14 명시 조건)
+  - [x] `ledger_balance.units` 직접 UPDATE → `DailyReconciliationJob`이 INV-1 위반 검출
+  - [x] `ledger_transaction.units` 직접 UPDATE → `ChainVerificationJob`이 검출 + 최초 불일치 seq 정확
+  - [x] `investor.cash_balance` 직접 UPDATE → INV-6 위반 검출
+- [x] 6개 Job 전부 구현 및 스케줄 등록 확인
+- [x] INV-1 ~ INV-6 **각각의 위반 상황을 개별 검출** (FSD §15.1 — 통합 테스트)
+- [x] 위반 검출 시 해당 토큰이 `SUSPENDED`로 전환됨
+- [x] 체인 위반 검출 시 **전체** 토큰이 `SUSPENDED`로 전환됨
+- [x] 위반 시 자동 복구를 **시도하지 않음** (코드 확인)
+- [x] `reconciliation_result`에 어떤 불변식이 깨졌는지 식별 가능하게 기록됨
+- [x] Skip policy가 명시적으로 비활성화됨 (설정 확인)
+- [x] Retry가 명시적으로 비활성화됨 (`DailyReconciliationJob`)
+- [x] **10만 잔고 기준 대사 배치 5분 이내** (FSD §13.1) — 880ms (2026-09-01 전체 빌드 실측)
+- [x] `ChainVerificationJob`이 10만 건에서 OOM 없이 완료 (스트리밍 확인) — 598ms
+- [x] 동일 일자 중복 실행 시도 → 두 번째 실행이 거부됨
+- [x] `SettlementReportJob` 실패 시 3회 재시도 동작
+- [x] `BrokerTokenRefreshJob`이 만료 30분 전 갱신 (Phase 5 로직 재사용 확인)
+- [x] `SubscriptionAllotmentJob` 실패 시 완전 롤백 (부분 배정 없음) + 자동 재시작 금지
+- [x] `ApiLogArchiveJob` — 90일 경과 로그만 아카이브, 미경과 로그 보존
+- [x] 메트릭 `fracta.ledger.invariant.violation` 동작
+- [x] 모든 배치 실행이 `audit_log`에 `channel=BATCH`로 기록됨
 
 ## 흔한 실수
 
@@ -133,4 +133,5 @@ Retry:       없음        ← 재실행은 수동
 
 ## 다음 Phase 진입 전 확인
 
-- [ ] 배치 실행 이력을 Phase 10의 운영 화면에서 조회 가능한 형태로 저장하는가
+- [x] 배치 실행 이력을 Phase 10의 운영 화면에서 조회 가능한 형태로 저장하는가
+      → Spring Batch 메타테이블 + `reconciliation_result` + `settlement_report`에 실행 ID를 보존한다.

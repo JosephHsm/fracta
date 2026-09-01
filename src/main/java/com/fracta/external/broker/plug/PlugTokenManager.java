@@ -10,11 +10,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.MediaType;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 
 import com.fracta.common.config.BrokerProperties;
+import com.fracta.external.broker.api.BrokerTokenRefreshPort;
 
 /**
  * PLUG 접근토큰 관리.
@@ -30,7 +30,7 @@ import com.fracta.common.config.BrokerProperties;
  * (발급 호출이 1회만 나가야 한다). 토큰 값은 어떤 경로로도 로그에 남기지 않는다.
  */
 @Component
-public class PlugTokenManager {
+public class PlugTokenManager implements BrokerTokenRefreshPort {
 
     private static final Logger log = LoggerFactory.getLogger(PlugTokenManager.class);
     private static final String TOKEN_PATH = "/oauth2/token";
@@ -101,18 +101,23 @@ public class PlugTokenManager {
     }
 
     /** 만료 30분 전 선제 갱신 (설정값). 갱신 중 요청은 위 락에서 대기한다. */
-    @Scheduled(fixedDelayString = "${broker.token.refresh-scan-delay:60000}")
     public void refreshIfDue() {
+        try {
+            refreshIfDueOrThrow();
+        } catch (Exception e) {
+            log.warn("토큰 선제 갱신 실패 — 다음 주기에 재시도한다: {}", e.getMessage());
+        }
+    }
+
+    /** Phase 9 BrokerTokenRefreshJob 진입점. 실패를 삼키지 않아 Job 재시도가 작동한다. */
+    @Override
+    public void refreshIfDueOrThrow() {
         if (isBlank(properties.appKey())) {
             return;   // 자격증명 미설정 환경(로컬·CI)에서는 아무것도 하지 않는다
         }
-        try {
-            CachedToken cached = readCache();
-            if (cached == null || needsRefresh(cached)) {
-                accessToken();
-            }
-        } catch (Exception e) {
-            log.warn("토큰 선제 갱신 실패 — 다음 주기에 재시도한다: {}", e.getMessage());
+        CachedToken cached = readCache();
+        if (cached == null || needsRefresh(cached)) {
+            accessToken();
         }
     }
 

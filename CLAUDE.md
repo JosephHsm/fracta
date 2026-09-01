@@ -1,7 +1,7 @@
 # FRACTA — 프로젝트 규칙
 
 토큰증권 기반 조각투자 발행·유통 플랫폼 + 오픈 API.
-전체 사양은 `docs/FSD.md` (v1.1.1, SSOT). 현재 작업 범위는 지정된 `docs/phases/phase-XX-*.md`를 따른다.
+전체 사양은 `docs/FSD.md` (v1.1.2, SSOT). 현재 작업 범위는 지정된 `docs/phases/phase-XX-*.md`를 따른다.
 Phase 목록과 의존 관계는 `docs/phases/README.md` 참조.
 증권사는 **NH투자증권 namuh PLUG** (v1.1에서 KIS로부터 전환). 근거는 `docs/phases/phase-05-broker-integration.md` §0.
 

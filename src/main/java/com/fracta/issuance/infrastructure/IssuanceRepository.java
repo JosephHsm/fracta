@@ -25,6 +25,8 @@ public interface IssuanceRepository extends JpaRepository<Issuance, Long> {
 
     List<Issuance> findByStatusAndSubscriptionStartAtLessThanEqual(IssuanceStatus status, Instant now);
 
+    List<Issuance> findByStatusAndSubscriptionEndAtLessThanEqual(IssuanceStatus status, Instant now);
+
     /** 방식 A — 비관적 락 (FSD §8.3). */
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT i FROM Issuance i WHERE i.id = :id")

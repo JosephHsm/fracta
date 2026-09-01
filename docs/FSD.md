@@ -4,8 +4,8 @@
 >
 > | 항목 | 내용 |
 > |---|---|
-> | 문서 버전 | v1.1.1 |
-> | 작성일 | 2026-08-20 (v1.1.1 개정: 2026-09-01) |
+> | 문서 버전 | v1.1.2 |
+> | 작성일 | 2026-08-20 (v1.1.2 개정: 2026-09-01) |
 > | 문서 목적 | AI 개발 에이전트가 이 문서만으로 전체 구현이 가능하도록 하는 단일 진실 공급원(SSOT) |
 > | 프로젝트 성격 | 1인 개발 포트폴리오 / 금융IT 직무 지원용 |
 
@@ -676,7 +676,8 @@ v1 = HMAC_SHA256(secret, "{t}.{raw_body}")
         AND tx[n].curr_hash == SHA256(canonical(tx[n]))
 
 [INV-5] 배정 총량
-        Σ subscription.allotted_units == issuance.total_units
+        Σ subscription.allotted_units
+            == min(issuance.total_units, Σ 취소되지 않은 subscription.requested_units)
         (배정 완료된 발행 건에 한함)
 
 [INV-6] 예치금 보존
@@ -1262,5 +1263,6 @@ LEDGER_ADAPTER=hashchain         # hashchain | (future: blockchain)
 | v1.0 | 2026-08-20 | 최초 작성 |
 | v1.1 | 2026-08-31 | ① 증권사 연동을 KIS → **NH투자증권 namuh PLUG**로 전환 (근거: `docs/phases/phase-05-broker-integration.md` §0)<br>② 증권사 API를 **시세 조회 전용**으로 축소 — 자체 오더북이 있으므로 외부 주문 불필요<br>③ AI 기본 모델을 `claude-opus-5`로 갱신. 어시스턴트 프리필 금지·구조화 출력 반영 (`docs/phases/phase-08-ai.md` §0)<br>④ §14 로드맵을 `docs/phases/*.md` 11개 문서로 분할 |
 | v1.1.1 | 2026-09-01 | Phase 1~8 구현 대조 정정: Open API 슬라이딩 윈도우, PLUG 실측 기본 1건/초, RAG 임계값 0.48, 구조화 AI 출력·현행 `LlmPort`, 환경변수 기본값과 감사 채널을 실제 사양에 동기화 |
+| v1.1.2 | 2026-09-01 | Phase 9 배치 구현 반영. 미달 청약에서 미신청 물량을 만들지 않도록 INV-5 기대값을 `min(total_units, Σ requested_units)`로 명확화 |
 
 *문서 끝. 변경 시 버전을 올리고 변경 이력을 남길 것.*

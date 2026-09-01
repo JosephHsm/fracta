@@ -223,7 +223,8 @@ public class TradingService {
     private void handlePremiumBreaches(String tokenSymbol, List<BigDecimal> premiums) {
         for (BigDecimal premium : premiums) {
             if (premiumMonitor.evaluate(tokenSymbol, premium)) {
-                selfProvider.getObject().cancelAllOpenOrders(tokenSymbol, "괴리율 초과로 인한 거래 중단");
+                // ListedTokenService가 발행한 TokenSuspendedEvent를 공통 리스너가 받아
+                // 커밋 후 미체결 주문을 정리한다. 배치 위반도 동일 경로를 사용한다.
                 return;
             }
         }

@@ -4,9 +4,9 @@
 
 부동산·리츠 등 실물 기반 자산을 조각 단위 **토큰증권**으로 발행하고, 투자자가 청약·매매하며, 그 전 기능을 외부 개발자에게 **Open API**로 개방하는 플랫폼.
 
-> **현재 상태: Phase 1~7 완료 + Phase 8 AI·Claude 실측 완료**
-> (기반 · 원장 · 계좌/발행 · 청약 · 증권사 연동 · 유통/결제 · 오픈 API · AI 가드레일)
-> 테스트 **395건** 전부 통과 — Java 255건(Testcontainers) + Python 140건(pytest).
+> **현재 상태: Phase 1~7·9 완료 + Phase 8 AI·Claude 실측 완료**
+> (기반 · 원장 · 계좌/발행 · 청약 · 증권사 연동 · 유통/결제 · 오픈 API · AI 가드레일 · 배치)
+> 테스트 **410건** 전부 통과 — Java 270건(Testcontainers) + Python 140건(pytest).
 > 실측 자료는 아래 [실측 기록](#실측-기록) 참조.
 > Phase 8은 폐쇄망(Ollama) 품질·지연 비교와 캡처만 남았습니다 — RTX 4080 데스크탑에서
 > 측정합니다. 추정치로 표를 채우지 않습니다.
@@ -18,7 +18,7 @@
 
 | 문서 | 내용 |
 |---|---|
-| [`docs/FSD.md`](docs/FSD.md) | 기능 사양서 (v1.1.1) — **단일 진실 공급원(SSOT)** |
+| [`docs/FSD.md`](docs/FSD.md) | 기능 사양서 (v1.1.2) — **단일 진실 공급원(SSOT)** |
 | [`docs/phases/README.md`](docs/phases/README.md) | Phase 11개 인덱스 및 의존 관계 |
 | [`CLAUDE.md`](CLAUDE.md) | AI 개발 에이전트용 프로젝트 규칙 |
 | [`docs/reference/plug-error-codes.md`](docs/reference/plug-error-codes.md) | namuh PLUG 게이트웨이 오류코드와 처리 정책 |
@@ -26,6 +26,7 @@
 | [`docs/ai/guardrail-design.md`](docs/ai/guardrail-design.md) | 금소법 대응 매핑, 3단계 가드레일, **실제 우회 사례** |
 | [`docs/ai/provider-comparison.md`](docs/ai/provider-comparison.md) | Claude ↔ 폐쇄망 비교 — 측정 방법과 현재 상태 |
 | [`docs/ai/similarity-threshold.md`](docs/ai/similarity-threshold.md) | RAG 유사도 임계값 실측 — **0.6 → 0.48** 조정 근거 |
+| [`docs/invariants.md`](docs/invariants.md) | INV-1~6 정의·자동 검증·위반 대응·의도적 훼손 시연 |
 | [`docs/appendix/guardrail-attack-prompts.md`](docs/appendix/guardrail-attack-prompts.md) | 공격 프롬프트 20종과 차단 결과표 (자동 생성) |
 | [`ai-service/README.md`](ai-service/README.md) | AI 서비스 구조와 실행 |
 
@@ -41,6 +42,7 @@
 | [원장 설계 노트](docs/notes/phase-02-ledger-notes.md) | 해시체인 append 약 225 tps, 1만 건 검증 87ms |
 | [RAG 유사도 임계값](docs/ai/similarity-threshold.md) | bge-m3 실측 — 관련 질문 0.527~0.654 / 무관 0.350~0.429. FSD 기본값 0.6은 정상 질문 4/10을 차단해 **0.48로 조정** |
 | [AI 프로바이더 비교](docs/ai/provider-comparison.md) | Claude Opus 5 30건 — p50 4.429초, p95 6.031초, $0.3045, 가드레일 100%, 정확 인용 50% |
+| [불변식 배치 검증](docs/invariants.md#10만-건-실측) | 원장 체인 10만 건 598ms, 잔고 10만 건 대사 880ms (체인 단계 포함) |
 
 ### Open API 사용 규격
 
@@ -224,7 +226,7 @@ docker compose --profile offline exec ollama ollama pull qwen3:14b
 | 6 | [유통·결제](docs/phases/phase-06-trading-settlement.md) | ✅ |
 | 7 | [오픈 API](docs/phases/phase-07-openapi.md) | ✅ |
 | 8 | [AI](docs/phases/phase-08-ai.md) | 🟡 코드·테스트 완료 / 폐쇄망 실측 대기 |
-| 9 | [배치](docs/phases/phase-09-batch.md) | ⬜ |
+| 9 | [배치](docs/phases/phase-09-batch.md) | ✅ |
 | 10 | [프론트](docs/phases/phase-10-frontend.md) | ⬜ |
 | 11 | [마감](docs/phases/phase-11-release.md) | ⬜ |
 
