@@ -101,4 +101,31 @@
       backdrop-filter: blur(var(--fr-glass-blur)) saturate(140%);
     }
   }
+
+  /* 표에 새로 붙는 행(체결 내역 등). 4px만 올라온다 — 더 크면 표가 출렁인다 */
+  .fr-row-enter {
+    animation: fr-row-enter var(--fr-motion-panel) var(--fr-ease-out) both;
+  }
+
+  @keyframes fr-row-enter {
+    from {
+      opacity: 0;
+      transform: translateY(4px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
 }
+
+/*
+ * View Transitions (§11.4). 리스트 → 상세 전환에서 카드가 상세 히어로로 이어진다.
+ * 지속시간은 page 스케일(≤400ms)을 넘지 않는다.
+ */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: var(--fr-motion-page);
+  animation-timing-function: var(--fr-ease-out);
+}
+

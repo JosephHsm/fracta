@@ -26,6 +26,9 @@ importers:
       '@tanstack/react-table':
         specifier: 9.2.4
         version: 9.2.4(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
+      lucide-react:
+        specifier: 1.38.0
+        version: 1.38.0(react@19.2.8)
       next:
         specifier: 16.3.4
         version: 16.3.4(@babel/core@7.29.7(supports-color@10.2.2))(@types/node@26.4.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
@@ -81,6 +84,9 @@ importers:
       lightweight-charts:
         specifier: 5.2.1
         version: 5.2.1
+      lucide-react:
+        specifier: 1.38.0
+        version: 1.38.0(react@19.2.8)
       next:
         specifier: 16.3.4
         version: 16.3.4(@babel/core@7.29.7(supports-color@10.2.2))(@types/node@26.4.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
