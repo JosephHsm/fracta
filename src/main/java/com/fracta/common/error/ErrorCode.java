@@ -33,7 +33,8 @@ public enum ErrorCode {
     SUIT_PROFILE_REQUIRED(HttpStatus.FORBIDDEN, "유효한 투자성향 진단이 필요하다"),
     RATE_LIMIT_EXCEEDED(HttpStatus.TOO_MANY_REQUESTS, "호출 한도를 초과했다"),
     BROKER_AUTH_FAILED(HttpStatus.BAD_GATEWAY, "증권사 API 인증에 실패했다"),
-    BROKER_CALL_FAILED(HttpStatus.BAD_GATEWAY, "증권사 API 호출에 실패했다");
+    BROKER_CALL_FAILED(HttpStatus.BAD_GATEWAY, "증권사 API 호출에 실패했다"),
+    AI_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "AI 서비스를 사용할 수 없다");
 
     private final HttpStatus status;
     private final String defaultMessage;

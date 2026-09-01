@@ -48,6 +48,54 @@ services:
       timeout: 3s
       retries: 12
 
+  ai-service:
+    build: ./ai-service
+    container_name: fracta-ai
+    environment:
+      DB_DSN: postgresql://fracta:fracta@postgres:5432/fracta
+      MINIO_ENDPOINT: minio:9000
+      MINIO_ACCESS_KEY: minioadmin
+      MINIO_SECRET_KEY: minioadmin
+      MINIO_BUCKET: prospectus
+      # 작문 담당. 폐쇄망 전환은 이 한 줄 (claude | ollama)
+      AI_PROVIDER: ${AI_PROVIDER:-claude}
+      AI_MODEL: ${AI_MODEL:-claude-opus-5}
+      AI_EFFORT: ${AI_EFFORT:-medium}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      OLLAMA_HOST: http://ollama:11434
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-qwen3:14b}
+      # 검색 담당. AI_PROVIDER 와 무관하게 항상 이 컨테이너 안에서 돈다
+      EMBEDDING_MODEL: ${EMBEDDING_MODEL:-BAAI/bge-m3}
+      EMBEDDING_DIM: ${EMBEDDING_DIM:-1024}
+      OPENAPI_SPEC_URL: ${OPENAPI_SPEC_URL:-http://host.docker.internal:8080/v3/api-docs}
+    ports:
+      - "8000:8000"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request;urllib.request.urlopen('http://localhost:8000/ai/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  # 폐쇄망 시연용. 기본 기동에서는 제외한다 — 노트북에서 매번 띄울 이유가 없다.
+  #   docker compose --profile offline up -d ollama
+  #   docker compose --profile offline exec ollama ollama pull qwen3:14b
+  ollama:
+    image: ollama/ollama
+    container_name: fracta-ollama
+    profiles: ["offline"]
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollamadata:/root/.ollama
+
 volumes:
   pgdata:
   miniodata:
+  ollamadata:

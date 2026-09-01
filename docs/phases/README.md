@@ -19,13 +19,17 @@
 | 4 | [청약](phase-04-subscription.md) ★난이도 최고 | 1.5주 | ✅ | 3 |
 | 5 | [증권사 연동](phase-05-broker-integration.md) | 1주 | ✅ | 1 (병렬 가능) |
 | 6 | [유통·결제](phase-06-trading-settlement.md) | 1.5주 | ✅ | 4, 5 |
-| 7 | [오픈 API](phase-07-openapi.md) ★차별 포인트 | 1.5주 | ⬜ | 6 |
-| 8 | [AI](phase-08-ai.md) | 1주 | ⬜ | 3 |
+| 7 | [오픈 API](phase-07-openapi.md) ★차별 포인트 | 1.5주 | ✅ | 6 |
+| 8 | [AI](phase-08-ai.md) | 1주 | 🟡 | 3 |
 | 9 | [배치](phase-09-batch.md) | 0.5주 | ⬜ | 6 |
 | 10 | [프론트](phase-10-frontend.md) | 2주 | ⬜ | 7 |
 | 11 | [마감](phase-11-release.md) | 1주 | ⬜ | 10 |
 
 **총 예상 13주.**
+
+🟡 = 코드·테스트 완료, 특정 환경에서만 가능한 실측이 남음.
+Phase 8은 폐쇄망(Ollama) 품질·지연 비교가 데스크탑(RTX 4080) 환경을 필요로 한다.
+상세는 [phase-08 §5](phase-08-ai.md#5-완료-조건-체크리스트) 참조.
 
 ## 의존성 주의
 
@@ -50,3 +54,4 @@ MarketDataPort / BrokerOrderPort
 |---|---|---|
 | v1.0 | 2026-08-20 | FSD 최초 작성 |
 | v1.1 | 2026-08-31 | Phase 분할. 증권사 KIS → namuh PLUG 전환 |
+| v1.1.1 | 2026-09-01 | Phase 7 완료 반영. Phase 8 구현 및 SDK 사양 정정 (phase-08 §0) |

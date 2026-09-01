@@ -16,12 +16,27 @@ FSD §10.4의 `model = "claude-sonnet-4-6"` 기준으로 설계하면 두 군데
 
 > `claude-sonnet-4-6`은 존재하는 유효한 ID지만 현행 기본값이 아니다. 기본값은 `claude-opus-5`로 둔다.
 
+### v1.1.1 정정 (Phase 8 구현 중 SDK 대조 결과)
+
+아래 3건은 이 문서 작성 시점의 서술이 실제 SDK와 어긋났던 부분이다. 구현은 정정된 쪽을 따랐다.
+
+| 위치 | 문서 | 실제 | 반영 |
+|---|---|---|---|
+| §0 모델 표 | Sonnet 5 $3/$15 | **$2/$10** (Sonnet **4.6**이 $3/$15) | 위 표 수정 |
+| §3.3 코드 | `client.messages.create(..., betas=, fallbacks=)` | `betas`/`fallbacks` 는 **`client.beta.messages.create()`** 경로 | `ClaudeAdapter` 가 beta 경로 사용 |
+| §3.3 `max_tokens=4096` | — | Opus 5는 **adaptive thinking이 기본 ON**이라 사고 토큰이 출력에서 나간다. 4096은 잘릴 수 있다 | 기본값 `AI_MAX_TOKENS=16000` |
+
+나머지(프리필 금지, `budget_tokens`/`temperature`/`top_p` 400, `output_config.format`,
+`effort`, `stop_reason == "refusal"` 선확인, `fallbacks="default"` + `server-side-fallback-2026-07-01`)는
+문서 서술이 정확했다.
+
+
 ### 모델 선택
 
 | 모델 | ID | 입력 $/1M | 출력 $/1M |
 |---|---|---|---|
 | **Claude Opus 5 (기본)** | `claude-opus-5` | $5.00 | $25.00 |
-| Claude Sonnet 5 | `claude-sonnet-5` | $3.00 | $15.00 |
+| Claude Sonnet 5 | `claude-sonnet-5` | $2.00 | $10.00 |
 | Claude Haiku 4.5 | `claude-haiku-4-5` | $1.00 | $5.00 |
 
 - 기본값은 `claude-opus-5`. 비용을 이유로 낮추는 것은 사용자의 결정이며 임의로 하향하지 않는다
@@ -240,28 +255,58 @@ class OllamaAdapter(LlmPort):     # 폐쇄망 시연용
 
 ## 5. 완료 조건 체크리스트
 
-- [ ] **권유 표현 유도 프롬프트 20종 전부 차단** (FSD §14 명시 조건)
-  - 목록을 `docs/appendix/guardrail-attack-prompts.md`에 문서화
-- [ ] **환각 인용 검출 동작** (FSD §14 명시 조건) — 존재하지 않는 페이지 인용 시 차단
-- [ ] 인덱싱 — PDF 업로드 → 청크 생성 → 임베딩 저장 확인
-- [ ] 청킹이 페이지 경계를 넘지 않음 (모든 청크의 `page_no`가 단일값)
-- [ ] 유사도 임계값 미달 질문 → **LLM 호출 없이** 고정 문구 반환 (호출 0건 확인)
-- [ ] 인용 없는 응답 → `NO_CITATION` 차단
-- [ ] 프롬프트 인젝션 시도 20종 중 입력 단계 차단 비율 측정·기록
-- [ ] 개인정보 포함 질문 차단
-- [ ] `stop_reason == "refusal"` 처리 경로 테스트 (모킹)
-- [ ] 어시스턴트 프리필 미사용 확인 (코드 검색)
-- [ ] `budget_tokens` / `temperature` / `top_p` 미사용 확인
-- [ ] 모델 ID가 설정값으로 분리됨 (하드코딩 0건)
-- [ ] `AI_PROVIDER=ollama` 전환 후 동일 테스트 스위트 통과
-- [ ] Ollama에서 JSON 파싱 실패 시 안전하게 **차단**됨 (통과되지 않음)
-- [ ] 모든 질의가 `ai_conversation_log`에 기록 (차단된 것 포함)
-- [ ] 로그에 API 키가 남지 않음
-- [ ] AI 서비스 다운 시 Core가 정상 동작 (서킷브레이커 확인)
-- [ ] 메트릭 `fracta.ai.guardrail.blocked` 동작 (FSD §13.3)
-- [ ] `/ai/health` 가 임베딩 모델·DB·LLM 프로바이더 상태 반영
+- [x] **권유 표현 유도 프롬프트 20종 전부 차단** (FSD §14 명시 조건)
+  - 목록을 `docs/appendix/guardrail-attack-prompts.md`에 문서화 (픽스처에서 자동 생성)
+- [x] **환각 인용 검출 동작** (FSD §14 명시 조건) — 존재하지 않는 페이지 인용 시 차단
+- [x] 인덱싱 — PDF 업로드 → 청크 생성 → 임베딩 저장 확인
+  - 실제 PDF(pdfplumber) → 페이지 추출 → 청킹 → 임베딩 → `DELETE`+`INSERT` 까지 검증
+  - 실제 bge-m3 + 실제 pgvector 종단 검증은 `test_embedding_e2e.py` — 런타임이 없으면 skip
+- [x] 청킹이 페이지 경계를 넘지 않음 (모든 청크의 `page_no`가 단일값)
+- [x] 유사도 임계값 미달 질문 → **LLM 호출 없이** 고정 문구 반환 (호출 0건 확인)
+- [x] 인용 없는 응답 → `NO_CITATION` 차단
+- [x] 프롬프트 인젝션 시도 20종 중 입력 단계 차단 비율 측정·기록 (20/20 = 100%)
+- [x] 개인정보 포함 질문 차단
+- [x] `stop_reason == "refusal"` 처리 경로 테스트 (모킹)
+- [x] 어시스턴트 프리필 미사용 확인 (코드 검색 → 테스트로 고정)
+- [x] `budget_tokens` / `temperature` / `top_p` 미사용 확인 (코드 검색 → 테스트로 고정)
+- [x] 모델 ID가 설정값으로 분리됨 (하드코딩 0건, 날짜 접미사 0건)
+- [x] Ollama에서 JSON 파싱 실패 시 안전하게 **차단**됨 (통과되지 않음)
+- [x] 모든 질의가 `ai_conversation_log`에 기록 (차단된 것 포함)
+- [x] 로그에 API 키가 남지 않음
+- [x] AI 서비스 다운 시 Core가 정상 동작 (서킷브레이커 확인)
+- [x] 메트릭 `fracta.ai.guardrail.blocked` 동작 (FSD §13.3)
+- [x] `/ai/health` 가 임베딩 모델·DB·LLM 프로바이더 상태 반영
+- [ ] `AI_PROVIDER=ollama` 전환 후 동일 테스트 스위트 통과 — **측정 대기 (데스크탑)**
 
----
+> **완료 근거** (2026-09-01)
+>
+> Python 118건 + Java 250건(Phase 8분 15건 포함) 통과, e2e 9건 skip.
+> 검증 위치는 `docs/ai/guardrail-design.md` §10 표 참조.
+>
+> **e2e 9건이 skip 되는 이유.** 개발 노트북의 MSVC 런타임이 14.27이라 torch 2.x 가
+> DLL 로드에 실패한다(`WinError 1114`). 이 때문에 막히는 기능은 없다 — 실제 임베딩은
+> Linux 컨테이너에서 돌고, 나머지 118건은 `FakeEmbeddingAdapter` 로 돈다. 애초에
+> `EmbeddingPort` 를 `LlmPort` 와 분리한 이유가 이것이다. 호스트에서 돌리려면
+> VC++ 재배포 패키지를 최신으로 올린다 (`ai-service/README.md` 참조).
+>
+> **미완 항목과 사유.** 개발 노트북(Ryzen 5 5625U, iGPU 공유 2GB)에서는 7B 이상
+> 양자화 모델이 CPU 추론 3~6 tok/s 라 품질·지연 비교의 의미가 없다. `OllamaAdapter`
+> 는 코드와 계약 테스트까지 완료했고, 실행 검증과 비교표는 데스크탑(RTX 4080 16GB)에서
+> 채운다. 측정 스크립트(`scripts/ai/measure_provider.py`)는 함께 작성해 두었다.
+> 추정치로 표를 채우지 않는다 — 이 프로젝트는 실측값만 기록한다.
+>
+> | 남은 것 | 필요 환경 | 실행 |
+> |---|---|---|
+> | Ollama 스위치 검증 + 품질·지연 비교 | 데스크탑 RTX 4080 | `scripts/ai/measure_provider.py` |
+> | 폐쇄망 시연 캡처 | 데스크탑 | — |
+> | 공격 프롬프트 20종 **실제 Claude 응답** 캡처 | ANTHROPIC_API_KEY | `scripts/ai/capture_attacks.py` (약 $0.61) |
+> | Claude 지연·비용 실측 | ANTHROPIC_API_KEY | `scripts/ai/measure_provider.py --repeat 3` (약 $0.96) |
+>
+> 현재 20종 차단 검증은 **시뮬레이션 응답**(가드레일이 없었다면 모델이 이렇게 답했을 것)
+> 으로 돈다. 증명하는 것은 "권유 표현이 담긴 응답은 어떤 경로로도 사용자에게 도달하지
+> 못한다"이고, "실제 모델이 그 질문에 무엇이라 답하는가"는 캡처 후에 증명된다.
+> 캡처하면 같은 테스트가 실제 응답을 재생하므로 이후 추가 과금이 없다
+> (Phase 5의 `scripts/plug/capture.ps1` 과 같은 방식).
 
 ## 6. 흔한 실수
 

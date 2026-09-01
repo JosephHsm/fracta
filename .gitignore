@@ -79,6 +79,7 @@ scripts/bench/result-*.json
 scripts/bench/summary.json
 scripts/bench/logs/
 scripts/bench/k6-*.log
+scripts/ai/results/
 
 # ── 대용량 자료 ────────────────────────────
 *.pdf

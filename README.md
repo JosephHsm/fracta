@@ -4,8 +4,12 @@
 
 부동산·리츠 등 실물 기반 자산을 조각 단위 **토큰증권**으로 발행하고, 투자자가 청약·매매하며, 그 전 기능을 외부 개발자에게 **Open API**로 개방하는 플랫폼.
 
-> **현재 상태: Phase 1~7 완료** (기반 · 원장 · 계좌/발행 · 청약 · 증권사 연동 · 유통/결제 · 오픈 API)
-> 테스트 235건 전부 통과. 실측 자료는 아래 [실측 기록](#실측-기록) 참조.
+> **현재 상태: Phase 1~7 완료 + Phase 8(AI) 구현 완료**
+> (기반 · 원장 · 계좌/발행 · 청약 · 증권사 연동 · 유통/결제 · 오픈 API · AI 가드레일)
+> 테스트 **368건** 전부 통과 — Java 250건(Testcontainers) + Python 118건(pytest).
+> 실측 자료는 아래 [실측 기록](#실측-기록) 참조.
+> Phase 8은 폐쇄망(Ollama) 품질·지연 비교만 남았습니다 — 개발 노트북에 GPU가 없어
+> 데스크탑 환경에서 측정합니다. 추정치로 표를 채우지 않습니다.
 > FSD §16이 요구하는 나머지 항목(데모 영상 등)은 이후 Phase에서 채웁니다.
 
 ---
@@ -19,6 +23,10 @@
 | [`CLAUDE.md`](CLAUDE.md) | AI 개발 에이전트용 프로젝트 규칙 |
 | [`docs/reference/plug-error-codes.md`](docs/reference/plug-error-codes.md) | namuh PLUG 게이트웨이 오류코드와 처리 정책 |
 | [`docs/appendix/risk-profile-questions.md`](docs/appendix/risk-profile-questions.md) | 투자성향 진단 8문항·배점표 |
+| [`docs/ai/guardrail-design.md`](docs/ai/guardrail-design.md) | 금소법 대응 매핑, 3단계 가드레일, **실제 우회 사례** |
+| [`docs/ai/provider-comparison.md`](docs/ai/provider-comparison.md) | Claude ↔ 폐쇄망 비교 — 측정 방법과 현재 상태 |
+| [`docs/appendix/guardrail-attack-prompts.md`](docs/appendix/guardrail-attack-prompts.md) | 공격 프롬프트 20종과 차단 결과표 (자동 생성) |
+| [`ai-service/README.md`](ai-service/README.md) | AI 서비스 구조와 실행 |
 
 ### 실측 기록
 
@@ -111,6 +119,41 @@ def verify_webhook(secret: str, raw_body: bytes, signature: str) -> bool:
 두 환경의 경로와 토큰이 어긋나면 `403 AUTH_ENV_MISMATCH`로 거부되며, 테이블·잔고·주문·청약은
 스키마 수준에서 완전히 분리됩니다.
 
+### AI 가드레일
+
+투자설명서 질의응답에 LLM을 붙일 때의 문제는 성능이 아니라 **책임**입니다. 챗봇이
+"이거 유망합니다"라고 한 줄 답하는 순간 금소법상 투자권유 절차를 우회한 권유가 됩니다.
+그래서 프롬프트가 아니라 **코드로** 막습니다.
+
+```
+질문 ─① 입력 가드레일 ── 차단 ─▶ 고정 문구 (LLM 호출 0건)
+     │   인젝션 / 개인정보
+     ├─  임베딩 → 코사인 top-5, 유사도 < 0.6 ─▶ 고정 문구 (LLM 호출 0건)
+     ├─② 시스템 프롬프트 + 구조화 출력(output_config.format)
+     └─③ 출력 가드레일 (코드 검증)
+         refusal · JSON 파싱 실패 · 금지 표현 · 인용 없음 · 검색결과 밖 인용 → 차단
+         재시도는 1회만
+```
+
+**핵심은 ③입니다.** ①은 뚫려도 ③이 받고, ②는 모델의 협조를 구할 뿐 강제가 아닙니다.
+개발 중 FSD가 정한 정규식이 **띄어쓰기 하나로** 빠져나가는 사례를 확인했습니다 —
+`매수추천`은 잡히지만 `매수 추천`은 통과합니다. 그래서 문자열 매칭에만 기대지 않고
+"인용 페이지가 이번 검색 결과 안에 있는가"라는 **구조적** 판정을 함께 둡니다.
+표현은 무한히 변형되지만 이건 변형할 수 없는 사실 판정입니다.
+상세와 우회 사례 전체는 [`docs/ai/guardrail-design.md`](docs/ai/guardrail-design.md).
+
+| 검증 | 결과 |
+|---|---|
+| 권유 유도 프롬프트 20종 | 20/20 차단 |
+| 프롬프트 인젝션 20종 (입력 단계) | 20/20 차단 — 단, 알려진 표현만 잡는다는 한계를 문서에 명시 |
+| 개인정보 포함 질문 | 차단 (LLM 호출 없음 → 외부로 나가지 않음) |
+| 환각 인용 | 차단 (`cited_pages` + 본문 `[p.N]` 2중 검사) |
+
+**두 개의 모델이 다른 자리에 있습니다.** `bge-m3`(임베딩)는 텍스트를 벡터로 바꿔
+검색만 하고, Claude/Ollama(LLM)가 검색된 발췌문으로 답을 씁니다. `AI_PROVIDER`
+스위치는 **LLM에만** 걸립니다 — LLM만 로컬로 바꾸고 임베딩을 외부 API로 보내면
+질문 텍스트가 밖으로 나가므로 폐쇄망이 성립하지 않기 때문입니다.
+
 ---
 
 ## 기술 스택
@@ -149,9 +192,16 @@ def verify_webhook(secret: str, raw_body: bytes, signature: str) -> bool:
 ## 로컬 실행 (Phase 1 완료 후)
 
 ```bash
-docker compose up -d          # PostgreSQL / Redis / MinIO
+docker compose up -d          # PostgreSQL / Redis / MinIO / ai-service
 ./gradlew build
 ./gradlew test
+
+# AI 서비스 테스트 (DB·임베딩 모델·LLM 없이 전 경로가 돕니다)
+cd ai-service && .venv/Scripts/python.exe -m pytest -q
+
+# 폐쇄망 모드 (선택 — 기본 기동에서 제외)
+docker compose --profile offline up -d ollama
+docker compose --profile offline exec ollama ollama pull qwen3:14b
 ```
 
 **사전 요구사항**: JDK 21 · Docker Desktop · Node.js 20+ · Python 3.11
@@ -168,8 +218,8 @@ docker compose up -d          # PostgreSQL / Redis / MinIO
 | 4 | [청약](docs/phases/phase-04-subscription.md) | ✅ |
 | 5 | [증권사 연동](docs/phases/phase-05-broker-integration.md) | ✅ |
 | 6 | [유통·결제](docs/phases/phase-06-trading-settlement.md) | ✅ |
-| 7 | [오픈 API](docs/phases/phase-07-openapi.md) | ⬜ |
-| 8 | [AI](docs/phases/phase-08-ai.md) | ⬜ |
+| 7 | [오픈 API](docs/phases/phase-07-openapi.md) | ✅ |
+| 8 | [AI](docs/phases/phase-08-ai.md) | 🟡 코드·테스트 완료 / 폐쇄망 실측 대기 |
 | 9 | [배치](docs/phases/phase-09-batch.md) | ⬜ |
 | 10 | [프론트](docs/phases/phase-10-frontend.md) | ⬜ |
 | 11 | [마감](docs/phases/phase-11-release.md) | ⬜ |
