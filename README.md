@@ -18,7 +18,7 @@
 
 | 문서 | 내용 |
 |---|---|
-| [`docs/FSD.md`](docs/FSD.md) | 기능 사양서 (v1.1.2) — **단일 진실 공급원(SSOT)** |
+| [`docs/FSD.md`](docs/FSD.md) | 기능 사양서 (v1.1.3) — **단일 진실 공급원(SSOT)** |
 | [`docs/phases/README.md`](docs/phases/README.md) | Phase 11개 인덱스 및 의존 관계 |
 | [`CLAUDE.md`](CLAUDE.md) | AI 개발 에이전트용 프로젝트 규칙 |
 | [`docs/reference/plug-error-codes.md`](docs/reference/plug-error-codes.md) | namuh PLUG 게이트웨이 오류코드와 처리 정책 |

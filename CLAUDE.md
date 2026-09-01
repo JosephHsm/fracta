@@ -1,7 +1,7 @@
 # FRACTA — 프로젝트 규칙
 
 토큰증권 기반 조각투자 발행·유통 플랫폼 + 오픈 API.
-전체 사양은 `docs/FSD.md` (v1.1.2, SSOT). 현재 작업 범위는 지정된 `docs/phases/phase-XX-*.md`를 따른다.
+전체 사양은 `docs/FSD.md` (v1.1.3, SSOT). 현재 작업 범위는 지정된 `docs/phases/phase-XX-*.md`를 따른다.
 Phase 목록과 의존 관계는 `docs/phases/README.md` 참조.
 증권사는 **NH투자증권 namuh PLUG** (v1.1에서 KIS로부터 전환). 근거는 `docs/phases/phase-05-broker-integration.md` §0.
 
@@ -28,6 +28,7 @@ docker compose up -d          # PG / Redis / MinIO 기동
 Java 21 · Spring Boot 3.3 · JPA + QueryDSL · Spring Batch 5
 PostgreSQL 16 + pgvector · Redis 7 · MinIO
 테스트: JUnit5 + **Testcontainers** (H2 금지) + WireMock + k6
+프론트(Phase 10): Next.js 16 App Router · TypeScript · Tailwind v4 · shadcn/ui(**Base UI** 프리미티브) · TanStack Query/Table · lightweight-charts + Recharts · Lucide
 
 ## 코딩 규칙
 
@@ -38,6 +39,7 @@ PostgreSQL 16 + pgvector · Redis 7 · MinIO
 - 토큰·시크릿·주민번호는 로깅 전 마스킹
 - AI 모델 ID는 설정값(`AI_MODEL`, 기본 `claude-opus-5`)으로. 하드코딩 금지. 어시스턴트 프리필·`budget_tokens`·`temperature` 사용 금지(400 오류)
 - 용어는 `docs/FSD.md` §2 용어집을 따른다. 임의 네이밍 금지
+- 프론트는 `docs/FSD.md` §11.4 요소 기술 8종 + 선택 2종 안에서만. 색상 리터럴 금지(`packages/ui` OKLCH 토큰 경유), 금액 재계산·금액 카운트업 금지, 모션은 page ≤ 400ms
 
 ## 자주 나는 사고 (작업 전 확인)
 

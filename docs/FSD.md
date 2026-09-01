@@ -4,8 +4,8 @@
 >
 > | 항목 | 내용 |
 > |---|---|
-> | 문서 버전 | v1.1.2 |
-> | 작성일 | 2026-08-20 (v1.1.2 개정: 2026-09-01) |
+> | 문서 버전 | v1.1.3 |
+> | 작성일 | 2026-08-20 (v1.1.3 개정: 2026-09-01) |
 > | 문서 목적 | AI 개발 에이전트가 이 문서만으로 전체 구현이 가능하도록 하는 단일 진실 공급원(SSOT) |
 > | 프로젝트 성격 | 1인 개발 포트폴리오 / 금융IT 직무 지원용 |
 
@@ -227,8 +227,10 @@ com.fracta
 | 스토리지 | MinIO | latest | 투자설명서 PDF (S3 호환) |
 | 인증 | Spring Security + JWT | | |
 | API 문서 | springdoc-openapi | 2.x | Swagger UI |
-| 프론트 | Next.js (App Router) + TypeScript | 14+ | 모노레포 2앱 |
-| UI | Tailwind CSS + shadcn/ui | | |
+| 프론트 | Next.js (App Router) + TypeScript | 16.x | 모노레포 2앱. View Transitions 내장(플래그 불필요) |
+| UI | Tailwind CSS v4 + shadcn/ui | | 프리미티브는 **Base UI** (shadcn 2026-07 기본 전환). 아이콘 Lucide |
+| 프론트 상태/데이터 | TanStack Query + TanStack Table | v5 | 서버 상태 캐싱·재검증, 로그/거래내역 테이블 |
+| 차트 | lightweight-charts + Recharts | | 기초자산 시세/캔들은 lightweight-charts, 대시보드 지표는 Recharts |
 | AI 서비스 | Python + FastAPI | 3.11 | |
 | 임베딩 | `BAAI/bge-m3` 또는 유사 다국어 모델 | | 한국어 성능 |
 | LLM | Claude API (기본) / Ollama (폐쇄망) | | §11.3 |
@@ -1026,6 +1028,62 @@ packages/
 | 웹훅 | URL 등록, 시크릿 확인, 발송 이력 및 재발송 |
 | 로그 | 호출 로그 검색 (엔드포인트·상태코드·기간) |
 
+### 11.4 디자인 방향과 요소 기술
+
+디자인 컨셉은 **Institutional Fintech + Modern SaaS** — 증권사 HTS만큼 무겁지 않고, 소비자 금융 앱만큼 가볍지도 않은 정보 밀도. 화려한 스타일이 아니라 **절제된 시각 + 강한 정보 구조 + 자연스러운 모션 + 컴포넌트 단위 반응형 + 접근성**을 채택 기준으로 삼는다.
+
+채택하는 요소 기술은 다음 8개다. 전부 **"왜 이 기술을 썼는지 설명할 수 있는 것"** 만 남긴 것이고, 유행 자체가 목적인 항목은 §11.5에서 명시적으로 배제한다.
+
+| # | 요소 기술 | 적용 지점 | 채택 사유 |
+|---|---|---|---|
+| 1 | **Bento 대시보드 레이아웃** | investor-web 홈·내 자산, dev-portal 대시보드 | 지표 종류가 많은 금융 화면에 맞는 정보 구조 |
+| 2 | **마이크로 인터랙션** | 청약/주문 버튼 상태 전이, 테이블 행 진입, 진행률 | 완성도 체감이 가장 큰 요소. 모션 스케일은 아래 고정 |
+| 3 | **View Transitions API** | 종목·상품 리스트 → 상세 전환 | 표준 Web Platform API 직접 사용. Next.js 16 App Router 내장 |
+| 4 | **Container Queries** | `packages/ui` 카드·패널 | 부모 폭 기준 반응형 = 진짜 재사용 가능한 컴포넌트 |
+| 5 | **Subtle Glass 서피스** | 스티키 헤더, 모달, 플로팅 요소 **한정** | 레이어 관계를 보여주는 수단으로만. 전면 투명 금지 |
+| 6 | **OKLCH 디자인 토큰** | `packages/ui` 토큰 정의 | 인지 균등한 명도 단계. Tailwind v4·shadcn 기본 색공간 |
+| 7 | **다크 모드** | 두 앱 전체 | 라이트 기본, 다크는 트레이딩·모니터링 화면용 |
+| 8 | **커맨드 팔레트 (`Ctrl+K`)** | 두 앱 공통 | 종목·명령 검색. Keyboard-first UX |
+
+선택 적용: CSS Anchor Positioning(툴팁·팝오버 — Baseline 2026 *newly available*이므로 `@supports` 폴백 필수), 스크롤 기반 애니메이션(투자설명서 진행 표시 정도).
+
+**색 토큰**
+
+```
+--background   중립 그레이 (라이트 #F7F8FA 계열)
+--surface      / --surface-elevated
+--primary      Deep Navy      --accent   Electric Blue
+--success      Emerald        --danger   Red        --warning  Amber
+--border / --text
+```
+
+- 등락·손익 색은 **국내 관행(상승 = 적색, 하락 = 청색)** 을 따른다. 서구식 반전 금지.
+- 괴리율 배지의 경고(주황)·중단(빨강)은 등락 색과 **다른 축**이다. 색만으로 구분되게 두지 않고 아이콘 + 텍스트를 함께 쓴다(WCAG 1.4.1).
+
+**모션 스케일** (초과 금지)
+
+```
+hover   100~150ms      button  150~200ms
+panel   200~300ms      page    250~400ms
+```
+
+- `prefers-reduced-motion: reduce`에서 View Transition·카운트업·행 진입 애니메이션을 모두 끈다.
+- 카운트업은 진행률·경쟁률 같은 파생 지표에만 쓴다. **금액은 서버 값을 그대로 즉시 표시**한다(§11.2 금액 규칙).
+
+**접근성 기준**: WCAG 2.2 AA. 키보드만으로 온보딩~청약~주문 전 동선 도달, `:focus-visible` 상시 노출, 폼 오류는 색이 아니라 문구로 전달.
+
+### 11.5 배제 항목
+
+포트폴리오 가치보다 리스크가 큰 것들을 미리 못박는다.
+
+| 배제 | 사유 |
+|---|---|
+| WebGL / 3D 메인 화면 | 개발 시간 대비 효과 없음. "증권 IT 백엔드/풀스택"이라는 초점이 흐려진다 |
+| 전면 글래스모피즘 | 핀테크가 아니라 Web3 토큰 거래소 데모처럼 보인다 |
+| 네오 브루탈리즘 | 금융 서비스 신뢰감과 상충 |
+| 모든 요소에 애니메이션 | 오히려 완성도가 낮아 보인다. §11.4 모션 스케일 안에서만 |
+| 운영자용 성능·동시성 벤치마크 화면 | 화면 범위(§11.2 7개 + §11.3 6개) 밖. 벤치마크 수치는 Phase 11 README에 싣는다 |
+
 ---
 
 ## 12. 배치 (Spring Batch)
@@ -1264,5 +1322,6 @@ LEDGER_ADAPTER=hashchain         # hashchain | (future: blockchain)
 | v1.1 | 2026-08-31 | ① 증권사 연동을 KIS → **NH투자증권 namuh PLUG**로 전환 (근거: `docs/phases/phase-05-broker-integration.md` §0)<br>② 증권사 API를 **시세 조회 전용**으로 축소 — 자체 오더북이 있으므로 외부 주문 불필요<br>③ AI 기본 모델을 `claude-opus-5`로 갱신. 어시스턴트 프리필 금지·구조화 출력 반영 (`docs/phases/phase-08-ai.md` §0)<br>④ §14 로드맵을 `docs/phases/*.md` 11개 문서로 분할 |
 | v1.1.1 | 2026-09-01 | Phase 1~8 구현 대조 정정: Open API 슬라이딩 윈도우, PLUG 실측 기본 1건/초, RAG 임계값 0.48, 구조화 AI 출력·현행 `LlmPort`, 환경변수 기본값과 감사 채널을 실제 사양에 동기화 |
 | v1.1.2 | 2026-09-01 | Phase 9 배치 구현 반영. 미달 청약에서 미신청 물량을 만들지 않도록 INV-5 기대값을 `min(total_units, Σ requested_units)`로 명확화 |
+| v1.1.3 | 2026-09-01 | Phase 10 착수 전 프론트엔드 사양 구체화. §4.1 프론트 스택 확정(Next.js 16 · Tailwind v4 · shadcn/Base UI · TanStack · lightweight-charts), §11.4 디자인 방향·요소 기술 8종·색/모션 토큰·접근성 기준, §11.5 배제 항목 신설 |
 
 *문서 끝. 변경 시 버전을 올리고 변경 이력을 남길 것.*
