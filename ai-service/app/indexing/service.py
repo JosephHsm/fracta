@@ -47,7 +47,7 @@ class IndexingService:
                     cur.execute(
                         "INSERT INTO prospectus_chunk "
                         "(issuance_id, page_no, chunk_index, content, embedding) "
-                        "VALUES (%s, %s, %s, %s, %s)",
+                        "VALUES (%s, %s, %s, %s, %s::vector)",
                         (issuance_id, chunk.page_no, chunk.chunk_index, chunk.content, vector),
                     )
             conn.commit()

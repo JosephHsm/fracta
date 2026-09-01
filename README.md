@@ -25,6 +25,7 @@
 | [`docs/appendix/risk-profile-questions.md`](docs/appendix/risk-profile-questions.md) | 투자성향 진단 8문항·배점표 |
 | [`docs/ai/guardrail-design.md`](docs/ai/guardrail-design.md) | 금소법 대응 매핑, 3단계 가드레일, **실제 우회 사례** |
 | [`docs/ai/provider-comparison.md`](docs/ai/provider-comparison.md) | Claude ↔ 폐쇄망 비교 — 측정 방법과 현재 상태 |
+| [`docs/ai/similarity-threshold.md`](docs/ai/similarity-threshold.md) | RAG 유사도 임계값 실측 — **0.6 → 0.48** 조정 근거 |
 | [`docs/appendix/guardrail-attack-prompts.md`](docs/appendix/guardrail-attack-prompts.md) | 공격 프롬프트 20종과 차단 결과표 (자동 생성) |
 | [`ai-service/README.md`](ai-service/README.md) | AI 서비스 구조와 실행 |
 
@@ -38,6 +39,7 @@
 | [증권사 호출 유량](docs/benchmarks/broker-quota.md) | 문서값 4~5건/초와 달리 **실효 한도 약 1건/초**. 지속 폴링 902회 전부 성공, 쿼터 초과 0건 |
 | [매칭·결제 처리량](docs/benchmarks/trading-matching.md) | 매칭 엔진 640,902건/초, 주문 API p95 32.7ms. 결제 포함 주문 경로는 39.8건/초 |
 | [원장 설계 노트](docs/notes/phase-02-ledger-notes.md) | 해시체인 append 약 225 tps, 1만 건 검증 87ms |
+| [RAG 유사도 임계값](docs/ai/similarity-threshold.md) | bge-m3 실측 — 관련 질문 0.527~0.654 / 무관 0.350~0.429. FSD 기본값 0.6은 정상 질문 4/10을 차단해 **0.48로 조정** |
 
 ### Open API 사용 규격
 
@@ -128,7 +130,7 @@ def verify_webhook(secret: str, raw_body: bytes, signature: str) -> bool:
 ```
 질문 ─① 입력 가드레일 ── 차단 ─▶ 고정 문구 (LLM 호출 0건)
      │   인젝션 / 개인정보
-     ├─  임베딩 → 코사인 top-5, 유사도 < 0.6 ─▶ 고정 문구 (LLM 호출 0건)
+     ├─  임베딩 → 코사인 top-5, 유사도 < 0.48 ▶ 고정 문구 (LLM 호출 0건)
      ├─② 시스템 프롬프트 + 구조화 출력(output_config.format)
      └─③ 출력 가드레일 (코드 검증)
          refusal · JSON 파싱 실패 · 금지 표현 · 인용 없음 · 검색결과 밖 인용 → 차단
@@ -148,6 +150,7 @@ def verify_webhook(secret: str, raw_body: bytes, signature: str) -> bool:
 | 프롬프트 인젝션 20종 (입력 단계) | 20/20 차단 — 단, 알려진 표현만 잡는다는 한계를 문서에 명시 |
 | 개인정보 포함 질문 | 차단 (LLM 호출 없음 → 외부로 나가지 않음) |
 | 환각 인용 | 차단 (`cited_pages` + 본문 `[p.N]` 2중 검사) |
+| 검색 정확도 (bge-m3 실측) | 관련 질문 10/10 올바른 페이지 1위 |
 
 **두 개의 모델이 다른 자리에 있습니다.** `bge-m3`(임베딩)는 텍스트를 벡터로 바꿔
 검색만 하고, Claude/Ollama(LLM)가 검색된 발췌문으로 답을 씁니다. `AI_PROVIDER`

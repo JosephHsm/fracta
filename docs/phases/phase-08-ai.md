@@ -260,9 +260,11 @@ class OllamaAdapter(LlmPort):     # 폐쇄망 시연용
 - [x] **환각 인용 검출 동작** (FSD §14 명시 조건) — 존재하지 않는 페이지 인용 시 차단
 - [x] 인덱싱 — PDF 업로드 → 청크 생성 → 임베딩 저장 확인
   - 실제 PDF(pdfplumber) → 페이지 추출 → 청킹 → 임베딩 → `DELETE`+`INSERT` 까지 검증
-  - 실제 bge-m3 + 실제 pgvector 종단 검증은 `test_embedding_e2e.py` — 런타임이 없으면 skip
+  - 실제 bge-m3(1024차원) + 실제 pgvector 종단 검증 완료 — `test_embedding_e2e.py` 21건
 - [x] 청킹이 페이지 경계를 넘지 않음 (모든 청크의 `page_no`가 단일값)
 - [x] 유사도 임계값 미달 질문 → **LLM 호출 없이** 고정 문구 반환 (호출 0건 확인)
+  - 임계값을 실측으로 조정: **0.6 → 0.48**. 근거 `docs/ai/similarity-threshold.md`
+  - FSD 기본값 0.6은 답할 수 있는 질문 10건 중 4건을 차단했다
 - [x] 인용 없는 응답 → `NO_CITATION` 차단
 - [x] 프롬프트 인젝션 시도 20종 중 입력 단계 차단 비율 측정·기록 (20/20 = 100%)
 - [x] 개인정보 포함 질문 차단
@@ -280,20 +282,14 @@ class OllamaAdapter(LlmPort):     # 폐쇄망 시연용
 
 > **완료 근거** (2026-09-01)
 >
-> Python 118건 + Java 250건(Phase 8분 15건 포함) 통과, e2e 9건 skip.
+> Python 139건 + Java 254건(Phase 8분 19건 포함) 통과.
 > 검증 위치는 `docs/ai/guardrail-design.md` §10 표 참조.
 >
-> **e2e 9건이 skip 되는 이유.** 개발 노트북의 MSVC 런타임이 14.27이라 torch 2.x 가
-> DLL 로드에 실패한다(`WinError 1114`). 이 때문에 막히는 기능은 없다 — 실제 임베딩은
-> Linux 컨테이너에서 돌고, 나머지 118건은 `FakeEmbeddingAdapter` 로 돈다. 애초에
-> `EmbeddingPort` 를 `LlmPort` 와 분리한 이유가 이것이다. 호스트에서 돌리려면
-> VC++ 재배포 패키지를 최신으로 올린다 (`ai-service/README.md` 참조).
->
-> **미완 항목과 사유.** 개발 노트북(Ryzen 5 5625U, iGPU 공유 2GB)에서는 7B 이상
-> 양자화 모델이 CPU 추론 3~6 tok/s 라 품질·지연 비교의 의미가 없다. `OllamaAdapter`
-> 는 코드와 계약 테스트까지 완료했고, 실행 검증과 비교표는 데스크탑(RTX 4080 16GB)에서
-> 채운다. 측정 스크립트(`scripts/ai/measure_provider.py`)는 함께 작성해 두었다.
-> 추정치로 표를 채우지 않는다 — 이 프로젝트는 실측값만 기록한다.
+> **e2e 종단 검증에서 잡은 것.** VC++ 재배포 패키지 갱신 후 실제 bge-m3 로 돌린 결과
+> 두 가지가 나왔다. ① `psycopg` 가 파이썬 `list[float]` 를 `double precision[]` 로 넘겨
+> `<=>` 연산자가 거부하는 버그 — **인덱싱은 성공하고 검색만 실패**하는 형태라 대역 기반
+> 테스트로는 드러나지 않았다(`%s::vector` 캐스트로 수정). ② 임계값 0.6이 너무 높아
+> 정상 질문 4/10을 차단 — 0.48로 조정하고 근거를 문서화했다.
 >
 > | 남은 것 | 필요 환경 | 실행 |
 > |---|---|---|

@@ -30,9 +30,11 @@ class Settings(BaseSettings):
     # V8__ai.sql의 VECTOR(1024)와 반드시 일치해야 한다
     embedding_dim: int = 1024
 
-    # --- 검색 ---
-    # FSD §10.2 기준값. 실측 후 조정하고 근거를 docs/ai/에 남긴다
-    similarity_threshold: float = 0.6
+    # 실측으로 조정한 값 (FSD §10.2 기본값 0.6 → 0.48).
+    # bge-m3 기준 관련 질문 0.527~0.654 / 주제 무관 질문 0.350~0.429 로 갈렸다.
+    # 0.6 을 그대로 쓰면 답할 수 있는 질문의 절반이 임계값에서 잘렸다.
+    # 근거와 측정표: docs/ai/similarity-threshold.md
+    similarity_threshold: float = 0.48
     top_k: int = 5
 
     # --- 청킹 (FSD §10.2) ---

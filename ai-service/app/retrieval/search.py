@@ -50,11 +50,15 @@ class SearchService:
             with conn.cursor() as cur:
                 # <=> 는 pgvector 의 코사인 거리다. 유사도 = 1 - 거리.
                 # 바인딩 파라미터만 쓴다 (문자열 연결 금지)
+                # ::vector 캐스트가 필수다. psycopg 는 파이썬 list[float] 를
+                # double precision[] 로 넘기고 <=> 는 그 타입을 받지 않는다.
+                # INSERT 는 할당 캐스트로 통과해서 이 문제가 검색에서만 드러난다.
                 cur.execute(
-                    "SELECT id, page_no, content, 1 - (embedding <=> %s) AS similarity "
+                    "SELECT id, page_no, content, "
+                    "1 - (embedding <=> %s::vector) AS similarity "
                     "FROM prospectus_chunk "
                     "WHERE issuance_id = %s "
-                    "ORDER BY embedding <=> %s "
+                    "ORDER BY embedding <=> %s::vector "
                     "LIMIT %s",
                     (vector, issuance_id, vector, self._top_k),
                 )

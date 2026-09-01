@@ -36,13 +36,33 @@ RELEVANT = [
     ("공실이 생기면 어떻게 되나요?", 7),
     ("기초자산 건물은 어디에 있나요?", 3),
     ("배당은 얼마나 자주 주나요?", 12),
+    ("주요 위험요인이 무엇인가요?", 7),
+    ("금리가 오르면 어떤 영향이 있나요?", 7),
+    ("원금 손실 가능성이 있나요?", 7),
+    ("건물 연면적이 얼마인가요?", 3),
+    ("임차인은 몇 개사인가요?", 3),
+    ("조각당 공모가는 얼마인가요?", 12),
+    ("목표 배당수익률이 몇 퍼센트인가요?", 12),
 ]
 
 # 이 투자설명서와 무관한 질문들. 임계값 미달로 LLM 호출이 없어야 한다.
+# 문서와 주제 자체가 무관한 질문. 임계값 미달로 LLM 호출이 없어야 한다.
 IRRELEVANT = [
     "오늘 서울 날씨가 어떤가요?",
     "파이썬으로 리스트를 정렬하는 방법을 알려주세요",
     "이 회사 대표이사의 취미가 무엇인가요?",
+    "점심 메뉴 추천해 주세요",
+    "이 상품의 담당 PM 연락처를 알려주세요",
+    "작년 코스피 지수는 얼마였나요?",
+    "환불 규정이 어떻게 되나요?",
+]
+
+# 주제는 문서와 맞지만 답이 문서에 없는 질문.
+# 유사도 임계값으로는 거를 수 없다 — 문서와 단어를 공유하기 때문이다.
+# 임계값의 일이 아니라 LLM 의 found_in_document=false 와
+# 출력 가드레일의 인용 검증이 받아내야 하는 경우다.
+ON_TOPIC_BUT_ABSENT = [
+    "청약 경쟁률이 어떻게 되나요?",
 ]
 
 
@@ -97,7 +117,7 @@ def table(conn, embedder):
     vectors = embedder.embed([c[1] for c in CHUNKS])
     for (page_no, content), vector in zip(CHUNKS, vectors, strict=True):
         conn.execute(
-            f"INSERT INTO {name} (page_no, content, embedding) VALUES (%s, %s, %s)",
+            f"INSERT INTO {name} (page_no, content, embedding) VALUES (%s, %s, %s::vector)",
             (page_no, content, vector),
         )
     conn.commit()
@@ -106,11 +126,17 @@ def table(conn, embedder):
     conn.commit()
 
 
+def _threshold() -> float:
+    from app.config import Settings
+
+    return Settings().similarity_threshold
+
+
 def _search(conn, table, embedder, question, top_k=5):
     vector = embedder.embed([question])[0]
     rows = conn.execute(
-        f"SELECT page_no, 1 - (embedding <=> %s) AS similarity FROM {table} "
-        f"ORDER BY embedding <=> %s LIMIT %s",
+        f"SELECT page_no, 1 - (embedding <=> %s::vector) AS similarity FROM {table} "
+        f"ORDER BY embedding <=> %s::vector LIMIT %s",
         (vector, vector, top_k),
     ).fetchall()
     return [(r[0], float(r[1])) for r in rows]
@@ -130,7 +156,9 @@ def test_관련_질문은_올바른_페이지를_최상위로_찾는다(conn, ta
     top_page, top_similarity = results[0]
     print(f"\n  '{question}' → p.{top_page} (유사도 {top_similarity:.3f})")
     assert top_page == expected_page
-    assert top_similarity >= 0.6, "관련 질문인데 임계값을 넘지 못했다 — 0.6 재검토 필요"
+    assert top_similarity >= _threshold(), (
+        "관련 질문인데 임계값을 넘지 못했다 — SIMILARITY_THRESHOLD 재검토 필요"
+    )
 
 
 @pytest.mark.parametrize("question", IRRELEVANT)
@@ -140,24 +168,41 @@ def test_무관한_질문은_임계값을_넘지_못한다(conn, table, embedder
     top_similarity = results[0][1]
 
     print(f"\n  '{question}' → 최고 유사도 {top_similarity:.3f}")
-    assert top_similarity < 0.6, (
+    assert top_similarity < _threshold(), (
         f"무관한 질문의 유사도가 {top_similarity:.3f} 로 임계값을 넘었다. "
         "SIMILARITY_THRESHOLD 를 올리고 근거를 docs/ai/ 에 기록해야 한다."
     )
 
 
-def test_임계값_경계에_충분한_여유가_있다(conn, table, embedder):
-    """관련/무관 질문의 유사도 분포가 겹치면 임계값 자체가 무의미하다."""
-    relevant_min = min(
-        _search(conn, table, embedder, q)[0][1] for q, _ in RELEVANT
-    )
-    irrelevant_max = max(
-        _search(conn, table, embedder, q)[0][1] for q in IRRELEVANT
+def test_threshold_sits_between_distributions(conn, table, embedder):
+    """관련/무관 분포가 겹치면 임계값 자체가 무의미하다.
+
+    측정 근거는 docs/ai/similarity-threshold.md 에 기록한다.
+    """
+    threshold = _threshold()
+    relevant_min = min(_search(conn, table, embedder, q)[0][1] for q, _ in RELEVANT)
+    irrelevant_max = max(_search(conn, table, embedder, q)[0][1] for q in IRRELEVANT)
+
+    print(f"\n  관련 최저 {relevant_min:.3f} / 무관 최고 {irrelevant_max:.3f} "
+          f"/ 임계값 {threshold} (간격 {relevant_min - irrelevant_max:.3f})")
+    assert irrelevant_max < threshold < relevant_min, (
+        f"임계값 {threshold} 이 두 분포 사이에 있지 않다 "
+        f"(무관 최고 {irrelevant_max:.3f}, 관련 최저 {relevant_min:.3f})"
     )
 
-    print(f"\n  관련 질문 최저 {relevant_min:.3f} / 무관 질문 최고 {irrelevant_max:.3f} "
-          f"(임계값 0.6, 간격 {relevant_min - irrelevant_max:.3f})")
-    assert relevant_min > irrelevant_max, "관련/무관 유사도 분포가 겹친다"
+
+@pytest.mark.parametrize("question", ON_TOPIC_BUT_ABSENT)
+def test_on_topic_question_passes_threshold(conn, table, embedder, question):
+    """임계값이 거르는 것은 '주제적 무관함'이지 '답의 부재'가 아니다.
+
+    답이 없는 on-topic 질문까지 임계값으로 막으려고 값을 올리면,
+    답할 수 있는 질문들이 함께 잘려나간다 (FSD 기본값 0.6 에서 실제로 그러했다).
+    이 경우는 LLM 의 found_in_document=false 와 출력 가드레일이 처리한다.
+    """
+    top_similarity = _search(conn, table, embedder, question)[0][1]
+
+    print(f"\n  '{question}' → 최고 유사도 {top_similarity:.3f} (임계값 통과, LLM 판단으로 넘김)")
+    assert top_similarity >= _threshold()
 
 
 def test_임베딩이_L2_정규화되어_있다(embedder):

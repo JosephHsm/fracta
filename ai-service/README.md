@@ -87,7 +87,7 @@ docker compose up -d ai-service
 | `OLLAMA_MODEL` | `qwen3:14b` | 데스크탑 실측 후 확정 |
 | `EMBEDDING_MODEL` | `BAAI/bge-m3` | `fake` 로 두면 테스트 대역 |
 | `EMBEDDING_DIM` | `1024` | `V8__ai.sql` 의 `VECTOR(n)` 과 반드시 일치 |
-| `SIMILARITY_THRESHOLD` | `0.6` | 미달 시 LLM 호출 0건 |
+| `SIMILARITY_THRESHOLD` | `0.48` | 미달 시 LLM 호출 0건. 실측 조정값(FSD 0.6 → 0.48) |
 
 ## 알려진 환경 문제
 
@@ -112,3 +112,4 @@ torch 2.x 는 MSVC 런타임 **14.38 이상**을 요구하는데 설치된 버�
 - [가드레일 설계](../docs/ai/guardrail-design.md) — 금소법 대응 매핑, 실제 우회 사례
 - [프로바이더 비교](../docs/ai/provider-comparison.md) — 측정 방법과 현재 상태
 - [공격 프롬프트 부록](../docs/appendix/guardrail-attack-prompts.md) — 자동 생성
+- [유사도 임계값 실측](../docs/ai/similarity-threshold.md) — 0.6 → 0.48 근거

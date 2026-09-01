@@ -32,7 +32,8 @@
  │   프롬프트 인젝션 / 개인정보
  │
  ├─  임베딩 → 코사인 top-5
- │   최고 유사도 < 0.6 ──────▶ "확인할 수 없습니다" (LLM 호출 0건)
+ │   최고 유사도 < 0.48 ─────▶ "확인할 수 없습니다" (LLM 호출 0건)
+ │   ※ 0.48은 실측 조정값 (FSD 기본값 0.6 → similarity-threshold.md)
  │
  ├─② 시스템 프롬프트 + 구조화 출력
  │   FSD §10.3 문구 원문 + output_config.format 으로 스키마 강제
@@ -231,6 +232,7 @@ AI 서비스 자신도 `/ai/metrics` 로 자기 집계를 노출하지만 이건
 | 인젝션 입력 차단 비율 | `test_guardrail.py::test_인젝션_20종_입력_차단_비율` |
 | 개인정보 차단 | `test_guardrail.py::test_개인정보_포함_질문_차단` |
 | 임계값 미달 시 LLM 호출 0건 | `test_ask_pipeline.py::test_임계값_미달이면_LLM_호출_0건` |
+| 임계값이 실측 분포 사이에 있음 | `test_embedding_e2e.py::test_threshold_sits_between_distributions` |
 | refusal 처리 | `test_ask_pipeline.py::test_refusal은_재시도하지_않는다` |
 | Ollama 파싱 실패 차단 | `test_ask_pipeline.py::test_JSON_파싱_실패는_통과되지_않는다` |
 | 프리필·`budget_tokens`·`temperature` 미사용 | `test_adapters.py` (소스 스캔) |

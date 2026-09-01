@@ -26,7 +26,12 @@ class LocalBgeM3Adapter(EmbeddingPort):
         self.model_id = model_id
         self.dim = dim
         self._model = SentenceTransformer(model_id)
-        actual = self._model.get_sentence_embedding_dimension()
+        # sentence-transformers 가 get_sentence_embedding_dimension 을
+        # get_embedding_dimension 으로 개명했다. 양쪽 버전을 모두 받아준다.
+        getter = getattr(self._model, "get_embedding_dimension", None) or (
+            self._model.get_sentence_embedding_dimension
+        )
+        actual = getter()
         if actual != dim:
             # 여기서 죽는 편이 낫다. 차원이 어긋나면 INSERT 시점에 정체불명의
             # PG 오류가 나고, 그때는 어느 설정이 틀렸는지 추적하기 어렵다.
