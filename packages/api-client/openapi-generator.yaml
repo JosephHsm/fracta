@@ -1,0 +1,18 @@
+# 이 파일이 타입 클라이언트 생성의 유일한 입력이다. src/generated/ 는 절대 손으로 고치지 않는다.
+# 스펙 재생성: pnpm spec:export (Spring OpenApiSpecExportTest) → pnpm api:generate
+inputSpec: ../../docs/openapi/fracta-openapi.json
+generatorName: typescript-fetch
+outputDir: ./src/generated
+additionalProperties:
+  supportsES6: true
+  useSingleRequestParameter: true
+  withoutRuntimeChecks: false
+  npmName: "@fracta/api-client-generated"
+  modelPropertyNaming: original
+globalProperty:
+  models: ""
+  apis: ""
+  supportingFiles: ""
+  # 마크다운 문서는 만들지 않는다 — Swagger UI가 이미 있고, 레포에 노이즈만 남는다
+  modelDocs: "false"
+  apiDocs: "false"

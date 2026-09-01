@@ -1,0 +1,2253 @@
+{
+  "components" : {
+    "schemas" : {
+      "ApiResponseApplyResult" : {
+        "properties" : {
+          "data" : {
+            "$ref" : "#/components/schemas/ApplyResult"
+          },
+          "meta" : {
+            "$ref" : "#/components/schemas/ResponseMeta"
+          }
+        },
+        "type" : "object"
+      },
+      "ApiResponseCreateResult" : {
+        "properties" : {
+          "data" : {
+            "$ref" : "#/components/schemas/CreateResult"
+          },
+          "meta" : {
+            "$ref" : "#/components/schemas/ResponseMeta"
+          }
+        },
+        "type" : "object"
+      },
+      "ApiResponseDevPortalAskResponse" : {
+        "properties" : {
+          "data" : {
+            "$ref" : "#/components/schemas/DevPortalAskResponse"
+          },
+          "meta" : {
+            "$ref" : "#/components/schemas/ResponseMeta"
+          }
+        },
+        "type" : "object"
+      },
+      "ApiResponseFinalizeResult" : {
+        "properties" : {
+          "data" : {
+            "$ref" : "#/components/schemas/FinalizeResult"
+          },
+          "meta" : {
+            "$ref" : "#/components/schemas/ResponseMeta"
+          }
+        },
+        "type" : "object"
+      },
+      "ApiResponseIndexResult" : {
+        "properties" : {
+          "data" : {
+            "$ref" : "#/components/schemas/IndexResult"
+          },
+          "meta" : {
+            "$ref" : "#/components/schemas/ResponseMeta"
+          }
+        },
+        "type" : "object"
+      },
+      "ApiResponseListMapStringObject" : {
+        "properties" : {
+          "data" : {
+            "items" : {
+              "additionalProperties" : {
+                "type" : "object"
+              },
+              "type" : "object"
+            },
+            "type" : "array"
+          },
+          "meta" : {
+            "$ref" : "#/components/schemas/ResponseMeta"
+          }
+        },
+        "type" : "object"
+      },
+      "ApiResponseMapStringObject" : {
+        "properties" : {
+          "data" : {
+            "additionalProperties" : {
+              "type" : "object"
+            },
+            "type" : "object"
+          },
+          "meta" : {
+            "$ref" : "#/components/schemas/ResponseMeta"
+          }
+        },
+        "type" : "object"
+      },
+      "ApiResponsePlaceResult" : {
+        "properties" : {
+          "data" : {
+            "$ref" : "#/components/schemas/PlaceResult"
+          },
+          "meta" : {
+            "$ref" : "#/components/schemas/ResponseMeta"
+          }
+        },
+        "type" : "object"
+      },
+      "ApiResponseProspectusAskResponse" : {
+        "properties" : {
+          "data" : {
+            "$ref" : "#/components/schemas/ProspectusAskResponse"
+          },
+          "meta" : {
+            "$ref" : "#/components/schemas/ResponseMeta"
+          }
+        },
+        "type" : "object"
+      },
+      "ApiResponseSuitabilityResult" : {
+        "properties" : {
+          "data" : {
+            "$ref" : "#/components/schemas/SuitabilityResult"
+          },
+          "meta" : {
+            "$ref" : "#/components/schemas/ResponseMeta"
+          }
+        },
+        "type" : "object"
+      },
+      "ApiResponseTokenResponse" : {
+        "properties" : {
+          "data" : {
+            "$ref" : "#/components/schemas/TokenResponse"
+          },
+          "meta" : {
+            "$ref" : "#/components/schemas/ResponseMeta"
+          }
+        },
+        "type" : "object"
+      },
+      "ApiResponseTransitionResult" : {
+        "properties" : {
+          "data" : {
+            "$ref" : "#/components/schemas/TransitionResult"
+          },
+          "meta" : {
+            "$ref" : "#/components/schemas/ResponseMeta"
+          }
+        },
+        "type" : "object"
+      },
+      "ApiResponseVoid" : {
+        "properties" : {
+          "data" : {
+            "type" : "object"
+          },
+          "meta" : {
+            "$ref" : "#/components/schemas/ResponseMeta"
+          }
+        },
+        "type" : "object"
+      },
+      "ApplyRequest" : {
+        "properties" : {
+          "idempotencyKey" : {
+            "maxLength" : 100,
+            "minLength" : 0,
+            "type" : "string"
+          },
+          "units" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        },
+        "required" : [ "units" ],
+        "type" : "object"
+      },
+      "ApplyResult" : {
+        "properties" : {
+          "depositAmount" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "orderId" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "replayed" : {
+            "type" : "boolean"
+          },
+          "requestedUnits" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "status" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "AskRequest" : {
+        "properties" : {
+          "question" : {
+            "maxLength" : 2000,
+            "minLength" : 0,
+            "type" : "string"
+          }
+        },
+        "required" : [ "question" ],
+        "type" : "object"
+      },
+      "CashRequest" : {
+        "properties" : {
+          "amount" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        },
+        "required" : [ "amount" ],
+        "type" : "object"
+      },
+      "CreateAssetRequest" : {
+        "properties" : {
+          "assetCode" : {
+            "pattern" : "^[A-Za-z]{4}$",
+            "type" : "string"
+          },
+          "assetType" : {
+            "enum" : [ "REIT", "ETF", "REAL_ESTATE" ],
+            "type" : "string"
+          },
+          "brokerTicker" : {
+            "type" : "string"
+          },
+          "description" : {
+            "type" : "string"
+          },
+          "name" : {
+            "maxLength" : 200,
+            "minLength" : 0,
+            "type" : "string"
+          },
+          "splitRatio" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        },
+        "required" : [ "assetType", "name", "splitRatio" ],
+        "type" : "object"
+      },
+      "CreateIssuanceRequest" : {
+        "properties" : {
+          "assetId" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "subscriptionEndAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "subscriptionStartAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "totalUnits" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "unitPrice" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        },
+        "required" : [ "assetId", "subscriptionEndAt", "subscriptionStartAt", "totalUnits", "unitPrice" ],
+        "type" : "object"
+      },
+      "CreateResult" : {
+        "properties" : {
+          "issuanceId" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "tokenSymbol" : {
+            "type" : "string"
+          },
+          "warnings" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          }
+        },
+        "type" : "object"
+      },
+      "DevPortalAskResponse" : {
+        "properties" : {
+          "answer" : {
+            "type" : "string"
+          },
+          "blocked" : {
+            "type" : "boolean"
+          },
+          "citedEndpoints" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          },
+          "llmCalled" : {
+            "type" : "boolean"
+          }
+        },
+        "type" : "object"
+      },
+      "FinalizeResult" : {
+        "properties" : {
+          "issuanceId" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "issuerCredited" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "orderCount" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "refundedAmount" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "soldUnits" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        },
+        "type" : "object"
+      },
+      "IndexResult" : {
+        "properties" : {
+          "chunks" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "embeddingModel" : {
+            "type" : "string"
+          },
+          "issuanceId" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "pages" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        },
+        "type" : "object"
+      },
+      "LoginRequest" : {
+        "properties" : {
+          "email" : {
+            "type" : "string"
+          },
+          "password" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "email", "password" ],
+        "type" : "object"
+      },
+      "PlaceOrderRequest" : {
+        "properties" : {
+          "orderType" : {
+            "enum" : [ "LIMIT", "MARKET" ],
+            "type" : "string"
+          },
+          "price" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "side" : {
+            "enum" : [ "BUY", "SELL" ],
+            "type" : "string"
+          },
+          "tokenSymbol" : {
+            "type" : "string"
+          },
+          "units" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        },
+        "required" : [ "orderType", "side", "tokenSymbol", "units" ],
+        "type" : "object"
+      },
+      "PlaceResult" : {
+        "properties" : {
+          "executionIds" : {
+            "items" : {
+              "format" : "int64",
+              "type" : "integer"
+            },
+            "type" : "array"
+          },
+          "filledUnits" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "orderId" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "replayed" : {
+            "type" : "boolean"
+          },
+          "status" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "ProspectusAskResponse" : {
+        "properties" : {
+          "answer" : {
+            "type" : "string"
+          },
+          "blocked" : {
+            "type" : "boolean"
+          },
+          "citedPages" : {
+            "items" : {
+              "format" : "int32",
+              "type" : "integer"
+            },
+            "type" : "array"
+          },
+          "llmCalled" : {
+            "type" : "boolean"
+          }
+        },
+        "type" : "object"
+      },
+      "RegisterWebhookRequest" : {
+        "properties" : {
+          "events" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array",
+            "uniqueItems" : true
+          },
+          "secret" : {
+            "type" : "string"
+          },
+          "url" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "events", "secret", "url" ],
+        "type" : "object"
+      },
+      "ResponseMeta" : {
+        "properties" : {
+          "requestId" : {
+            "type" : "string"
+          },
+          "timestamp" : {
+            "format" : "date-time",
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "RiskProfileRequest" : {
+        "properties" : {
+          "answers" : {
+            "items" : {
+              "format" : "int32",
+              "type" : "integer"
+            },
+            "maxItems" : 8,
+            "minItems" : 8,
+            "type" : "array"
+          }
+        },
+        "required" : [ "answers" ],
+        "type" : "object"
+      },
+      "SignupRequest" : {
+        "properties" : {
+          "email" : {
+            "maxLength" : 255,
+            "minLength" : 0,
+            "type" : "string"
+          },
+          "name" : {
+            "maxLength" : 100,
+            "minLength" : 0,
+            "type" : "string"
+          },
+          "password" : {
+            "maxLength" : 100,
+            "minLength" : 8,
+            "type" : "string"
+          }
+        },
+        "required" : [ "email", "name", "password" ],
+        "type" : "object"
+      },
+      "SubscribeRequest" : {
+        "properties" : {
+          "issuanceId" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "units" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        },
+        "required" : [ "issuanceId", "units" ],
+        "type" : "object"
+      },
+      "SuitabilityAckRequest" : {
+        "properties" : {
+          "productGrade" : {
+            "format" : "int32",
+            "maximum" : 5,
+            "minimum" : 1,
+            "type" : "integer"
+          }
+        },
+        "required" : [ "productGrade" ],
+        "type" : "object"
+      },
+      "SuitabilityResult" : {
+        "properties" : {
+          "decision" : {
+            "enum" : [ "ALLOWED", "ALLOWED_BY_ACK", "BLOCKED_MISMATCH", "BLOCKED_NO_PROFILE" ],
+            "type" : "string"
+          },
+          "investorGrade" : {
+            "enum" : [ "STABLE", "STABLE_SEEKING", "NEUTRAL", "ACTIVE", "AGGRESSIVE" ],
+            "type" : "string"
+          },
+          "productGrade" : {
+            "enum" : [ "STABLE", "STABLE_SEEKING", "NEUTRAL", "ACTIVE", "AGGRESSIVE" ],
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "TokenResponse" : {
+        "properties" : {
+          "accessToken" : {
+            "type" : "string"
+          },
+          "expiresIn" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "scope" : {
+            "type" : "string"
+          },
+          "tokenType" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "TransitionResult" : {
+        "properties" : {
+          "from" : {
+            "type" : "string"
+          },
+          "issuanceId" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "to" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      }
+    }
+  },
+  "info" : {
+    "title" : "OpenAPI definition",
+    "version" : "v0"
+  },
+  "openapi" : "3.0.1",
+  "paths" : {
+    "/api/v1/admin/ai/issuances/{id}/index" : {
+      "post" : {
+        "operationId" : "reindex",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseIndexResult"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "admin-ai-controller" ]
+      }
+    },
+    "/api/v1/admin/issuances/{id}/approve" : {
+      "post" : {
+        "operationId" : "approve",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseTransitionResult"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "admin-issuance-controller" ]
+      }
+    },
+    "/api/v1/admin/issuances/{id}/list" : {
+      "post" : {
+        "operationId" : "list",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseTransitionResult"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "admin-issuance-controller" ]
+      }
+    },
+    "/api/v1/admin/issuances/{id}/open-subscription" : {
+      "post" : {
+        "operationId" : "openSubscription",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseTransitionResult"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "admin-issuance-controller" ]
+      }
+    },
+    "/api/v1/admin/issuances/{id}/reject" : {
+      "post" : {
+        "operationId" : "reject",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseTransitionResult"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "admin-issuance-controller" ]
+      }
+    },
+    "/api/v1/admin/issuances/{id}/start-allotment" : {
+      "post" : {
+        "operationId" : "startAllotment",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseTransitionResult"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "admin-issuance-controller" ]
+      }
+    },
+    "/api/v1/admin/issuances/{issuanceId}/finalize-allotment" : {
+      "post" : {
+        "operationId" : "finalizeAllotment",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "issuanceId",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseFinalizeResult"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "admin-subscription-controller" ]
+      }
+    },
+    "/api/v1/ai/devportal/ask" : {
+      "post" : {
+        "operationId" : "askDevPortal",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/AskRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseDevPortalAskResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "ai-controller" ]
+      }
+    },
+    "/api/v1/ai/issuances/{id}/ask" : {
+      "post" : {
+        "operationId" : "askProspectus",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/AskRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseProspectusAskResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "ai-controller" ]
+      }
+    },
+    "/api/v1/assets" : {
+      "post" : {
+        "operationId" : "create_1",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/CreateAssetRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "201" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseMapStringObject"
+                }
+              }
+            },
+            "description" : "Created"
+          }
+        },
+        "tags" : [ "asset-controller" ]
+      }
+    },
+    "/api/v1/auth/login" : {
+      "post" : {
+        "operationId" : "login",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/LoginRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseTokenResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "auth-controller" ]
+      }
+    },
+    "/api/v1/auth/signup" : {
+      "post" : {
+        "operationId" : "signup",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/SignupRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "201" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseMapStringObject"
+                }
+              }
+            },
+            "description" : "Created"
+          }
+        },
+        "tags" : [ "auth-controller" ]
+      }
+    },
+    "/api/v1/investors/me" : {
+      "get" : {
+        "operationId" : "me",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseMapStringObject"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "investor-controller" ]
+      }
+    },
+    "/api/v1/investors/me/cash/deposit" : {
+      "post" : {
+        "operationId" : "deposit",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/CashRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseMapStringObject"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "cash-controller" ]
+      }
+    },
+    "/api/v1/investors/me/cash/transactions" : {
+      "get" : {
+        "operationId" : "transactions",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseListMapStringObject"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "cash-controller" ]
+      }
+    },
+    "/api/v1/investors/me/cash/withdrawal" : {
+      "post" : {
+        "operationId" : "withdraw",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/CashRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseMapStringObject"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "cash-controller" ]
+      }
+    },
+    "/api/v1/investors/me/risk-profile" : {
+      "post" : {
+        "operationId" : "submitRiskProfile",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/RiskProfileRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseMapStringObject"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "investor-controller" ]
+      }
+    },
+    "/api/v1/investors/me/suitability" : {
+      "get" : {
+        "operationId" : "checkSuitability",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "productGrade",
+          "required" : true,
+          "schema" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseSuitabilityResult"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "investor-controller" ]
+      }
+    },
+    "/api/v1/investors/me/suitability-ack" : {
+      "post" : {
+        "operationId" : "acknowledge",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/SuitabilityAckRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseMapStringObject"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "investor-controller" ]
+      }
+    },
+    "/api/v1/issuances" : {
+      "post" : {
+        "operationId" : "create",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/CreateIssuanceRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "201" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseCreateResult"
+                }
+              }
+            },
+            "description" : "Created"
+          }
+        },
+        "tags" : [ "issuance-controller" ]
+      }
+    },
+    "/api/v1/issuances/{id}" : {
+      "get" : {
+        "operationId" : "get",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseMapStringObject"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "issuance-controller" ]
+      }
+    },
+    "/api/v1/issuances/{id}/prospectus" : {
+      "post" : {
+        "operationId" : "uploadProspectus",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "properties" : {
+                  "file" : {
+                    "format" : "binary",
+                    "type" : "string"
+                  }
+                },
+                "required" : [ "file" ],
+                "type" : "object"
+              }
+            }
+          }
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseMapStringObject"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "issuance-controller" ]
+      }
+    },
+    "/api/v1/issuances/{id}/submit" : {
+      "post" : {
+        "operationId" : "submit",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseTransitionResult"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "issuance-controller" ]
+      }
+    },
+    "/api/v1/issuances/{issuanceId}/subscriptions" : {
+      "post" : {
+        "operationId" : "apply",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "issuanceId",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        }, {
+          "in" : "header",
+          "name" : "Idempotency-Key",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/ApplyRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "201" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseApplyResult"
+                }
+              }
+            },
+            "description" : "Created"
+          }
+        },
+        "tags" : [ "subscription-controller" ]
+      }
+    },
+    "/api/v1/orders/me" : {
+      "get" : {
+        "operationId" : "myOrders",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseListMapStringObject"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "trading-controller" ]
+      }
+    },
+    "/api/v1/orders/{orderId}" : {
+      "delete" : {
+        "operationId" : "cancel_1",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "orderId",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponsePlaceResult"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "trading-controller" ]
+      }
+    },
+    "/api/v1/subscriptions/me" : {
+      "get" : {
+        "operationId" : "mine",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseListMapStringObject"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "subscription-controller" ]
+      }
+    },
+    "/api/v1/subscriptions/{orderId}" : {
+      "delete" : {
+        "operationId" : "cancel",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "orderId",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseApplyResult"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "subscription-controller" ]
+      }
+    },
+    "/api/v1/tokens/{tokenSymbol}/executions" : {
+      "get" : {
+        "operationId" : "executions_2",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "tokenSymbol",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "page",
+          "required" : false,
+          "schema" : {
+            "default" : 0,
+            "format" : "int32",
+            "type" : "integer"
+          }
+        }, {
+          "in" : "query",
+          "name" : "size",
+          "required" : false,
+          "schema" : {
+            "default" : 20,
+            "format" : "int32",
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseListMapStringObject"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "trading-controller" ]
+      }
+    },
+    "/api/v1/tokens/{tokenSymbol}/orderbook" : {
+      "get" : {
+        "operationId" : "orderBook",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "tokenSymbol",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "levels",
+          "required" : false,
+          "schema" : {
+            "default" : 10,
+            "format" : "int32",
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseMapStringObject"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "tags" : [ "trading-controller" ]
+      }
+    },
+    "/api/v1/tokens/{tokenSymbol}/orders" : {
+      "post" : {
+        "operationId" : "place",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "tokenSymbol",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "header",
+          "name" : "Idempotency-Key",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/PlaceOrderRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "201" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponsePlaceResult"
+                }
+              }
+            },
+            "description" : "Created"
+          }
+        },
+        "tags" : [ "trading-controller" ]
+      }
+    },
+    "/open/sandbox/v1/accounts/balance" : {
+      "get" : {
+        "description" : "예치금과 보유 조각 수량. 클라이언트 소유자 계정 기준. 예: GET /open/v1/accounts/balance",
+        "operationId" : "balance",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseMapStringObject"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "summary" : "잔고 조회",
+        "tags" : [ "계좌" ]
+      }
+    },
+    "/open/sandbox/v1/accounts/orders" : {
+      "get" : {
+        "description" : "최신순. 예: GET /open/v1/accounts/orders",
+        "operationId" : "orders",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseListMapStringObject"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "summary" : "주문 내역",
+        "tags" : [ "계좌" ]
+      }
+    },
+    "/open/sandbox/v1/oauth/token" : {
+      "post" : {
+        "description" : "client_credentials 그랜트. 유효기간 1시간. 예: grant_type=client_credentials&client_id=cli_xxx&client_secret=sec_xxx",
+        "operationId" : "token",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "grant_type",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "client_id",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "client_secret",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseTokenResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "summary" : "액세스 토큰 발급",
+        "tags" : [ "인증" ]
+      }
+    },
+    "/open/sandbox/v1/orders" : {
+      "post" : {
+        "description" : "지정가/시장가 주문. `Idempotency-Key` 헤더 필수. 예: {\"tokenSymbol\":\"FR-ESRK-001\",\"side\":\"BUY\",\"orderType\":\"LIMIT\",\"price\":4200,\"units\":100}",
+        "operationId" : "placeOrder_1",
+        "parameters" : [ {
+          "in" : "header",
+          "name" : "Idempotency-Key",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/PlaceOrderRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "201" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseMapStringObject"
+                }
+              }
+            },
+            "description" : "Created"
+          }
+        },
+        "summary" : "주문",
+        "tags" : [ "거래" ]
+      }
+    },
+    "/open/sandbox/v1/orders/{orderId}" : {
+      "delete" : {
+        "description" : "미체결 잔량만 취소된다. 예: DELETE /open/v1/orders/ord_42",
+        "operationId" : "cancelOrder",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "orderId",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseMapStringObject"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "summary" : "주문 취소",
+        "tags" : [ "거래" ]
+      }
+    },
+    "/open/sandbox/v1/subscriptions" : {
+      "post" : {
+        "description" : "증거금이 예치금에서 차감된다. `Idempotency-Key` 헤더 필수. 예: {\"issuanceId\":1,\"units\":10}",
+        "operationId" : "subscribe_1",
+        "parameters" : [ {
+          "in" : "header",
+          "name" : "Idempotency-Key",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/SubscribeRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "201" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseMapStringObject"
+                }
+              }
+            },
+            "description" : "Created"
+          }
+        },
+        "summary" : "청약",
+        "tags" : [ "거래" ]
+      }
+    },
+    "/open/sandbox/v1/tokens" : {
+      "get" : {
+        "description" : "거래 가능한 종목을 돌려준다. 예: GET /open/v1/tokens",
+        "operationId" : "tokens",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseListMapStringObject"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "summary" : "상장 종목 목록",
+        "tags" : [ "시세" ]
+      }
+    },
+    "/open/sandbox/v1/tokens/{symbol}" : {
+      "get" : {
+        "description" : "발행 정보와 기초자산. 예: GET /open/v1/tokens/FR-ESRK-001",
+        "operationId" : "token_2",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "symbol",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseMapStringObject"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "summary" : "종목 상세",
+        "tags" : [ "시세" ]
+      }
+    },
+    "/open/sandbox/v1/tokens/{symbol}/executions" : {
+      "get" : {
+        "description" : "최신순 페이징. 예: GET /open/v1/tokens/FR-ESRK-001/executions?page=0&size=20",
+        "operationId" : "executions_1",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "symbol",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "page",
+          "required" : false,
+          "schema" : {
+            "default" : 0,
+            "format" : "int32",
+            "type" : "integer"
+          }
+        }, {
+          "in" : "query",
+          "name" : "size",
+          "required" : false,
+          "schema" : {
+            "default" : 20,
+            "format" : "int32",
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseListMapStringObject"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "summary" : "체결 내역",
+        "tags" : [ "시세" ]
+      }
+    },
+    "/open/sandbox/v1/tokens/{symbol}/orderbook" : {
+      "get" : {
+        "description" : "매수·매도 각 10호가. 예: GET /open/v1/tokens/FR-ESRK-001/orderbook",
+        "operationId" : "orderbook_1",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "symbol",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "levels",
+          "required" : false,
+          "schema" : {
+            "default" : 10,
+            "format" : "int32",
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseMapStringObject"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "summary" : "10호가",
+        "tags" : [ "시세" ]
+      }
+    },
+    "/open/sandbox/v1/tokens/{symbol}/premium" : {
+      "get" : {
+        "description" : "원자산 시세 대비 최근 체결가의 괴리율. 시세를 못 구하면 null. 예: GET /open/v1/tokens/FR-ESRK-001/premium",
+        "operationId" : "premium",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "symbol",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseMapStringObject"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "summary" : "괴리율",
+        "tags" : [ "시세" ]
+      }
+    },
+    "/open/sandbox/v1/webhooks" : {
+      "post" : {
+        "description" : "이벤트: order.filled, order.partially_filled, order.cancelled, subscription.allotted, token.listed, token.suspended. 발송 시 X-Fracta-Signature 헤더로 HMAC-SHA256 서명이 붙는다. 예: {\"url\":\"https://example.com/hook\",\"events\":[\"order.filled\"],\"secret\":\"whsec_xxx\"}",
+        "operationId" : "register_1",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/RegisterWebhookRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "201" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseMapStringObject"
+                }
+              }
+            },
+            "description" : "Created"
+          }
+        },
+        "summary" : "웹훅 등록",
+        "tags" : [ "웹훅" ]
+      }
+    },
+    "/open/v1/accounts/balance" : {
+      "get" : {
+        "description" : "예치금과 보유 조각 수량. 클라이언트 소유자 계정 기준. 예: GET /open/v1/accounts/balance",
+        "operationId" : "balance_1",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseMapStringObject"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "summary" : "잔고 조회",
+        "tags" : [ "계좌" ]
+      }
+    },
+    "/open/v1/accounts/orders" : {
+      "get" : {
+        "description" : "최신순. 예: GET /open/v1/accounts/orders",
+        "operationId" : "orders_1",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseListMapStringObject"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "summary" : "주문 내역",
+        "tags" : [ "계좌" ]
+      }
+    },
+    "/open/v1/oauth/token" : {
+      "post" : {
+        "description" : "client_credentials 그랜트. 유효기간 1시간. 예: grant_type=client_credentials&client_id=cli_xxx&client_secret=sec_xxx",
+        "operationId" : "token_1",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "grant_type",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "client_id",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "client_secret",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseTokenResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "summary" : "액세스 토큰 발급",
+        "tags" : [ "인증" ]
+      }
+    },
+    "/open/v1/orders" : {
+      "post" : {
+        "description" : "지정가/시장가 주문. `Idempotency-Key` 헤더 필수. 예: {\"tokenSymbol\":\"FR-ESRK-001\",\"side\":\"BUY\",\"orderType\":\"LIMIT\",\"price\":4200,\"units\":100}",
+        "operationId" : "placeOrder",
+        "parameters" : [ {
+          "in" : "header",
+          "name" : "Idempotency-Key",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/PlaceOrderRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "201" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseMapStringObject"
+                }
+              }
+            },
+            "description" : "Created"
+          }
+        },
+        "summary" : "주문",
+        "tags" : [ "거래" ]
+      }
+    },
+    "/open/v1/orders/{orderId}" : {
+      "delete" : {
+        "description" : "미체결 잔량만 취소된다. 예: DELETE /open/v1/orders/ord_42",
+        "operationId" : "cancelOrder_1",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "orderId",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseMapStringObject"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "summary" : "주문 취소",
+        "tags" : [ "거래" ]
+      }
+    },
+    "/open/v1/subscriptions" : {
+      "post" : {
+        "description" : "증거금이 예치금에서 차감된다. `Idempotency-Key` 헤더 필수. 예: {\"issuanceId\":1,\"units\":10}",
+        "operationId" : "subscribe",
+        "parameters" : [ {
+          "in" : "header",
+          "name" : "Idempotency-Key",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/SubscribeRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "201" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseMapStringObject"
+                }
+              }
+            },
+            "description" : "Created"
+          }
+        },
+        "summary" : "청약",
+        "tags" : [ "거래" ]
+      }
+    },
+    "/open/v1/tokens" : {
+      "get" : {
+        "description" : "거래 가능한 종목을 돌려준다. 예: GET /open/v1/tokens",
+        "operationId" : "tokens_1",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseListMapStringObject"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "summary" : "상장 종목 목록",
+        "tags" : [ "시세" ]
+      }
+    },
+    "/open/v1/tokens/{symbol}" : {
+      "get" : {
+        "description" : "발행 정보와 기초자산. 예: GET /open/v1/tokens/FR-ESRK-001",
+        "operationId" : "token_3",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "symbol",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseMapStringObject"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "summary" : "종목 상세",
+        "tags" : [ "시세" ]
+      }
+    },
+    "/open/v1/tokens/{symbol}/executions" : {
+      "get" : {
+        "description" : "최신순 페이징. 예: GET /open/v1/tokens/FR-ESRK-001/executions?page=0&size=20",
+        "operationId" : "executions",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "symbol",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "page",
+          "required" : false,
+          "schema" : {
+            "default" : 0,
+            "format" : "int32",
+            "type" : "integer"
+          }
+        }, {
+          "in" : "query",
+          "name" : "size",
+          "required" : false,
+          "schema" : {
+            "default" : 20,
+            "format" : "int32",
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseListMapStringObject"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "summary" : "체결 내역",
+        "tags" : [ "시세" ]
+      }
+    },
+    "/open/v1/tokens/{symbol}/orderbook" : {
+      "get" : {
+        "description" : "매수·매도 각 10호가. 예: GET /open/v1/tokens/FR-ESRK-001/orderbook",
+        "operationId" : "orderbook",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "symbol",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "levels",
+          "required" : false,
+          "schema" : {
+            "default" : 10,
+            "format" : "int32",
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseMapStringObject"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "summary" : "10호가",
+        "tags" : [ "시세" ]
+      }
+    },
+    "/open/v1/tokens/{symbol}/premium" : {
+      "get" : {
+        "description" : "원자산 시세 대비 최근 체결가의 괴리율. 시세를 못 구하면 null. 예: GET /open/v1/tokens/FR-ESRK-001/premium",
+        "operationId" : "premium_1",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "symbol",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseMapStringObject"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "summary" : "괴리율",
+        "tags" : [ "시세" ]
+      }
+    },
+    "/open/v1/webhooks" : {
+      "post" : {
+        "description" : "이벤트: order.filled, order.partially_filled, order.cancelled, subscription.allotted, token.listed, token.suspended. 발송 시 X-Fracta-Signature 헤더로 HMAC-SHA256 서명이 붙는다. 예: {\"url\":\"https://example.com/hook\",\"events\":[\"order.filled\"],\"secret\":\"whsec_xxx\"}",
+        "operationId" : "register",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/RegisterWebhookRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "201" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseMapStringObject"
+                }
+              }
+            },
+            "description" : "Created"
+          }
+        },
+        "summary" : "웹훅 등록",
+        "tags" : [ "웹훅" ]
+      }
+    }
+  },
+  "servers" : [ {
+    "description" : "Generated server url",
+    "url" : "http://localhost:61388"
+  } ],
+  "tags" : [ {
+    "description" : "잔고·주문 내역 조회",
+    "name" : "계좌"
+  }, {
+    "description" : "종목·호가·체결·괴리율 조회",
+    "name" : "시세"
+  }, {
+    "description" : "이벤트 수신 엔드포인트 등록",
+    "name" : "웹훅"
+  }, {
+    "description" : "주문·청약 (Idempotency-Key 필수)",
+    "name" : "거래"
+  }, {
+    "description" : "OAuth2 Client Credentials",
+    "name" : "인증"
+  } ]
+}

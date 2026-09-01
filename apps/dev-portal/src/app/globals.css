@@ -1,0 +1,5 @@
+/* 디자인 토큰·Tailwind 테마는 전부 @fracta/ui가 소유한다 (FSD §11.4). */
+@import "@fracta/ui/theme.css";
+
+/* packages/ui의 클래스도 Tailwind가 훑도록 소스 경로를 명시한다 */
+@source "../../../../packages/ui/src";

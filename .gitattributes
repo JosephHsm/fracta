@@ -1,0 +1,5 @@
+# OpenAPI Generator 산출물 — 손으로 고치지 않는다.
+# diff에서 접히도록 표시하고 언어 통계에서 제외한다.
+packages/api-client/src/generated/** linguist-generated=true
+docs/openapi/fracta-openapi.json    linguist-generated=true
+pnpm-lock.yaml                      linguist-generated=true

@@ -1,0 +1,27 @@
+packages:
+  - "apps/*"
+  - "packages/*"
+
+# 설치 스크립트 실행을 허용할 패키지만 명시한다 (pnpm 기본은 차단).
+# - openapi-generator-cli: 생성기 JAR 러너를 준비한다. 없으면 api:generate가 동작하지 않는다
+# - unrs-resolver: eslint import 해석용 네이티브 바인딩
+allowBuilds:
+  "@openapitools/openapi-generator-cli": true
+  "@tailwindcss/oxide": true
+  unrs-resolver: true
+  sharp: true
+
+# Next 16.3.4는 릴리스 직후라 pnpm의 최소 공개 경과일 게이트에 걸린다. 명시적으로 통과시킨다.
+minimumReleaseAgeExclude:
+  - "@next/env@16.3.4"
+  - "@next/eslint-plugin-next@16.3.4"
+  - "@next/swc-darwin-arm64@16.3.4"
+  - "@next/swc-darwin-x64@16.3.4"
+  - "@next/swc-linux-arm64-gnu@16.3.4"
+  - "@next/swc-linux-arm64-musl@16.3.4"
+  - "@next/swc-linux-x64-gnu@16.3.4"
+  - "@next/swc-linux-x64-musl@16.3.4"
+  - "@next/swc-win32-arm64-msvc@16.3.4"
+  - "@next/swc-win32-x64-msvc@16.3.4"
+  - eslint-config-next@16.3.4
+  - next@16.3.4

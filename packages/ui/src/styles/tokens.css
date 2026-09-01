@@ -1,0 +1,184 @@
+/*
+ * FRACTA 디자인 토큰 — FSD §11.4.
+ *
+ * 색은 전부 OKLCH다. sRGB hex와 달리 L 값이 사람이 느끼는 밝기에 대응해서
+ * 팔레트 단계를 만들 때 명도가 튀지 않는다. Tailwind v4·shadcn의 기본 색공간이기도 하다.
+ *
+ * 이 파일이 색·모션의 단일 소유자다. 앱 코드에 색상 리터럴을 쓰지 않는다.
+ */
+
+:root {
+  color-scheme: light;
+
+  /* ── 서피스 ─────────────────────────────────────────
+   * 배경은 순백이 아니라 아주 옅은 중립 그레이다. 카드(순백)가 떠 보이게 하려면
+   * 바탕이 한 단계 내려가 있어야 한다. */
+  --fr-background: oklch(0.976 0.002 264);
+  --fr-surface: oklch(1 0 0);
+  --fr-surface-elevated: oklch(1 0 0);
+  --fr-surface-sunken: oklch(0.958 0.003 264);
+  --fr-border: oklch(0.917 0.004 264);
+  --fr-border-strong: oklch(0.845 0.006 264);
+
+  /* ── 텍스트 ───────────────────────────────────────── */
+  --fr-text: oklch(0.235 0.011 264);
+  --fr-text-muted: oklch(0.548 0.013 264);
+  --fr-text-subtle: oklch(0.658 0.011 264);
+  --fr-text-inverse: oklch(0.985 0 0);
+
+  /* ── 브랜드 ─────────────────────────────────────────
+   * Primary는 딥 네이비(신뢰감), Accent는 일렉트릭 블루(행동 유도).
+   * 둘을 분리해야 "전부 파랑"이 되지 않는다. */
+  --fr-primary: oklch(0.345 0.088 258);
+  --fr-primary-hover: oklch(0.298 0.082 258);
+  --fr-primary-soft: oklch(0.945 0.018 258);
+  --fr-primary-foreground: oklch(0.985 0 0);
+
+  --fr-accent: oklch(0.588 0.186 259);
+  --fr-accent-hover: oklch(0.532 0.184 259);
+  --fr-accent-soft: oklch(0.952 0.028 259);
+  --fr-accent-foreground: oklch(0.985 0 0);
+
+  /* ── 상태 ─────────────────────────────────────────── */
+  --fr-success: oklch(0.596 0.128 158);
+  --fr-success-soft: oklch(0.952 0.032 158);
+  --fr-warning: oklch(0.706 0.152 71);
+  --fr-warning-soft: oklch(0.962 0.045 71);
+  --fr-danger: oklch(0.567 0.208 26);
+  --fr-danger-soft: oklch(0.958 0.028 26);
+  --fr-info: oklch(0.588 0.186 259);
+  --fr-info-soft: oklch(0.952 0.028 259);
+
+  /* ── 등락 (국내 관행: 상승 적색 / 하락 청색) ─────────
+   * FSD §11.4. 서구식으로 뒤집지 않는다. 색만으로 구분되게 두지 말고
+   * 항상 부호(▲▼)나 +/- 를 함께 붙인다. */
+  --fr-price-up: oklch(0.567 0.208 26);
+  --fr-price-up-soft: oklch(0.958 0.028 26);
+  --fr-price-down: oklch(0.512 0.155 258);
+  --fr-price-down-soft: oklch(0.952 0.026 258);
+  --fr-price-flat: oklch(0.548 0.013 264);
+
+  /* ── 괴리율 배지 (TR-08) ─────────────────────────────
+   * 등락 색과 다른 축이다. 정상은 무채색이어야 경고가 눈에 띈다. */
+  --fr-premium-normal: oklch(0.548 0.013 264);
+  --fr-premium-normal-soft: oklch(0.958 0.003 264);
+  --fr-premium-warn: oklch(0.706 0.152 71);
+  --fr-premium-warn-soft: oklch(0.962 0.045 71);
+  --fr-premium-halt: oklch(0.567 0.208 26);
+  --fr-premium-halt-soft: oklch(0.958 0.028 26);
+
+  /* ── 포커스 ───────────────────────────────────────── */
+  --fr-focus-ring: oklch(0.588 0.186 259);
+
+  /* ── Subtle Glass — 스티키 헤더·모달·플로팅 전용 ─────
+   * 카드 전체를 투명하게 만들지 않는다(§11.5). 레이어 관계를 보여주는 용도다. */
+  --fr-glass-bg: oklch(1 0 0 / 0.72);
+  --fr-glass-border: oklch(1 0 0 / 0.5);
+  --fr-glass-blur: 12px;
+
+  /* ── 그림자 — 깊이는 3단계까지만 ───────────────────── */
+  --fr-shadow-sm: 0 1px 2px oklch(0.235 0.011 264 / 0.06);
+  --fr-shadow-md: 0 4px 12px oklch(0.235 0.011 264 / 0.08);
+  --fr-shadow-lg: 0 12px 32px oklch(0.235 0.011 264 / 0.12);
+
+  /* ── 모션 스케일 (FSD §11.4, 초과 금지) ─────────────── */
+  --fr-motion-hover: 120ms;
+  --fr-motion-button: 180ms;
+  --fr-motion-panel: 240ms;
+  --fr-motion-page: 320ms;
+  --fr-ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --fr-ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+
+  /* ── 라운드 ───────────────────────────────────────── */
+  --fr-radius-sm: 0.375rem;
+  --fr-radius-md: 0.625rem;
+  --fr-radius-lg: 0.875rem;
+  --fr-radius-xl: 1.25rem;
+}
+
+.dark {
+  color-scheme: dark;
+
+  /* 다크는 라이트의 반전이 아니다. 서피스를 순검정이 아닌 청색 기운의 어두운 중립으로
+   * 두고, 강조색은 L을 끌어올려 대비를 다시 확보한다(반전만 하면 AA가 깨진다). */
+  --fr-background: oklch(0.187 0.012 264);
+  --fr-surface: oklch(0.228 0.014 264);
+  --fr-surface-elevated: oklch(0.265 0.015 264);
+  --fr-surface-sunken: oklch(0.162 0.011 264);
+  --fr-border: oklch(0.318 0.016 264);
+  --fr-border-strong: oklch(0.402 0.018 264);
+
+  --fr-text: oklch(0.958 0.003 264);
+  --fr-text-muted: oklch(0.722 0.012 264);
+  --fr-text-subtle: oklch(0.612 0.013 264);
+  --fr-text-inverse: oklch(0.187 0.012 264);
+
+  --fr-primary: oklch(0.708 0.118 258);
+  --fr-primary-hover: oklch(0.762 0.115 258);
+  --fr-primary-soft: oklch(0.298 0.048 258);
+  --fr-primary-foreground: oklch(0.162 0.011 264);
+
+  --fr-accent: oklch(0.702 0.158 259);
+  --fr-accent-hover: oklch(0.752 0.148 259);
+  --fr-accent-soft: oklch(0.302 0.062 259);
+  --fr-accent-foreground: oklch(0.162 0.011 264);
+
+  --fr-success: oklch(0.722 0.142 158);
+  --fr-success-soft: oklch(0.288 0.052 158);
+  --fr-warning: oklch(0.802 0.146 71);
+  --fr-warning-soft: oklch(0.322 0.058 71);
+  --fr-danger: oklch(0.688 0.185 26);
+  --fr-danger-soft: oklch(0.312 0.072 26);
+  --fr-info: oklch(0.702 0.158 259);
+  --fr-info-soft: oklch(0.302 0.062 259);
+
+  --fr-price-up: oklch(0.688 0.185 26);
+  --fr-price-up-soft: oklch(0.312 0.072 26);
+  --fr-price-down: oklch(0.688 0.132 258);
+  --fr-price-down-soft: oklch(0.298 0.052 258);
+  --fr-price-flat: oklch(0.722 0.012 264);
+
+  --fr-premium-normal: oklch(0.722 0.012 264);
+  --fr-premium-normal-soft: oklch(0.265 0.015 264);
+  --fr-premium-warn: oklch(0.802 0.146 71);
+  --fr-premium-warn-soft: oklch(0.322 0.058 71);
+  --fr-premium-halt: oklch(0.688 0.185 26);
+  --fr-premium-halt-soft: oklch(0.312 0.072 26);
+
+  --fr-focus-ring: oklch(0.702 0.158 259);
+
+  --fr-glass-bg: oklch(0.228 0.014 264 / 0.72);
+  --fr-glass-border: oklch(1 0 0 / 0.08);
+
+  --fr-shadow-sm: 0 1px 2px oklch(0 0 0 / 0.4);
+  --fr-shadow-md: 0 4px 12px oklch(0 0 0 / 0.45);
+  --fr-shadow-lg: 0 12px 32px oklch(0 0 0 / 0.55);
+}
+
+/*
+ * 모션 축소 — View Transition·카운트업·행 진입을 전부 끈다.
+ * 모션 토큰을 0으로 만들면 개별 컴포넌트가 각자 분기할 필요가 없다.
+ */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --fr-motion-hover: 0ms;
+    --fr-motion-button: 0ms;
+    --fr-motion-panel: 0ms;
+    --fr-motion-page: 0ms;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation: none !important;
+  }
+}

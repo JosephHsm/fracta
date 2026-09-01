@@ -1,0 +1,21 @@
+{
+  "name": "fracta-frontend",
+  "private": true,
+  "packageManager": "pnpm@11.25.0",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "pnpm --parallel --filter \"./apps/*\" dev",
+    "dev:investor": "pnpm --filter investor-web dev",
+    "dev:portal": "pnpm --filter dev-portal dev",
+    "build": "pnpm --filter @fracta/api-client build && pnpm --filter \"./apps/*\" build",
+    "typecheck": "pnpm -r typecheck",
+    "lint": "pnpm -r lint",
+    "spec:export": "./gradlew test --tests \"*OpenApiSpecExportTest\"",
+    "api:generate": "pnpm --filter @fracta/api-client generate"
+  },
+  "devDependencies": {
+    "typescript": "5.9.3"
+  }
+}

@@ -1,0 +1,33 @@
+{
+  "name": "investor-web",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev --port 3000",
+    "build": "next build",
+    "start": "next start --port 3000",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@fracta/api-client": "workspace:*",
+    "@fracta/ui": "workspace:*",
+    "@tanstack/react-query": "5.102.8",
+    "@tanstack/react-table": "9.2.4",
+    "lightweight-charts": "5.2.1",
+    "next": "16.3.4",
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
+    "recharts": "3.10.1"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "4.3.3",
+    "@types/node": "26.4.0",
+    "@types/react": "19.2.18",
+    "@types/react-dom": "19.2.5",
+    "eslint": "9.39.5",
+    "eslint-config-next": "16.3.4",
+    "tailwindcss": "4.3.3",
+    "typescript": "5.9.3"
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "types": [],
+    // 생성 코드는 손대지 않는다. openapi-generator의 FetchError가 Error.cause를 override
+    // 표시 없이 덮어써서 이 규칙에만 걸린다 — 규칙을 끄지, 생성물을 고치지 않는다.
+    "noImplicitOverride": false
+  },
+  "include": ["src/**/*.ts"]
+}

@@ -1,0 +1,104 @@
+/*
+ * Tailwind v4 테마 매핑. 앱은 이 파일 하나만 import 한다.
+ * 토큰 정의는 tokens.css, 여기서는 Tailwind 유틸리티 이름에 연결만 한다.
+ */
+@import "tailwindcss";
+@import "./tokens.css";
+
+/* 다크 모드는 .dark 클래스 기준 — 시스템 설정 + 사용자 토글을 모두 받으려면 클래스여야 한다 */
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme inline {
+  --color-background: var(--fr-background);
+  --color-surface: var(--fr-surface);
+  --color-surface-elevated: var(--fr-surface-elevated);
+  --color-surface-sunken: var(--fr-surface-sunken);
+  --color-border: var(--fr-border);
+  --color-border-strong: var(--fr-border-strong);
+
+  --color-fg: var(--fr-text);
+  --color-fg-muted: var(--fr-text-muted);
+  --color-fg-subtle: var(--fr-text-subtle);
+  --color-fg-inverse: var(--fr-text-inverse);
+
+  --color-primary: var(--fr-primary);
+  --color-primary-hover: var(--fr-primary-hover);
+  --color-primary-soft: var(--fr-primary-soft);
+  --color-primary-foreground: var(--fr-primary-foreground);
+
+  --color-accent: var(--fr-accent);
+  --color-accent-hover: var(--fr-accent-hover);
+  --color-accent-soft: var(--fr-accent-soft);
+  --color-accent-foreground: var(--fr-accent-foreground);
+
+  --color-success: var(--fr-success);
+  --color-success-soft: var(--fr-success-soft);
+  --color-warning: var(--fr-warning);
+  --color-warning-soft: var(--fr-warning-soft);
+  --color-danger: var(--fr-danger);
+  --color-danger-soft: var(--fr-danger-soft);
+  --color-info: var(--fr-info);
+  --color-info-soft: var(--fr-info-soft);
+
+  --color-price-up: var(--fr-price-up);
+  --color-price-up-soft: var(--fr-price-up-soft);
+  --color-price-down: var(--fr-price-down);
+  --color-price-down-soft: var(--fr-price-down-soft);
+  --color-price-flat: var(--fr-price-flat);
+
+  --color-premium-normal: var(--fr-premium-normal);
+  --color-premium-normal-soft: var(--fr-premium-normal-soft);
+  --color-premium-warn: var(--fr-premium-warn);
+  --color-premium-warn-soft: var(--fr-premium-warn-soft);
+  --color-premium-halt: var(--fr-premium-halt);
+  --color-premium-halt-soft: var(--fr-premium-halt-soft);
+
+  --radius-sm: var(--fr-radius-sm);
+  --radius-md: var(--fr-radius-md);
+  --radius-lg: var(--fr-radius-lg);
+  --radius-xl: var(--fr-radius-xl);
+
+  --shadow-sm: var(--fr-shadow-sm);
+  --shadow-md: var(--fr-shadow-md);
+  --shadow-lg: var(--fr-shadow-lg);
+
+  --ease-out-fr: var(--fr-ease-out);
+
+  /* 숫자는 표 안에서 자릿수가 흔들리면 안 된다 — 금액·수량 전용 폰트 스택 */
+  --font-numeric: "Roboto Mono", "SF Mono", "Cascadia Mono", ui-monospace, monospace;
+}
+
+@layer base {
+  body {
+    background-color: var(--fr-background);
+    color: var(--fr-text);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* 키보드 사용자에게 포커스 링은 항상 보여야 한다 (WCAG 2.2 AA, §11.4) */
+  :focus-visible {
+    outline: 2px solid var(--fr-focus-ring);
+    outline-offset: 2px;
+    border-radius: var(--fr-radius-sm);
+  }
+
+  /* 금액·수량은 tabular-nums로 고정 — 값이 갱신될 때 폭이 흔들리지 않는다 */
+  .fr-numeric {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum";
+  }
+}
+
+@layer components {
+  /* Subtle Glass — 스티키 헤더·모달·플로팅에만 (§11.5) */
+  .fr-glass {
+    background-color: var(--fr-glass-bg);
+    border-color: var(--fr-glass-border);
+  }
+
+  @supports (backdrop-filter: blur(1px)) {
+    .fr-glass {
+      backdrop-filter: blur(var(--fr-glass-blur)) saturate(140%);
+    }
+  }
+}
