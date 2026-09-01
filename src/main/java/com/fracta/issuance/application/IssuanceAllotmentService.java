@@ -2,12 +2,14 @@ package com.fracta.issuance.application;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.context.ApplicationEventPublisher;
 
 import jakarta.persistence.EntityManager;
 
 import com.fracta.issuance.api.IssuanceAllotmentPort;
 import com.fracta.issuance.api.IssuanceInfo;
 import com.fracta.issuance.api.NotSubscribingException;
+import com.fracta.issuance.api.TokenListedEvent;
 import com.fracta.issuance.domain.Issuance;
 import com.fracta.issuance.domain.IssuanceStatus;
 import com.fracta.issuance.infrastructure.IssuanceRepository;
@@ -19,13 +21,16 @@ public class IssuanceAllotmentService implements IssuanceAllotmentPort {
     private final IssuanceRepository issuances;
     private final com.fracta.issuance.infrastructure.UnderlyingAssetRepository assets;
     private final EntityManager entityManager;
+    private final ApplicationEventPublisher events;
 
     public IssuanceAllotmentService(IssuanceRepository issuances,
                                     com.fracta.issuance.infrastructure.UnderlyingAssetRepository assets,
-                                    EntityManager entityManager) {
+                                    EntityManager entityManager,
+                                    ApplicationEventPublisher events) {
         this.issuances = issuances;
         this.assets = assets;
         this.entityManager = entityManager;
+        this.events = events;
     }
 
     @Override
@@ -88,6 +93,8 @@ public class IssuanceAllotmentService implements IssuanceAllotmentPort {
         Issuance issuance = load(issuanceId);
         issuance.settleRemaining(soldUnits);
         issuance.transitionTo(IssuanceStatus.LISTED);
+        events.publishEvent(new TokenListedEvent(issuance.id(), issuance.tokenSymbol(),
+                issuance.totalUnits(), issuance.unitPrice()));
     }
 
     /** 영속성 컨텍스트에 남아 있는 사본을 떼어낸다 (없으면 아무 일도 하지 않는다). */

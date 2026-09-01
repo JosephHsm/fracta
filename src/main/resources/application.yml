@@ -43,6 +43,14 @@ security:
 issuance:
   subscription-open-scan-delay: 5000   # IS-06 청약 개시 스케줄러 주기(ms)
 
+openapi:
+  jwt:
+    # 웹앱 JWT와 반드시 다른 값이어야 한다 — 같으면 권한 경계가 무너진다
+    secret: ${OPENAPI_JWT_SECRET:fracta-open-api-secret-key-9876543210abcdef}
+  webhook:
+    timeout-millis: ${OPENAPI_WEBHOOK_TIMEOUT:3000}
+    worker-delay-millis: ${OPENAPI_WEBHOOK_WORKER_DELAY:500}
+
 subscription:
   concurrency: ${SUBSCRIPTION_CONCURRENCY:atomic}   # atomic | pessimistic | redis (FSD §8.3)
   redis-lock:

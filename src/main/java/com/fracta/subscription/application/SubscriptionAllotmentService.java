@@ -46,17 +46,20 @@ public class SubscriptionAllotmentService {
     private final LedgerPort ledger;
     private final CashPort cash;
     private final SubscriptionInvariantService invariants;
+    private final org.springframework.context.ApplicationEventPublisher events;
 
     public SubscriptionAllotmentService(SubscriptionOrderRepository orders,
                                         IssuanceAllotmentPort issuances,
                                         LedgerPort ledger,
                                         CashPort cash,
-                                        SubscriptionInvariantService invariants) {
+                                        SubscriptionInvariantService invariants,
+                                        org.springframework.context.ApplicationEventPublisher events) {
         this.orders = orders;
         this.issuances = issuances;
         this.ledger = ledger;
         this.cash = cash;
         this.invariants = invariants;
+        this.events = events;
     }
 
     @Transactional
@@ -92,6 +95,8 @@ public class SubscriptionAllotmentService {
             }
             issuerCredit = Math.addExact(issuerCredit, cost);
             order.settle(allotted);
+            events.publishEvent(new com.fracta.subscription.api.SubscriptionAllottedEvent(
+                    order.id(), issuanceId, info.tokenSymbol(), order.investorId(), allotted));
             soldUnits = Math.addExact(soldUnits, allotted);
         }
 

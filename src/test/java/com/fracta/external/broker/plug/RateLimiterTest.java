@@ -8,6 +8,11 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.StringRedisTemplate;
 
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
+
 import com.fracta.support.IntegrationTestBase;
 
 import io.micrometer.core.instrument.MeterRegistry;
@@ -35,7 +40,10 @@ class RateLimiterTest extends IntegrationTestBase {
 
     private SlidingWindowRateLimiter sliding(int perSec, long maxWait) {
         redis.delete("fracta:broker:quota:mock");
-        return new SlidingWindowRateLimiter(redis, props(perSec, maxWait), meterRegistry);
+        // 증권사 쿼터도 공용 슬라이딩 카운터를 쓴다 (Phase 7에서 오픈 API와 구현을 합쳤다)
+        return new SlidingWindowRateLimiter(
+                new com.fracta.common.ratelimit.SlidingWindowCounter(redis),
+                props(perSec, maxWait), meterRegistry);
     }
 
     @Test
@@ -46,6 +54,38 @@ class RateLimiterTest extends IntegrationTestBase {
             assertThat(limiter.tryAcquire()).as("%d번째", i + 1).isTrue();
         }
         assertThat(limiter.tryAcquire()).isFalse();
+    }
+
+    @Test
+    @DisplayName("슬라이딩: 동시 100건에서도 설정 한도를 단 한 건도 초과하지 않는다")
+    void slidingIsAtomicUnderConcurrency() throws Exception {
+        var limiter = sliding(10, 0);
+        int requests = 100;
+        CountDownLatch start = new CountDownLatch(1);
+        CountDownLatch done = new CountDownLatch(requests);
+        AtomicInteger allowed = new AtomicInteger();
+        var pool = Executors.newFixedThreadPool(32);
+        try {
+            for (int i = 0; i < requests; i++) {
+                pool.submit(() -> {
+                    try {
+                        start.await();
+                        if (limiter.tryAcquire()) {
+                            allowed.incrementAndGet();
+                        }
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                    } finally {
+                        done.countDown();
+                    }
+                });
+            }
+            start.countDown();
+            assertThat(done.await(30, TimeUnit.SECONDS)).isTrue();
+        } finally {
+            pool.shutdownNow();
+        }
+        assertThat(allowed).hasValue(10);
     }
 
     @Test

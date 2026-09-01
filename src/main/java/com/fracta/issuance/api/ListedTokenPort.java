@@ -10,6 +10,9 @@ public interface ListedTokenPort {
 
     Optional<ListedToken> findByTokenSymbol(String tokenSymbol);
 
+    /** 상장 종목 목록 (오픈 API 종목 조회). */
+    java.util.List<ListedToken> listAll();
+
     /** 괴리율 20% 초과 시 자동 거래 중단 (TR-08). 이미 SUSPENDED면 아무것도 하지 않는다. */
     void suspend(String tokenSymbol, String reason);
 

@@ -8,6 +8,7 @@ import javax.crypto.spec.SecretKeySpec;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Primary;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.security.config.Customizer;
@@ -47,7 +48,26 @@ public class SecurityConfig {
         this.objectMapper = objectMapper;
     }
 
+    /**
+     * 오픈 API 전용 체인. 웹앱 체인보다 먼저 매칭되며 <b>리소스 서버를 붙이지 않는다</b>.
+     *
+     * <p>{@code permitAll} 만으로는 부족하다 — 리소스 서버가 살아 있으면 Bearer 토큰이 오는 순간
+     * 웹앱 디코더로 검증을 시도하고, 발급자가 달라 실패해 401을 돌려준다. 오픈 API 인증은
+     * {@code OpenApiGatewayFilter} 가 자기 발급자로 처리한다.
+     */
     @Bean
+    @org.springframework.core.annotation.Order(1)
+    SecurityFilterChain openApiSecurityFilterChain(HttpSecurity http) throws Exception {
+        http
+                .securityMatcher("/open/**")
+                .csrf(csrf -> csrf.disable())
+                .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .authorizeHttpRequests(reg -> reg.anyRequest().permitAll());
+        return http.build();
+    }
+
+    @Bean
+    @org.springframework.core.annotation.Order(2)
     SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
                 .csrf(csrf -> csrf.disable())
@@ -72,12 +92,18 @@ public class SecurityConfig {
         return new BCryptPasswordEncoder(strength);
     }
 
+    /**
+     * 웹앱용 JWT. 오픈 API 발급자({@code openApiJwtEncoder}/{@code openApiJwtDecoder})와
+     * 시크릿·발급자가 분리돼 있고, 웹앱 Security 체인은 이쪽을 쓴다.
+     */
     @Bean
+    @Primary
     JwtEncoder jwtEncoder() {
         return new NimbusJwtEncoder(new ImmutableSecret<>(secretKey()));
     }
 
     @Bean
+    @Primary
     JwtDecoder jwtDecoder() {
         return NimbusJwtDecoder.withSecretKey(secretKey()).macAlgorithm(MacAlgorithm.HS256).build();
     }

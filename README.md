@@ -4,8 +4,8 @@
 
 부동산·리츠 등 실물 기반 자산을 조각 단위 **토큰증권**으로 발행하고, 투자자가 청약·매매하며, 그 전 기능을 외부 개발자에게 **Open API**로 개방하는 플랫폼.
 
-> **현재 상태: Phase 1~6 완료** (기반 · 원장 · 계좌/발행 · 청약 · 증권사 연동 · 유통/결제)
-> 테스트 192건 전부 통과. 실측 자료는 아래 [실측 기록](#실측-기록) 참조.
+> **현재 상태: Phase 1~7 완료** (기반 · 원장 · 계좌/발행 · 청약 · 증권사 연동 · 유통/결제 · 오픈 API)
+> 테스트 235건 전부 통과. 실측 자료는 아래 [실측 기록](#실측-기록) 참조.
 > FSD §16이 요구하는 나머지 항목(데모 영상 등)은 이후 Phase에서 채웁니다.
 
 ---
@@ -30,6 +30,86 @@
 | [증권사 호출 유량](docs/benchmarks/broker-quota.md) | 문서값 4~5건/초와 달리 **실효 한도 약 1건/초**. 지속 폴링 902회 전부 성공, 쿼터 초과 0건 |
 | [매칭·결제 처리량](docs/benchmarks/trading-matching.md) | 매칭 엔진 640,902건/초, 주문 API p95 32.7ms. 결제 포함 주문 경로는 39.8건/초 |
 | [원장 설계 노트](docs/notes/phase-02-ledger-notes.md) | 해시체인 append 약 225 tps, 1만 건 검증 87ms |
+
+### Open API 사용 규격
+
+LIVE는 `/open/v1`, 샌드박스는 `/open/sandbox/v1`을 사용합니다. OAuth2 Client Credentials로
+발급받은 토큰에는 `market:read`, `account:read`, `order:write`, `subscription:write` 중 등록된
+scope만 들어갑니다. Swagger UI는 `/swagger-ui.html`, OpenAPI JSON은 `/v3/api-docs`에서 확인합니다.
+
+#### 멱등성 상태 전이
+
+주문·주문 취소·청약은 `Idempotency-Key`가 필수이며 완료 응답은 24시간 보관합니다.
+
+```mermaid
+flowchart LR
+    A[요청 + Idempotency-Key] --> B{Redis SETNX}
+    B -->|성공| C[PROCESSING + 본문 해시]
+    C -->|2xx| D[상태코드 + 응답 저장\nTTL 24h]
+    C -->|예외 또는 4xx/5xx| E[키 삭제\n재시도 허용]
+    B -->|기존 키| F{본문 해시 일치?}
+    F -->|아니오| G[422 IDEM_KEY_CONFLICT]
+    F -->|예| H{상태}
+    H -->|PROCESSING| I[409 IDEM_IN_PROGRESS]
+    H -->|완료| J[저장 응답 재생\nX-Idempotent-Replay: true]
+```
+
+#### Rate Limit
+
+기본 한도는 클라이언트별 초당 10건·일 10,000건이며 Redis 슬라이딩 윈도우로 창 경계
+버스트도 차단합니다. 성공과 실패 응답 모두 아래 헤더를 제공합니다.
+
+| 헤더 | 의미 |
+|---|---|
+| `X-RateLimit-Limit` | 초당 허용량 |
+| `X-RateLimit-Remaining` | 현재 슬라이딩 창의 잔여량 |
+| `X-RateLimit-Reset` | 가장 이른 요청이 창에서 빠지는 Unix 시각(초) |
+| `Retry-After` | 429 응답에서 재시도까지 기다릴 초 |
+
+#### 웹훅 서명 검증
+
+서명 대상은 수신한 **raw body 그대로**인 `"{timestamp}.{raw_body}"`입니다. 타임스탬프가 현재
+시각 ±5분인지 먼저 확인한 뒤 타이밍 세이프 비교를 사용합니다.
+
+```javascript
+import crypto from "node:crypto";
+
+export function verifyWebhook(secret, rawBody, signature) {
+  const match = /^t=(\d+),v1=([0-9a-f]{64})$/.exec(signature ?? "");
+  if (!match || Math.abs(Date.now() / 1000 - Number(match[1])) > 300) return false;
+  const expected = crypto.createHmac("sha256", secret)
+    .update(`${match[1]}.${rawBody}`, "utf8").digest("hex");
+  return crypto.timingSafeEqual(Buffer.from(expected, "hex"), Buffer.from(match[2], "hex"));
+}
+```
+
+```python
+import hashlib, hmac, time
+
+def verify_webhook(secret: str, raw_body: bytes, signature: str) -> bool:
+    try:
+        timestamp, supplied = signature.removeprefix("t=").split(",v1=", 1)
+        if abs(int(time.time()) - int(timestamp)) > 300:
+            return False
+        signed = timestamp.encode() + b"." + raw_body
+        expected = hmac.new(secret.encode(), signed, hashlib.sha256).hexdigest()
+        return hmac.compare_digest(expected, supplied)
+    except (AttributeError, ValueError):
+        return False
+```
+
+#### LIVE와 샌드박스
+
+| 항목 | LIVE | SANDBOX |
+|---|---|---|
+| 기본 경로 | `/open/v1` | `/open/sandbox/v1` |
+| 데이터 | `public` 스키마의 서비스 데이터 | `sandbox` 스키마의 가상 데이터 |
+| 초기 예치금 | 실제 모의 예치금 | 클라이언트별 가상 1억원 |
+| 원자산 시세 | 활성 시세 어댑터 | 항상 `MockMarketDataAdapter` |
+| 토큰 호환 | LIVE 토큰만 | SANDBOX 토큰만 |
+
+두 환경의 경로와 토큰이 어긋나면 `403 AUTH_ENV_MISMATCH`로 거부되며, 테이블·잔고·주문·청약은
+스키마 수준에서 완전히 분리됩니다.
 
 ---
 

@@ -21,6 +21,8 @@ public interface IssuanceRepository extends JpaRepository<Issuance, Long> {
 
     Optional<Issuance> findByTokenSymbol(String tokenSymbol);
 
+    List<Issuance> findByStatusIn(List<IssuanceStatus> statuses);
+
     List<Issuance> findByStatusAndSubscriptionStartAtLessThanEqual(IssuanceStatus status, Instant now);
 
     /** 방식 A — 비관적 락 (FSD §8.3). */

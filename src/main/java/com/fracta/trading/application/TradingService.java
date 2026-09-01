@@ -25,6 +25,7 @@ import com.fracta.ledger.api.OwnerId;
 import com.fracta.ledger.api.RefType;
 import com.fracta.ledger.api.TxRef;
 import com.fracta.settlement.application.SettlementService;
+import com.fracta.trading.api.TradeEvents;
 import com.fracta.trading.domain.BookOrder;
 import com.fracta.trading.domain.Match;
 import com.fracta.trading.domain.OrderSide;
@@ -67,6 +68,7 @@ public class TradingService {
     private final OrderBookExecutor executor;
     private final PremiumRateMonitor premiumMonitor;
     private final Counter matchedCounter;
+    private final org.springframework.context.ApplicationEventPublisher events;
     private final org.springframework.beans.factory.ObjectProvider<TradingService> selfProvider;
 
     public TradingService(TradeOrderRepository orders, TradeExecutionRepository executions,
@@ -74,6 +76,7 @@ public class TradingService {
                           ListedTokenPort listedTokens, SettlementService settlement,
                           OrderBookExecutor executor, PremiumRateMonitor premiumMonitor,
                           MeterRegistry meterRegistry,
+                          org.springframework.context.ApplicationEventPublisher events,
                           org.springframework.beans.factory.ObjectProvider<TradingService> selfProvider) {
         this.orders = orders;
         this.executions = executions;
@@ -85,6 +88,7 @@ public class TradingService {
         this.premiumMonitor = premiumMonitor;
         this.matchedCounter = Counter.builder("fracta.order.matched")
                 .description("체결된 주문 건수").register(meterRegistry);
+        this.events = events;
         this.selfProvider = selfProvider;
     }
 
@@ -240,7 +244,24 @@ public class TradingService {
         TradeExecution execution = executions.save(new TradeExecution(
                 tokenSymbol, match.buyOrderId(), match.sellOrderId(), match.price(), match.units(),
                 result.buyFee().amount(), result.sellFee().amount(), premium));
+
+        publishFillEvents(tokenSymbol, match);
         return execution.id();
+    }
+
+    /** 체결 결과를 도메인 이벤트로 알린다. 오픈 API가 구독해 웹훅으로 내보낸다. */
+    private void publishFillEvents(String tokenSymbol, Match match) {
+        for (long orderId : new long[]{match.buyOrderId(), match.sellOrderId()}) {
+            orders.findById(orderId).ifPresent(order -> {
+                if (order.status() == OrderStatus.FILLED) {
+                    events.publishEvent(new TradeEvents.OrderFilled(order.id(), tokenSymbol,
+                            order.investorId(), order.filledUnits(), match.price()));
+                } else if (order.status() == OrderStatus.PARTIALLY_FILLED) {
+                    events.publishEvent(new TradeEvents.OrderPartiallyFilled(order.id(), tokenSymbol,
+                            order.investorId(), order.filledUnits(), order.remaining(), match.price()));
+                }
+            });
+        }
     }
 
     /**
@@ -291,6 +312,8 @@ public class TradingService {
             releaseLock(order, remaining);   // 미체결 잔량만 잠금 해제
         }
         order.cancel();
+        events.publishEvent(new TradeEvents.OrderCancelled(orderId, order.tokenSymbol(),
+                order.investorId(), remaining));
         return new PlaceResult(orderId, order.status().name(), order.filledUnits(), List.of(), false);
     }
 

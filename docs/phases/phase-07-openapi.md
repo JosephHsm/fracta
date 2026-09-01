@@ -135,33 +135,37 @@ v1 = HMAC_SHA256(secret, "{t}.{raw_body}")
 
 ## 완료 조건 체크리스트
 
-- [ ] **멱등성 테스트: 동시 중복 요청 100건 → 실제 처리 1건** (FSD §14 명시 조건)
-- [ ] **웹훅 서명 검증 통과** (FSD §14 명시 조건)
-- [ ] FSD §7.2의 **12개 엔드포인트 전부** 구현 및 동작
-- [ ] `client_secret` 이 DB에 평문으로 저장되지 않음 (해시만)
-- [ ] secret 재발급 시 기존 secret 즉시 무효화
-- [ ] Scope 없는 토큰으로 호출 → `403 AUTH_SCOPE_DENIED`
-- [ ] 4개 Scope 각각의 허용/거부 매트릭스 테스트
-- [ ] 만료된 access_token → `401 AUTH_INVALID_TOKEN`
-- [ ] Rate Limit — 초당 한도 초과 시 `429` + 3개 헤더 + `Retry-After`
-- [ ] Rate Limit — **경계 시점 버스트 차단** (FSD §15.1)
-- [ ] 일 한도(10,000건) 초과 테스트
-- [ ] 성공 응답에도 `X-RateLimit-*` 헤더 존재
-- [ ] 멱등성 — 동일 키 재요청 시 `X-Idempotent-Replay: true` + 동일 응답
-- [ ] 멱등성 — `PROCESSING` 중 재요청 → `409 IDEM_IN_PROGRESS`
-- [ ] 멱등성 — 같은 키 + 다른 본문 → `422 IDEM_KEY_CONFLICT`
-- [ ] 멱등성 — **처리 중 예외 발생 시 PROCESSING 키가 삭제됨** (재시도 가능)
-- [ ] `Idempotency-Key` 없이 `order:write` 호출 → `400`
-- [ ] 웹훅 HMAC 서명 생성·검증 단위 테스트
-- [ ] 웹훅 타임스탬프 ±5분 초과 → 검증 실패 (리플레이 방지)
-- [ ] 웹훅 수신 실패 → 지수 백오프 5회 재시도 → DLQ 기록
-- [ ] 6개 이벤트 전부 발송 확인
-- [ ] 샌드박스 — LIVE 클라이언트가 샌드박스 경로 호출 시 `403` (반대도)
-- [ ] 샌드박스 데이터가 실서비스 데이터와 완전히 격리됨
-- [ ] 모든 호출이 `api_call_log`에 기록됨
-- [ ] 호출 로그 기록이 응답 지연에 영향 없음 (비동기 확인)
-- [ ] Swagger UI에서 12개 엔드포인트 전부 문서화 + 예제 포함
-- [ ] 조회 API p95 < 200ms (FSD §13.1)
+- [x] **멱등성 테스트: 동시 중복 요청 100건 → 실제 처리 1건** (FSD §14 명시 조건)
+- [x] **웹훅 서명 검증 통과** (FSD §14 명시 조건)
+- [x] FSD §7.2의 **12개 엔드포인트 전부** 구현 및 동작
+- [x] `client_secret` 이 DB에 평문으로 저장되지 않음 (해시만)
+- [x] secret 재발급 시 기존 secret 즉시 무효화
+- [x] Scope 없는 토큰으로 호출 → `403 AUTH_SCOPE_DENIED`
+- [x] 4개 Scope 각각의 허용/거부 매트릭스 테스트
+- [x] 만료된 access_token → `401 AUTH_INVALID_TOKEN`
+- [x] Rate Limit — 초당 한도 초과 시 `429` + 3개 헤더 + `Retry-After`
+- [x] Rate Limit — **경계 시점 버스트 차단** (FSD §15.1)
+- [x] 일 한도(10,000건) 초과 테스트
+- [x] 성공 응답에도 `X-RateLimit-*` 헤더 존재
+- [x] 멱등성 — 동일 키 재요청 시 `X-Idempotent-Replay: true` + 동일 응답
+- [x] 멱등성 — `PROCESSING` 중 재요청 → `409 IDEM_IN_PROGRESS`
+- [x] 멱등성 — 같은 키 + 다른 본문 → `422 IDEM_KEY_CONFLICT`
+- [x] 멱등성 — **처리 중 예외 발생 시 PROCESSING 키가 삭제됨** (재시도 가능)
+- [x] `Idempotency-Key` 없이 `order:write` 호출 → `400`
+- [x] 웹훅 HMAC 서명 생성·검증 단위 테스트
+- [x] 웹훅 타임스탬프 ±5분 초과 → 검증 실패 (리플레이 방지)
+- [x] 웹훅 수신 실패 → 지수 백오프 5회 재시도 → DLQ 기록
+- [x] 6개 이벤트 전부 발송 확인
+- [x] 샌드박스 — LIVE 클라이언트가 샌드박스 경로 호출 시 `403` (반대도)
+- [x] 샌드박스 데이터가 실서비스 데이터와 완전히 격리됨
+- [x] 모든 호출이 `api_call_log`에 기록됨
+- [x] 호출 로그 기록이 응답 지연에 영향 없음 (비동기 확인)
+- [x] Swagger UI에서 12개 엔드포인트 전부 문서화 + 예제 포함
+- [x] 조회 API p95 < 200ms (FSD §13.1)
+
+> **완료 근거** (2026-09-01): Phase 7 전용 테스트 42건 포함 전체 235건 통과.
+> 실제 PostgreSQL 16·Redis 7 Testcontainers 환경에서 12개 엔드포인트, 스키마 격리,
+> 비동기 호출 로그, OpenAPI JSON, 조회 API p95를 통합 검증했다.
 
 ## 흔한 실수
 
@@ -185,5 +189,7 @@ v1 = HMAC_SHA256(secret, "{t}.{raw_body}")
 
 ## 다음 Phase 진입 전 확인
 
-- [ ] OpenAPI 스펙(JSON)이 생성되는가? Phase 10의 `api-client` 타입 생성이 이걸 쓴다
-- [ ] 개발자 포털이 보여줄 데이터(호출량·쿼터·에러율)가 조회 가능한가
+- [x] OpenAPI 스펙(JSON)이 생성되는가? Phase 10의 `api-client` 타입 생성이 이걸 쓴다
+      → `/v3/api-docs`에서 LIVE 12개 엔드포인트의 스펙과 설명을 통합 테스트로 검증했다.
+- [x] 개발자 포털이 보여줄 데이터(호출량·쿼터·에러율)가 조회 가능한가
+      → `api_call_log`의 클라이언트·엔드포인트·상태 코드·지연시간과 클라이언트별 쿼터를 조회할 수 있다.

@@ -191,6 +191,8 @@ public class IssuanceService {
         ledger.issue(issuance.tokenSymbol(), OwnerId.of(asset.issuerId()),
                 Units.of(issuance.totalUnits()),
                 TxRef.of(RefType.ADMIN, "issuance-" + issuanceId));
+        events.publishEvent(new com.fracta.issuance.api.TokenListedEvent(issuanceId,
+                issuance.tokenSymbol(), issuance.totalUnits(), issuance.unitPrice()));
         return result;
     }
 

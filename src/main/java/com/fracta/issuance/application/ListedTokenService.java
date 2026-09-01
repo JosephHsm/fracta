@@ -41,6 +41,15 @@ public class ListedTokenService implements ListedTokenPort {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public java.util.List<ListedToken> listAll() {
+        return issuances.findByStatusIn(java.util.List.of(
+                        IssuanceStatus.LISTED, IssuanceStatus.SUSPENDED)).stream()
+                .map(this::toListedToken)
+                .toList();
+    }
+
+    @Override
     @Transactional
     @Auditable(action = "TOKEN_SUSPEND", targetType = "ISSUANCE")
     public void suspend(String tokenSymbol, String reason) {

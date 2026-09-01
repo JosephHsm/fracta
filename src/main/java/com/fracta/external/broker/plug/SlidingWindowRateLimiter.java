@@ -1,9 +1,7 @@
 package com.fracta.external.broker.plug;
 
-import java.util.UUID;
-import java.util.concurrent.TimeUnit;
 
-import org.springframework.data.redis.core.StringRedisTemplate;
+import com.fracta.common.ratelimit.SlidingWindowCounter;
 import org.springframework.stereotype.Component;
 
 import com.fracta.common.config.BrokerProperties;
@@ -27,13 +25,13 @@ public class SlidingWindowRateLimiter implements BrokerRateLimiter {
     private static final long WINDOW_MILLIS = 1_000L;
     private static final long POLL_INTERVAL_MILLIS = 20L;
 
-    private final StringRedisTemplate redis;
+    private final SlidingWindowCounter counter;
     private final BrokerProperties properties;
     private final Counter rejected;
 
-    public SlidingWindowRateLimiter(StringRedisTemplate redis, BrokerProperties properties,
+    public SlidingWindowRateLimiter(SlidingWindowCounter counter, BrokerProperties properties,
                                     MeterRegistry meterRegistry) {
-        this.redis = redis;
+        this.counter = counter;
         this.properties = properties;
         this.rejected = Counter.builder("fracta.broker.quota.rejected")
                 .tag("strategy", name())
@@ -48,17 +46,8 @@ public class SlidingWindowRateLimiter implements BrokerRateLimiter {
 
     @Override
     public boolean tryAcquire() {
-        String key = key();
-        long now = System.currentTimeMillis();
-
-        redis.opsForZSet().removeRangeByScore(key, 0, now - WINDOW_MILLIS);
-        Long count = redis.opsForZSet().zCard(key);
-        if (count != null && count >= properties.rateLimit().perSec()) {
-            return false;
-        }
-        redis.opsForZSet().add(key, UUID.randomUUID().toString(), now);
-        redis.expire(key, WINDOW_MILLIS * 2, TimeUnit.MILLISECONDS);
-        return true;
+        return counter.tryAcquire(key(), properties.rateLimit().perSec(),
+                java.time.Duration.ofMillis(WINDOW_MILLIS)).allowed();
     }
 
     @Override
