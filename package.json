@@ -14,7 +14,8 @@
     "lint": "pnpm -r lint",
     "spec:export": "./gradlew test --tests \"*OpenApiSpecExportTest\"",
     "api:generate": "pnpm --filter @fracta/api-client generate",
-    "design:contrast": "node scripts/design/contrast-check.mjs"
+    "design:contrast": "node scripts/design/contrast-check.mjs",
+    "seed:demo": "node scripts/seed/demo-data.mjs"
   },
   "devDependencies": {
     "typescript": "5.9.3"
