@@ -143,4 +143,13 @@ class PlugAdapterIntegrationTest extends PlugIntegrationTestBase {
 
         assertThat(quote.price().amount()).isBetween(9_800L, 10_200L);
     }
+
+    @Test
+    @DisplayName("포트 교체 실증 — plug 프로파일에서 MarketDataPort가 PLUG 어댑터로 주입된다")
+    void marketDataPortSwapsToPlugAdapter() {
+        // 호출부 코드는 그대로인데 주입되는 구현만 바뀐다는 것이 포트-어댑터의 요점이다.
+        // 기본 프로파일에서 Mock이 주입되는 것은 MarketDataPortSwapTest가 검증한다.
+        assertThat(marketData).isInstanceOf(NamuhPlugMarketDataAdapter.class);
+    }
+
 }

@@ -6,7 +6,7 @@
 
 > **현재 상태: Phase 1~7·9 완료 + Phase 8·10 코드/자동 검증 완료**
 > (기반 · 원장 · 계좌/발행 · 청약 · 증권사 연동 · 유통/결제 · 오픈 API · AI 가드레일 · 배치 · 프론트엔드)
-> 테스트 **419건** 전부 통과 — Java 279건(Testcontainers) + Python 140건(pytest).
+> 테스트 **421건** 전부 통과 — Java 281건(Testcontainers) + Python 140건(pytest).
 > 실측 자료는 아래 [실측 기록](#실측-기록) 참조.
 > Phase 8은 폐쇄망(Ollama) 품질·지연 비교와 캡처만 남았습니다 — RTX 4080 데스크탑에서
 > 측정합니다. 추정치로 표를 채우지 않습니다.
@@ -162,14 +162,102 @@ def verify_webhook(secret: str, raw_body: bytes, signature: str) -> bool:
 
 ---
 
+## 아키텍처
+
+실제 구현된 것만 그립니다 — 계획했다가 안 만든 컴포넌트는 넣지 않습니다.
+
+```mermaid
+flowchart TB
+    subgraph client["클라이언트"]
+        IW["investor-web<br/>Next.js 16"]
+        DP["dev-portal<br/>Next.js 16"]
+        PT["파트너 서버<br/>(Open API 소비자)"]
+    end
+
+    subgraph app["Spring Boot 단일 애플리케이션 (모듈러 모놀리스)"]
+        direction TB
+        GW["OpenApiGatewayFilter<br/>OAuth2 · Scope · Rate Limit · 멱등성"]
+        subgraph mods["도메인 모듈 — 모듈 간 호출은 api 패키지 인터페이스로만"]
+            ACC[account]
+            ISS[issuance]
+            SUB[subscription]
+            TRD[trading]
+            LED[ledger]
+            SET[settlement]
+            BAT[batch]
+            AUD[audit]
+        end
+    end
+
+    subgraph ext["외부 의존 — 전부 포트로 추상화"]
+        MDP{{"MarketDataPort"}}
+        LLM{{"LlmPort"}}
+    end
+
+    subgraph infra["인프라"]
+        PG[("PostgreSQL 16<br/>+ pgvector")]
+        RD[("Redis 7<br/>락 · 쿼터 · 멱등성")]
+        MO[("MinIO<br/>투자설명서")]
+    end
+
+    AIS["ai-service<br/>FastAPI · bge-m3"]
+    MOCK["MockMarketDataAdapter<br/>(기본)"]
+    PLUG["NamuhPlugMarketDataAdapter<br/>(profile=plug)"]
+    CLA["Claude API"]
+    OLL["Ollama<br/>(폐쇄망)"]
+
+    IW & DP -->|"JWT"| app
+    PT -->|"OAuth2 토큰"| GW --> mods
+    mods --> LED
+    mods --> MDP
+    mods --> LLM
+    MDP -.->|"@Primary 교체"| MOCK
+    MDP -.-> PLUG
+    LLM --> AIS
+    AIS -.-> CLA
+    AIS -.-> OLL
+    app --> PG & RD & MO
+    AIS --> PG
+    BAT -->|"대사 · 체인 검증"| LED
+```
+
+**읽는 법**
+
+- **점선은 교체 가능한 지점**입니다. `MarketDataPort`는 프로파일로 Mock ↔ namuh PLUG가
+  바뀌고([교체 테스트](src/test/java/com/fracta/external/broker/MarketDataPortSwapTest.java)),
+  `LlmPort` 뒤의 ai-service는 `AI_PROVIDER`로 Claude ↔ Ollama가 바뀝니다.
+- **MSA가 아닙니다.** 하나의 Spring Boot 프로세스이고, 모듈 경계는 패키지와
+  `api` 공개 인터페이스로만 지켜집니다. 엔티티 직접 참조를 금지합니다.
+- **블록체인 노드가 없습니다.** 원장은 PostgreSQL 안의 append-only 해시체인입니다.
+- **메시지 브로커가 없습니다.** 이벤트는 Spring `ApplicationEventPublisher` +
+  `@TransactionalEventListener(AFTER_COMMIT)`, 비동기 웹훅만 Redis Stream을 씁니다.
+
+---
+
+## 기술 선택 근거
+
+"무엇을 썼는가"보다 **"무엇을 왜 안 썼는가"** 가 설명하기 어렵습니다.
+
+| 선택 | 대안 | 왜 이렇게 했는가 |
+|---|---|---|
+| **해시체인 원장** (PostgreSQL) | 블록체인 노드 | 요구사항은 *위변조 검출*이지 *탈중앙 합의*가 아닙니다. 노드 운영 없이 append-only + 해시체인 + 배치 검증으로 같은 보장을 얻습니다. 10만 건 체인 검증 598ms — [실측](docs/invariants.md#10만-건-실측) |
+| **Spring 이벤트** | Kafka | 1인 프로젝트 규모에서 브로커 운영 비용이 이득을 넘습니다. 트랜잭션 경계와 이벤트 발행을 `AFTER_COMMIT`으로 붙일 수 있어 정합성도 더 단순합니다 (FSD §4.2) |
+| **모듈러 모놀리스** | MSA | 원장·청약·결제가 한 트랜잭션에 묶입니다. 서비스로 쪼개면 분산 트랜잭션이 필요하고, 그건 이 프로젝트가 지키려는 불변식과 정면으로 충돌합니다 |
+| **NH namuh PLUG** | 한국투자증권(KIS) | KIS는 실전 계좌·실거래 승인이 전제입니다. 모의 도메인만으로 시세를 받을 수 있는 PLUG가 "실거래 없이 실제 연동"이라는 이 프로젝트 제약에 맞습니다. 근거는 [Phase 5 §0](docs/phases/phase-05-broker-integration.md) |
+| **시세 조회 전용** | 증권사 주문 전송 | 체결은 자체 오더북에서 합니다. 외부에 주문을 보내면 실거래가 되어 비목표를 넘습니다. `BrokerSafetyValidator`가 실전 계좌 설정을 부팅 단계에서 막습니다 |
+| **Testcontainers** | H2 | advisory lock과 pgvector가 H2에서 동작하지 않습니다. 이 둘이 정합성 설계의 핵심이라 인메모리 DB로는 검증 자체가 성립하지 않습니다 |
+| **자체 호스팅 Pretendard** | 웹폰트 CDN | 폐쇄망 모드에서 외부 CDN에 접근할 수 없습니다. AI만 폐쇄망이고 폰트는 CDN이면 시연이 성립하지 않습니다 |
+
+---
+
 ## 기술 스택
 
 **Backend** Java 21 · Spring Boot 3.3 · JPA + QueryDSL · Spring Batch 5
 **Infra** PostgreSQL 16 (pgvector) · Redis 7 · MinIO · Docker Compose
-**Frontend** Next.js 14 (App Router) · TypeScript · Tailwind + shadcn/ui
+**Frontend** Next.js 16 (App Router) · TypeScript · Tailwind v4 · shadcn/ui(Base UI) · TanStack Query/Table · Pretendard
 **AI** Python FastAPI · bge-m3 임베딩 · Claude API ↔ Ollama 어댑터 스위치
 **외부 연동** NH투자증권 namuh PLUG Open API (모의 도메인, 시세 조회 전용)
-**테스트** JUnit5 · Testcontainers · WireMock · k6
+**테스트** JUnit5 · Testcontainers · WireMock · k6 · pytest
 
 ---
 
@@ -197,20 +285,64 @@ def verify_webhook(secret: str, raw_body: bytes, signature: str) -> bool:
 
 ## 로컬 실행
 
+### 한 번에 전체 기동
+
 ```bash
-docker compose up -d          # PostgreSQL / Redis / MinIO / ai-service
-./gradlew build
-./gradlew test
-
-# AI 서비스 테스트 (DB·임베딩 모델·LLM 없이 전 경로가 동작합니다)
-cd ai-service && .venv/Scripts/python.exe -m pytest -q
-
-# 폐쇄망 모드 (선택 — 기본 기동에서 제외)
-docker compose --profile offline up -d ollama
-docker compose --profile offline exec ollama ollama pull qwen3:14b
+docker compose up -d
 ```
 
-**사전 요구사항**: JDK 21 · Docker Desktop · Node.js 20+ · Python 3.11
+인프라(PostgreSQL·Redis·MinIO) → ai-service → 백엔드 → 두 웹앱까지 의존 순서대로 뜹니다.
+백엔드는 `healthcheck`가 통과한 뒤에야 프론트가 시작하므로 첫 화면에서 빈 데이터를 보지 않습니다.
+
+| 주소 | 서비스 |
+|---|---|
+| http://localhost:3000 | 투자자 웹앱 |
+| http://localhost:3001 | 개발자 포털 |
+| http://localhost:8080/swagger-ui.html | API 문서 |
+| http://localhost:8000/ai/health | AI 서비스 |
+
+### 데모 데이터
+
+```bash
+node scripts/seed/demo-data.mjs
+```
+
+실제 REST API를 그대로 호출해 자산 등록 → 발행 → 승인 → 청약 → 배정 → 상장 → 호가 → 체결까지
+태웁니다. SQL로 행을 꽂지 않으므로 원장 불변식·괴리율·감사 로그가 진짜 값으로 채워집니다.
+상장 3종목의 괴리율을 **정상 / 경고 / 자동 거래중단** 세 상태로 의도적으로 만듭니다.
+
+```
+demo@fracta.demo         / demo-password-1!   공격투자형, 예수금 1억
+conservative@fracta.demo / demo-password-1!   안정형 (적합성 차단 시연용)
+admin@fracta.demo        / demo-password-1!
+```
+
+### 개발 모드
+
+```bash
+docker compose up -d postgres redis minio ai-service   # 인프라만
+./gradlew bootRun                                      # 백엔드 (핫리로드)
+pnpm dev:investor                                      # 프론트 :3000
+```
+
+### 테스트
+
+```bash
+./gradlew test                                          # Java 281건 (Testcontainers)
+cd ai-service && .venv/Scripts/python.exe -m pytest -q  # Python 140건
+pnpm -r typecheck && pnpm -r lint                       # 프론트 4개 패키지
+pnpm design:contrast                                    # 디자인 토큰 대비비 (WCAG AA)
+```
+
+### 폐쇄망 모드 (선택)
+
+```bash
+docker compose --profile offline up -d ollama
+docker compose --profile offline exec ollama ollama pull qwen3:14b
+# AI_PROVIDER=ollama 로 재기동하면 LLM만 로컬로 바뀝니다 (임베딩은 원래부터 로컬)
+```
+
+**사전 요구사항**: Docker Desktop (전체 기동은 이것만) · 개발 모드 추가로 JDK 21 · Node.js 22+ · Python 3.11
 
 ---
 
@@ -228,7 +360,93 @@ docker compose --profile offline exec ollama ollama pull qwen3:14b
 | 8 | [AI](docs/phases/phase-08-ai.md) | 🟡 코드·테스트 완료 / 폐쇄망 실측 대기 |
 | 9 | [배치](docs/phases/phase-09-batch.md) | ✅ |
 | 10 | [프론트](docs/phases/phase-10-frontend.md) | 🟡 코드·자동 검증 완료 / 시각 QA·캡처 대기 |
-| 11 | [마감](docs/phases/phase-11-release.md) | ⬜ |
+| 11 | [마감](docs/phases/phase-11-release.md) | 🟡 README·단일 명령 기동 완료 / 데모 영상·캡처 대기 |
+
+---
+
+## 트러블슈팅 로그
+
+실제로 겪고 고친 것만 적습니다. 각 항목은 **문제 → 원인 → 해결 → 배운 것** 순서입니다.
+
+### 1. 증권사 문서값과 실효 한도가 달랐다
+
+호출 유량을 문서에 적힌 4~5건/초로 잡았더니 초과 오류가 났습니다. 지속 폴링으로 실측하니
+**실효 한도가 약 1건/초**였습니다. 토큰버킷을 슬라이딩 윈도우로 바꾸고 한도를 실측값에
+맞춘 뒤 902회 연속 호출에서 쿼터 초과 0건이 되었습니다.
+→ **외부 API 문서값은 가설이다. 실측 전에는 상수로 박지 않는다.**
+[상세](docs/benchmarks/broker-quota.md)
+
+### 2. RAG 유사도 임계값이 정상 질문을 막고 있었다
+
+FSD 기본값 0.6으로는 정상 질문 10건 중 4건이 "근거를 찾지 못했습니다"로 떨어졌습니다.
+bge-m3로 실측하니 관련 질문 0.527~0.654 / 무관 질문 0.350~0.429 분포라 0.6이 관련 질문
+구간 한가운데였습니다. **0.48**로 조정했습니다.
+→ **임계값은 모델마다 다르다. 사양의 숫자를 그대로 쓰지 말고 쓰는 모델로 분포를 재라.**
+[상세](docs/ai/similarity-threshold.md)
+
+### 3. pgvector 검색이 INSERT는 되는데 SELECT에서만 깨졌다
+
+`operator does not exist: vector <=> double precision[]`. psycopg가 파이썬 `list[float]`를
+`double precision[]`로 넘기는데 `<=>` 연산자가 그 타입을 받지 않았습니다. INSERT는 할당
+캐스트로 통과해서 **검색에서만** 드러났습니다. 쿼리에 `::vector` 캐스트를 명시해 해결했습니다.
+→ **암묵 캐스트는 경로마다 규칙이 다르다. "쓰기는 되는데 읽기가 안 된다"면 타입 캐스트를 의심하라.**
+
+### 4. 생성 클라이언트가 인증 헤더를 아예 붙이지 않았다
+
+프론트 화면은 멀쩡한데 모든 데이터가 비어 보였습니다. OpenAPI 스펙에 `securitySchemes`
+선언이 없어서 **openapi-generator가 `Authorization` 헤더 주입 코드를 만들지 않았습니다.**
+서버는 정상인데 프론트 요청이 전부 401이었습니다. `bearerAuth`를 선언하고
+[회귀 테스트](src/test/java/com/fracta/openapi/OpenApiSpecExportTest.java)를 붙였습니다.
+→ **보안 스킴 선언은 문서 장식이 아니라 클라이언트 생성기의 입력이다.**
+
+### 5. 그 401이 화면에 전혀 드러나지 않았다
+
+위 문제를 늦게 찾은 이유가 따로 있습니다. TanStack Query는 에러를 잡아 상태로 바꾸기 때문에
+`unhandledrejection`에 걸어둔 401 핸들러가 **한 번도 실행되지 않았습니다.** 화면은 실패를
+"데이터 없음"으로 그렸습니다. 401 처리를 `QueryCache.onError`로 옮기고 오류 배너를 추가했습니다.
+→ **통신 실패와 빈 목록은 다른 상태다. 조회 실패를 빈 화면으로 그리면 버그가 숨는다.**
+
+### 6. 서로 다른 응답 record가 하나의 스키마로 합쳐졌다
+
+컨트롤러 간 중첩 record 이름이 겹치자 springdoc이 하나로 병합했습니다. 결과로
+웹앱 `ExecutionResponse`에서 `buyFee`/`sellFee`가 스펙에서 사라지고, 오픈 API 잔고 응답이
+`{balance}` 하나로 잘못 문서화됐습니다. 오픈 API 쪽에 `OpenApi*` 접두사를 붙여 분리했습니다.
+→ **스펙 생성기는 이름으로 병합한다. 중복 이름은 조용히 계약을 바꾼다.**
+
+### 7. 상태값을 화면에 그대로 노출했다
+
+청약 상태 칼럼에 `DEPOSITED`가 그대로 보였습니다. 프론트 매핑을 `Record<string, ...>`으로
+선언하고 상태값을 실제 enum을 보지 않고 적었기 때문에 타입 검사도 통과했습니다.
+서버 응답 필드를 도메인 enum 타입으로 바꾸니 스펙에 enum이 실리고, 프론트를
+`Record<Enum, ...>`으로 받자 누락이 컴파일 오류가 되었습니다. 이 전환 과정에서
+`"PRO_RATA"` → 실제 `"PRORATA"` 오타도 잡혀 **모든 발행이 "선착순"으로 잘못 표시되던 것**을
+발견했습니다.
+→ **문자열 키 매핑은 빠진 값을 못 잡는다. 타입이 대신 세게 하라.**
+
+### 8. 컨테이너가 이미 고친 버그를 되살렸다
+
+`docker compose up -d`는 이미지를 재빌드하지 않습니다. ai-service가 pgvector 수정 이전
+코드로 돌아 3번 문제가 그대로 재현됐습니다. Python을 고쳤으면 `--build`가 필요합니다.
+→ **"고쳤는데 왜 안 되지"의 절반은 실행 중인 것이 내가 고친 것이 아니어서다.**
+
+---
+
+## 알려진 한계
+
+정직하게 적는 편이 신뢰를 만든다고 판단했습니다.
+
+| 영역 | 한계 | 이유 / 대응 |
+|---|---|---|
+| 원장 | 해시체인 append가 약 **225 TPS** — `pg_advisory_xact_lock`으로 직렬화하기 때문 | 정합성 > 성능. 락을 빼면 동시 INSERT에서 체인이 갈라집니다. 실서비스라면 종목별 샤딩이 다음 수순입니다 |
+| 결제 | 결제 포함 주문 경로 **39.8건/초** (매칭 엔진 자체는 640,902건/초) | 병목은 DvP 트랜잭션입니다. 매칭과 결제를 분리해 비동기화하면 올라가지만 체결 즉시 정합성이 약해집니다 |
+| 증권사 | 시세 **조회 전용**, 모의 도메인 고정 | 실거래는 명시적 비목표입니다. `BrokerSafetyValidator`가 실전 계좌 설정 시 부팅을 막습니다 |
+| AI | 가드레일에 **오탐**이 있습니다 — "위험 요인이 뭔가요" 같은 정상 질문이 `INVESTMENT_SOLICITATION`으로 차단된 사례 확인 | 금소법 위반보다 과차단이 낫다는 판단이지만 튜닝 여지가 있습니다 |
+| AI | 폐쇄망(Ollama) **품질·지연 실측 미완** | 추정치로 표를 채우지 않습니다. RTX 4080 환경에서 측정 예정 |
+| 프론트 | 토큰을 `localStorage`에 보관 | 데모용 SPA의 선택입니다. 실서비스라면 httpOnly 쿠키 + 회전이 맞습니다 |
+| 프론트 | 호가·체결이 **3초 폴링** (WebSocket 아님) | 간격을 상수로 두고 화면에도 표시합니다. PLUG WebSocket은 시세용으로만 연결돼 있습니다 |
+| 프론트 | **평가금액·손익 미표시** | 서버에 산출 API가 없습니다. 화면에서 보유수량 × 현재가를 곱하는 것은 금액 재계산 금지 원칙에 걸려 비워뒀습니다 |
+| 프론트 | 모바일 뷰포트·키보드 완주 **시각 검증 미완** | 자동 검증은 통과했으나 실제 브라우저 확인이 남았습니다 |
+| 배치 | 불변식 위반 시 **자동 복구하지 않음** | 의도한 설계입니다. 자동 복구는 훼손을 덮어씁니다. 검출 → 거래 중단 → 수동 조사가 원칙입니다 |
 
 ---
 

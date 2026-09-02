@@ -86,6 +86,63 @@ services:
   # 폐쇄망 시연용. 기본 기동에서는 제외한다 — 노트북에서 매번 띄울 이유가 없다.
   #   docker compose --profile offline up -d ollama
   #   docker compose --profile offline exec ollama ollama pull qwen3:14b
+
+  # ── 애플리케이션 ────────────────────────────────────────
+  # FSD §4.1 "단일 명령 기동" — docker compose up 한 번으로 인프라부터 화면까지 뜬다.
+  app:
+    build: .
+    container_name: fracta-app
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+      minio: { condition: service_healthy }
+      ai-service: { condition: service_started }
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/fracta
+      SPRING_DATA_REDIS_HOST: redis
+      MINIO_ENDPOINT: http://minio:9000
+      AI_SERVICE_URL: http://ai-service:8000
+      JWT_SECRET: ${JWT_SECRET:-fracta-local-dev-jwt-secret-key-0123456789}
+      # 배치 스케줄러는 compose 기동에서 끈다 — 데모 중에 대사 배치가 끼어들면 산만하다.
+      # 시연할 때는 BATCH_SCHEDULING_ENABLED=true 로 올린다.
+      BATCH_SCHEDULING_ENABLED: ${BATCH_SCHEDULING_ENABLED:-false}
+    ports:
+      - "8080:8080"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/actuator/health | grep -q '\"status\":\"UP\"'"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 60s
+
+  investor-web:
+    build:
+      context: .
+      dockerfile: apps/investor-web/Dockerfile
+      args:
+        APP_NAME: investor-web
+        # rewrites가 빌드 시점에 굳으므로 여기서 컨테이너 네트워크 주소를 넣는다
+        FRACTA_API_ORIGIN: http://app:8080
+    container_name: fracta-investor-web
+    depends_on:
+      app: { condition: service_healthy }
+    ports:
+      - "3000:3000"
+
+  dev-portal:
+    build:
+      context: .
+      dockerfile: apps/dev-portal/Dockerfile
+      args:
+        APP_NAME: dev-portal
+        # rewrites가 빌드 시점에 굳으므로 여기서 컨테이너 네트워크 주소를 넣는다
+        FRACTA_API_ORIGIN: http://app:8080
+    container_name: fracta-dev-portal
+    depends_on:
+      app: { condition: service_healthy }
+    ports:
+      - "3001:3000"
+
   ollama:
     image: ollama/ollama
     container_name: fracta-ollama
