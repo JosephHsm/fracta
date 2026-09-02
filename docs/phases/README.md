@@ -22,7 +22,7 @@
 | 7 | [오픈 API](phase-07-openapi.md) ★차별 포인트 | 1.5주 | ✅ | 6 |
 | 8 | [AI](phase-08-ai.md) | 1주 | 🟡 | 3 |
 | 9 | [배치](phase-09-batch.md) | 0.5주 | ✅ | 6 |
-| 10 | [프론트](phase-10-frontend.md) | 2주 | ⬜ | 7 |
+| 10 | [프론트](phase-10-frontend.md) | 2주 | 🟡 | 7 |
 | 11 | [마감](phase-11-release.md) | 1주 | ⬜ | 10 |
 
 **총 예상 13주.**
@@ -58,4 +58,5 @@ KIS는 v1.1에서 교체한 과거 후보이며 재도입하지 않는다. 증�
 | v1.1 | 2026-08-31 | Phase 분할. 증권사 KIS → namuh PLUG 전환 |
 | v1.1.1 | 2026-09-01 | Phase 7 완료 반영. Phase 8 구현 및 SDK 사양 정정 (phase-08 §0) |
 | v1.1.2 | 2026-09-01 | Phase 9 완료 반영. INV-5 미달 청약 기대값을 실제 배정 규칙과 동기화 |
+| v1.1.4 | 2026-09-02 | Phase 10 진행 — investor-web 7개 화면 완료. 인수인계 문서 `phase-10-handoff.md` 추가 |
 | v1.1.3 | 2026-09-01 | Phase 10 착수 전 프론트 사양 구체화. 스택 확정(Next.js 16 · Tailwind v4 · shadcn/Base UI)과 요소 기술 8종·배제 항목을 FSD §11.4~§11.5에 신설 |
