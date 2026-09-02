@@ -53,6 +53,12 @@
   --color-premium-halt: var(--fr-premium-halt);
   --color-premium-halt-soft: var(--fr-premium-halt-soft);
 
+  --color-chart-1: var(--fr-chart-1);
+  --color-chart-2: var(--fr-chart-2);
+  --color-chart-3: var(--fr-chart-3);
+  --color-chart-4: var(--fr-chart-4);
+  --color-chart-5: var(--fr-chart-5);
+
   --radius-sm: var(--fr-radius-sm);
   --radius-md: var(--fr-radius-md);
   --radius-lg: var(--fr-radius-lg);
@@ -64,15 +70,34 @@
 
   --ease-out-fr: var(--fr-ease-out);
 
-  /* 숫자는 표 안에서 자릿수가 흔들리면 안 된다 — 금액·수량 전용 폰트 스택 */
-  --font-numeric: "Roboto Mono", "SF Mono", "Cascadia Mono", ui-monospace, monospace;
+  /* 앱 layout이 next/font로 --font-pretendard를 주입한다. 폰트를 못 받으면
+   * OS 기본 한글 폰트로 떨어지되 자간·굵기가 크게 튀지 않는 스택을 쓴다. */
+  --font-sans:
+    var(--font-pretendard), "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont,
+    "Apple SD Gothic Neo", "Malgun Gothic", "맑은 고딕", system-ui, sans-serif;
+  --font-mono:
+    "SFMono-Regular", "Cascadia Mono", "JetBrains Mono", ui-monospace, "Menlo", monospace;
 }
 
 @layer base {
+  html {
+    font-family: var(--font-sans);
+  }
+
   body {
     background-color: var(--fr-background);
     color: var(--fr-text);
     -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    /* Pretendard는 한글 자간이 넓게 잡혀 있다. 데이터 밀도가 높은 화면에서는 살짝 좁힌다 */
+    letter-spacing: -0.011em;
+  }
+
+  /* 제목은 더 좁게 — 큰 글자에서 기본 자간은 헐거워 보인다 */
+  h1,
+  h2,
+  h3 {
+    letter-spacing: -0.022em;
   }
 
   /* 키보드 사용자에게 포커스 링은 항상 보여야 한다 (WCAG 2.2 AA, §11.4) */
@@ -82,10 +107,16 @@
     border-radius: var(--fr-radius-sm);
   }
 
+  ::selection {
+    background-color: var(--fr-accent-soft);
+    color: var(--fr-accent);
+  }
+
   /* 금액·수량은 tabular-nums로 고정 — 값이 갱신될 때 폭이 흔들리지 않는다 */
   .fr-numeric {
     font-variant-numeric: tabular-nums;
-    font-feature-settings: "tnum";
+    font-feature-settings: "tnum" 1;
+    letter-spacing: -0.02em;
   }
 }
 
@@ -98,8 +129,17 @@
 
   @supports (backdrop-filter: blur(1px)) {
     .fr-glass {
-      backdrop-filter: blur(var(--fr-glass-blur)) saturate(140%);
+      backdrop-filter: blur(var(--fr-glass-blur)) saturate(160%);
     }
+  }
+
+  /* 섹션 라벨 — 작은 대문자 느낌의 상단 라벨. 화면에 리듬을 준다 */
+  .fr-eyebrow {
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--fr-text-subtle);
   }
 
   /* 표에 새로 붙는 행(체결 내역 등). 4px만 올라온다 — 더 크면 표가 출렁인다 */
@@ -128,4 +168,3 @@
   animation-duration: var(--fr-motion-page);
   animation-timing-function: var(--fr-ease-out);
 }
-

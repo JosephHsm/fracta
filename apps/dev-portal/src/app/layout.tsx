@@ -1,7 +1,20 @@
 import { ToastProvider } from "@fracta/ui";
 import type { Metadata } from "next";
+import localFont from "next/font/local";
 
 import "./globals.css";
+
+/**
+ * Pretendard Variable 한 파일로 45~920 굵기를 모두 덮는다. 자체 호스팅이라
+ * 외부 CDN에 의존하지 않는다 — 폐쇄망 모드(FSD §10.4)에서도 그대로 뜬다.
+ */
+const pretendard = localFont({
+  src: "../../../../packages/ui/src/fonts/PretendardVariable.woff2",
+  variable: "--font-pretendard",
+  weight: "45 920",
+  display: "swap",
+  preload: true,
+});
 
 export const metadata: Metadata = {
   title: "FRACTA 개발자 포털",
@@ -22,7 +35,7 @@ try {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="ko" suppressHydrationWarning>
+    <html lang="ko" className={pretendard.variable} suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: THEME_INIT }} />
       </head>

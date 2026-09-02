@@ -13,7 +13,8 @@
     "typecheck": "pnpm -r typecheck",
     "lint": "pnpm -r lint",
     "spec:export": "./gradlew test --tests \"*OpenApiSpecExportTest\"",
-    "api:generate": "pnpm --filter @fracta/api-client generate"
+    "api:generate": "pnpm --filter @fracta/api-client generate",
+    "design:contrast": "node scripts/design/contrast-check.mjs"
   },
   "devDependencies": {
     "typescript": "5.9.3"

@@ -125,7 +125,7 @@ function Preview() {
                 <ProgressBar value={72} label="한남동 상업시설" />
                 <div className="flex items-center gap-2">
                   <Badge tone="warning">{formatDDay(SAMPLE_END_AT)}</Badge>
-                  <Tooltip content="청약 마감까지 남은 일수다">
+                  <Tooltip content="청약 마감까지 남은 일수입니다">
                     <span className="text-fg-muted cursor-help text-xs underline decoration-dotted">
                       D-Day란?
                     </span>
@@ -197,8 +197,8 @@ function Preview() {
                     size="sm"
                     onClick={() =>
                       toast.show({
-                        title: "주문이 접수됐다",
-                        description: "체결되면 알림으로 알려준다.",
+                        title: "주문이 접수되었습니다",
+                        description: "체결되면 알림으로 안내해 드립니다.",
                         tone: "success",
                       })
                     }
@@ -229,7 +229,7 @@ function Preview() {
                 <CardTitle>폼 필드</CardTitle>
               </CardHeader>
               <CardBody className="flex flex-col gap-4">
-                <Field label="청약 수량" description="1조각 단위로 신청한다" required>
+                <Field label="청약 수량" description="1조각 단위로 신청할 수 있습니다" required>
                   <TextInput type="number" defaultValue={10} min={1} />
                 </Field>
                 <Field label="이메일" error={errorMessage("VALID_DUPLICATE_EMAIL")}>
@@ -245,7 +245,7 @@ function Preview() {
         open={dialogOpen}
         onOpenChange={setDialogOpen}
         title="청약 신청 확인"
-        description="확인 후에는 취소가 제한된다."
+        description="확인 후에는 취소가 제한됩니다."
         dismissible={false}
         footer={
           <>

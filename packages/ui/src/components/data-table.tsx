@@ -65,6 +65,6 @@ export function Td({ className, ...props }: React.TdHTMLAttributes<HTMLTableCell
 }
 
 /** 값이 없을 때. 빈 표를 그냥 두면 로딩 실패와 구분이 안 된다. */
-export function TableEmpty({ children = "표시할 내역이 없다" }: { children?: React.ReactNode }) {
+export function TableEmpty({ children = "표시할 내역이 없습니다" }: { children?: React.ReactNode }) {
   return <div className="text-fg-muted px-4 py-10 text-center text-sm">{children}</div>;
 }

@@ -28,8 +28,8 @@ export interface CommandPaletteProps {
 
 export function CommandPalette({
   items,
-  placeholder = "명령 또는 종목 검색...",
-  emptyLabel = "결과가 없다",
+  placeholder = "명령 또는 종목을 검색하세요",
+  emptyLabel = "검색 결과가 없습니다",
 }: CommandPaletteProps) {
   const [open, setOpen] = React.useState(false);
 
