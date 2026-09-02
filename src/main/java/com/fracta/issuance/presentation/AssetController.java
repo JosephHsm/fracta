@@ -1,7 +1,5 @@
 package com.fracta.issuance.presentation;
 
-import java.util.Map;
-
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -35,6 +33,10 @@ public class AssetController {
             String description) {
     }
 
+    /** 기초자산 등록 결과. */
+    public record CreateAssetResponse(Long assetId, String assetCode) {
+    }
+
     private final AssetService assetService;
 
     public AssetController(AssetService assetService) {
@@ -43,11 +45,11 @@ public class AssetController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public ApiResponse<Map<String, Object>> create(@AuthenticationPrincipal Jwt jwt,
+    public ApiResponse<CreateAssetResponse> create(@AuthenticationPrincipal Jwt jwt,
                                                    @Valid @RequestBody CreateAssetRequest request) {
         long issuerId = Long.parseLong(jwt.getSubject());
         UnderlyingAsset asset = assetService.create(issuerId, request.name(), request.assetType(),
                 request.assetCode(), request.brokerTicker(), request.splitRatio(), request.description());
-        return ApiResponse.of(Map.of("assetId", asset.id(), "assetCode", asset.assetCode()));
+        return ApiResponse.of(new CreateAssetResponse(asset.id(), asset.assetCode()));
     }
 }

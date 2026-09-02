@@ -1,9 +1,7 @@
 package com.fracta.openapi.presentation;
 
 import java.math.BigDecimal;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 import org.springframework.data.domain.PageRequest;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -45,52 +43,65 @@ public class OpenApiMarketController {
         this.mockMarketData = mockMarketData;
     }
 
+    /**
+     * 공개 API 응답 계약. 파트너 개발자가 Swagger에서 바로 읽을 수 있어야 하므로
+     * Map으로 두지 않는다 — 스키마가 비어 있는 오픈 API 문서는 문서가 아니다.
+     */
+    public record TokenSummaryResponse(String tokenSymbol, String status, boolean tradable,
+                                       String brokerTicker, long splitRatio, int riskGrade) {
+    }
+
+    public record OrderBookResponse(String tokenSymbol, List<Level> bids, List<Level> asks) {
+
+        public record Level(long price, long units) {
+        }
+    }
+
+    public record ExecutionResponse(Long executionId, long price, long units,
+                                    BigDecimal premiumRate, String executedAt) {
+    }
+
+    /** 괴리율. 원자산 시세를 못 구하면 referencePrice·premiumRate가 null이다. */
+    public record PremiumResponse(String tokenSymbol, Long lastExecutedPrice, Long referencePrice,
+                                  BigDecimal premiumRate) {
+    }
+
     @Operation(summary = "상장 종목 목록", description = "거래 가능한 종목을 돌려준다. 예: GET /open/v1/tokens")
     @RequiredScope(ApiScope.MARKET_READ)
     @GetMapping({"/open/v1/tokens", "/open/sandbox/v1/tokens"})
-    public ApiResponse<List<Map<String, Object>>> tokens() {
+    public ApiResponse<List<TokenSummaryResponse>> tokens() {
         return ApiResponse.of(listedTokens.listAll().stream().map(this::summary).toList());
     }
 
     @Operation(summary = "종목 상세", description = "발행 정보와 기초자산. 예: GET /open/v1/tokens/FR-ESRK-001")
     @RequiredScope(ApiScope.MARKET_READ)
     @GetMapping({"/open/v1/tokens/{symbol}", "/open/sandbox/v1/tokens/{symbol}"})
-    public ApiResponse<Map<String, Object>> token(@PathVariable("symbol") String symbol) {
+    public ApiResponse<TokenSummaryResponse> token(@PathVariable("symbol") String symbol) {
         return ApiResponse.of(summary(require(symbol)));
     }
 
     @Operation(summary = "10호가", description = "매수·매도 각 10호가. 예: GET /open/v1/tokens/FR-ESRK-001/orderbook")
     @RequiredScope(ApiScope.MARKET_READ)
     @GetMapping({"/open/v1/tokens/{symbol}/orderbook", "/open/sandbox/v1/tokens/{symbol}/orderbook"})
-    public ApiResponse<Map<String, Object>> orderbook(@PathVariable("symbol") String symbol,
-                                                      @RequestParam(value = "levels", defaultValue = "10")
-                                                      int levels) {
+    public ApiResponse<OrderBookResponse> orderbook(@PathVariable("symbol") String symbol,
+                                                    @RequestParam(value = "levels", defaultValue = "10")
+                                                    int levels) {
         require(symbol);
-        Map<String, Object> body = new HashMap<>();
-        body.put("tokenSymbol", symbol);
-        body.put("bids", trading.depth(symbol, OrderSide.BUY, levels));
-        body.put("asks", trading.depth(symbol, OrderSide.SELL, levels));
-        return ApiResponse.of(body);
+        return ApiResponse.of(new OrderBookResponse(symbol,
+                levels(symbol, OrderSide.BUY, levels), levels(symbol, OrderSide.SELL, levels)));
     }
 
     @Operation(summary = "체결 내역", description = "최신순 페이징. 예: GET /open/v1/tokens/FR-ESRK-001/executions?page=0&size=20")
     @RequiredScope(ApiScope.MARKET_READ)
     @GetMapping({"/open/v1/tokens/{symbol}/executions", "/open/sandbox/v1/tokens/{symbol}/executions"})
-    public ApiResponse<List<Map<String, Object>>> executions(
+    public ApiResponse<List<ExecutionResponse>> executions(
             @PathVariable("symbol") String symbol,
             @RequestParam(value = "page", defaultValue = "0") int page,
             @RequestParam(value = "size", defaultValue = "20") int size) {
         require(symbol);
         var list = trading.executions(symbol, PageRequest.of(page, size)).stream()
-                .map(e -> {
-                    Map<String, Object> m = new HashMap<>();
-                    m.put("executionId", e.id());
-                    m.put("price", e.price());
-                    m.put("units", e.units());
-                    m.put("premiumRate", e.premiumRate());
-                    m.put("executedAt", e.executedAt().toString());
-                    return m;
-                })
+                .map(e -> new ExecutionResponse(e.id(), e.price(), e.units(), e.premiumRate(),
+                        e.executedAt().toString()))
                 .toList();
         return ApiResponse.of(list);
     }
@@ -100,13 +111,11 @@ public class OpenApiMarketController {
                     + "예: GET /open/v1/tokens/FR-ESRK-001/premium")
     @RequiredScope(ApiScope.MARKET_READ)
     @GetMapping({"/open/v1/tokens/{symbol}/premium", "/open/sandbox/v1/tokens/{symbol}/premium"})
-    public ApiResponse<Map<String, Object>> premium(@PathVariable("symbol") String symbol) {
+    public ApiResponse<PremiumResponse> premium(@PathVariable("symbol") String symbol) {
         var token = require(symbol);
-        Map<String, Object> body = new HashMap<>();
-        body.put("tokenSymbol", symbol);
 
         var latest = trading.executions(symbol, PageRequest.of(0, 1)).stream().findFirst();
-        body.put("lastExecutedPrice", latest.map(e -> e.price()).orElse(null));
+        Long lastExecutedPrice = latest.map(e -> e.price()).orElse(null);
 
         BigDecimal premiumRate = null;
         Long referencePrice = null;
@@ -124,9 +133,8 @@ public class OpenApiMarketController {
                 premiumRate = null;
             }
         }
-        body.put("referencePrice", referencePrice);
-        body.put("premiumRate", premiumRate);
-        return ApiResponse.of(body);
+        return ApiResponse.of(new PremiumResponse(symbol, lastExecutedPrice, referencePrice,
+                premiumRate));
     }
 
     private ListedTokenPort.ListedToken require(String symbol) {
@@ -134,14 +142,15 @@ public class OpenApiMarketController {
                 .orElseThrow(() -> new IllegalArgumentException("종목이 없다: " + symbol));
     }
 
-    private Map<String, Object> summary(ListedTokenPort.ListedToken token) {
-        Map<String, Object> m = new HashMap<>();
-        m.put("tokenSymbol", token.tokenSymbol());
-        m.put("status", token.status());
-        m.put("tradable", token.tradable());
-        m.put("brokerTicker", token.brokerTicker());
-        m.put("splitRatio", token.splitRatio());
-        m.put("riskGrade", token.riskGrade());
-        return m;
+    private TokenSummaryResponse summary(ListedTokenPort.ListedToken token) {
+        return new TokenSummaryResponse(token.tokenSymbol(), token.status(), token.tradable(),
+                token.brokerTicker(), token.splitRatio(), token.riskGrade());
+    }
+
+    /** 도메인 오더북 타입을 공개 계약으로 옮긴다 — 내부 record가 파트너 스펙에 새지 않게. */
+    private List<OrderBookResponse.Level> levels(String symbol, OrderSide side, int depth) {
+        return trading.depth(symbol, side, depth).stream()
+                .map(level -> new OrderBookResponse.Level(level.price(), level.units()))
+                .toList();
     }
 }

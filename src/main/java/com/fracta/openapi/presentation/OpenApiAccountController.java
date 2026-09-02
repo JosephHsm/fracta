@@ -1,8 +1,7 @@
 package com.fracta.openapi.presentation;
 
-import java.util.HashMap;
+import java.math.BigDecimal;
 import java.util.List;
-import java.util.Map;
 
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -39,53 +38,50 @@ public class OpenApiAccountController {
         this.trading = trading;
     }
 
+    /** 공개 API 잔고 응답. 보유가 0인 종목은 목록에서 제외한다. */
+    public record BalanceResponse(long investorId, BigDecimal cashBalance, List<Holding> holdings) {
+
+        public record Holding(String tokenSymbol, long units, long lockedUnits, long availableUnits) {
+        }
+    }
+
+    /** 공개 API 주문 내역. orderId는 내부 PK가 아니라 외부 노출용 식별자다. */
+    public record OrderResponse(String orderId, String tokenSymbol, String side, String orderType,
+                                Long price, long units, long filledUnits, long remainingUnits,
+                                String status) {
+    }
+
     @Operation(summary = "잔고 조회",
             description = "예치금과 보유 조각 수량. 클라이언트 소유자 계정 기준. 예: GET /open/v1/accounts/balance")
     @RequiredScope(ApiScope.ACCOUNT_READ)
     @GetMapping({"/open/v1/accounts/balance", "/open/sandbox/v1/accounts/balance"})
-    public ApiResponse<Map<String, Object>> balance() {
+    public ApiResponse<BalanceResponse> balance() {
         InvestorId investor = InvestorId.of(OpenApiContext.current().ownerInvestorId());
 
-        List<Map<String, Object>> holdings = listedTokens.listAll().stream()
+        List<BalanceResponse.Holding> holdings = listedTokens.listAll().stream()
                 .map(token -> {
                     var balance = ledger.balanceOf(token.tokenSymbol(),
                             OwnerId.of(investor.value()));
-                    Map<String, Object> m = new HashMap<>();
-                    m.put("tokenSymbol", token.tokenSymbol());
-                    m.put("units", balance.units().value());
-                    m.put("lockedUnits", balance.lockedUnits().value());
-                    m.put("availableUnits", balance.available().value());
-                    return m;
+                    return new BalanceResponse.Holding(token.tokenSymbol(),
+                            balance.units().value(), balance.lockedUnits().value(),
+                            balance.available().value());
                 })
-                .filter(m -> ((Long) m.get("units")) > 0)
+                .filter(holding -> holding.units() > 0)
                 .toList();
 
-        Map<String, Object> body = new HashMap<>();
-        body.put("investorId", investor.value());
-        body.put("cashBalance", accounts.cashBalanceOf(investor).toDisplay());
-        body.put("holdings", holdings);
-        return ApiResponse.of(body);
+        return ApiResponse.of(new BalanceResponse(investor.value(),
+                accounts.cashBalanceOf(investor).toDisplay(), holdings));
     }
 
     @Operation(summary = "주문 내역", description = "최신순. 예: GET /open/v1/accounts/orders")
     @RequiredScope(ApiScope.ACCOUNT_READ)
     @GetMapping({"/open/v1/accounts/orders", "/open/sandbox/v1/accounts/orders"})
-    public ApiResponse<List<Map<String, Object>>> orders() {
+    public ApiResponse<List<OrderResponse>> orders() {
         InvestorId investor = InvestorId.of(OpenApiContext.current().ownerInvestorId());
         var list = trading.ordersOf(investor).stream()
-                .map(o -> {
-                    Map<String, Object> m = new HashMap<>();
-                    m.put("orderId", OpenApiIds.order(o.id()));
-                    m.put("tokenSymbol", o.tokenSymbol());
-                    m.put("side", o.side().name());
-                    m.put("orderType", o.orderType().name());
-                    m.put("price", o.price());
-                    m.put("units", o.units());
-                    m.put("filledUnits", o.filledUnits());
-                    m.put("remainingUnits", o.remaining());
-                    m.put("status", o.status().name());
-                    return m;
-                })
+                .map(o -> new OrderResponse(OpenApiIds.order(o.id()), o.tokenSymbol(),
+                        o.side().name(), o.orderType().name(), o.price(), o.units(),
+                        o.filledUnits(), o.remaining(), o.status().name()))
                 .toList();
         return ApiResponse.of(list);
     }

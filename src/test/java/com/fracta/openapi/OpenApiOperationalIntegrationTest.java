@@ -125,6 +125,20 @@ class OpenApiOperationalIntegrationTest extends IntegrationTestBase {
                 new HttpEntity<>(webhookBody, openApi.bearer(client.accessToken())), String.class);
         assertThat(webhook.getStatusCode()).isEqualTo(HttpStatus.CREATED);
 
+        // 응답 계약: secret은 절대 돌려주지 않는다
+        JsonNode webhookData = objectMapper.readTree(webhook.getBody()).path("data");
+        long webhookId = webhookData.path("webhookId").asLong();
+        assertThat(webhookId).isPositive();
+        assertThat(webhookData.has("secret")).isFalse();
+
+        // 감사 로그의 targetId가 채워져야 한다. @Auditable SpEL이 응답 형태에 의존하므로
+        // 응답을 Map에서 record로 바꿀 때 여기가 조용히 비는 사고가 나기 쉽다.
+        assertThat(jdbc.queryForObject("""
+                SELECT COUNT(*) FROM audit_log
+                 WHERE action = 'WEBHOOK_REGISTER' AND target_id = ?
+                """, Long.class, String.valueOf(webhookId)))
+                .as("WEBHOOK_REGISTER 감사 로그에 webhookId가 기록되어야 한다")
+                .isEqualTo(1);
     }
 
     @Test

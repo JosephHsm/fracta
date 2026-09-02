@@ -14,10 +14,10 @@
 
 import * as runtime from '../runtime';
 import {
-    type ApiResponseMapStringObject,
-    ApiResponseMapStringObjectFromJSON,
-    ApiResponseMapStringObjectToJSON,
-} from '../models/ApiResponseMapStringObject';
+    type ApiResponseCreateAssetResponse,
+    ApiResponseCreateAssetResponseFromJSON,
+    ApiResponseCreateAssetResponseToJSON,
+} from '../models/ApiResponseCreateAssetResponse';
 import {
     type CreateAssetRequest,
     CreateAssetRequestFromJSON,
@@ -67,16 +67,16 @@ export class AssetControllerApi extends runtime.BaseAPI {
 
     /**
      */
-    async create1Raw(requestParameters: Create1Request, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ApiResponseMapStringObject>> {
+    async create1Raw(requestParameters: Create1Request, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ApiResponseCreateAssetResponse>> {
         const requestOptions = await this.create1RequestOpts(requestParameters);
         const response = await this.request(requestOptions, initOverrides);
 
-        return new runtime.JSONApiResponse(response, (jsonValue) => ApiResponseMapStringObjectFromJSON(jsonValue));
+        return new runtime.JSONApiResponse(response, (jsonValue) => ApiResponseCreateAssetResponseFromJSON(jsonValue));
     }
 
     /**
      */
-    async create1(requestParameters: Create1Request, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ApiResponseMapStringObject> {
+    async create1(requestParameters: Create1Request, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ApiResponseCreateAssetResponse> {
         const response = await this.create1Raw(requestParameters, initOverrides);
         return await response.value();
     }

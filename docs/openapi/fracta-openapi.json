@@ -23,6 +23,28 @@
         },
         "type" : "object"
       },
+      "ApiResponseCancelOrderResponse" : {
+        "properties" : {
+          "data" : {
+            "$ref" : "#/components/schemas/CancelOrderResponse"
+          },
+          "meta" : {
+            "$ref" : "#/components/schemas/ResponseMeta"
+          }
+        },
+        "type" : "object"
+      },
+      "ApiResponseCreateAssetResponse" : {
+        "properties" : {
+          "data" : {
+            "$ref" : "#/components/schemas/CreateAssetResponse"
+          },
+          "meta" : {
+            "$ref" : "#/components/schemas/ResponseMeta"
+          }
+        },
+        "type" : "object"
+      },
       "ApiResponseCreateResult" : {
         "properties" : {
           "data" : {
@@ -106,23 +128,6 @@
         },
         "type" : "object"
       },
-      "ApiResponseListMapStringObject" : {
-        "properties" : {
-          "data" : {
-            "items" : {
-              "additionalProperties" : {
-                "type" : "object"
-              },
-              "type" : "object"
-            },
-            "type" : "array"
-          },
-          "meta" : {
-            "$ref" : "#/components/schemas/ResponseMeta"
-          }
-        },
-        "type" : "object"
-      },
       "ApiResponseListMyOrderResponse" : {
         "properties" : {
           "data" : {
@@ -142,6 +147,34 @@
           "data" : {
             "items" : {
               "$ref" : "#/components/schemas/MySubscriptionResponse"
+            },
+            "type" : "array"
+          },
+          "meta" : {
+            "$ref" : "#/components/schemas/ResponseMeta"
+          }
+        },
+        "type" : "object"
+      },
+      "ApiResponseListOrderResponse" : {
+        "properties" : {
+          "data" : {
+            "items" : {
+              "$ref" : "#/components/schemas/OrderResponse"
+            },
+            "type" : "array"
+          },
+          "meta" : {
+            "$ref" : "#/components/schemas/ResponseMeta"
+          }
+        },
+        "type" : "object"
+      },
+      "ApiResponseListTokenSummaryResponse" : {
+        "properties" : {
+          "data" : {
+            "items" : {
+              "$ref" : "#/components/schemas/TokenSummaryResponse"
             },
             "type" : "array"
           },
@@ -187,10 +220,32 @@
         },
         "type" : "object"
       },
+      "ApiResponsePlaceOrderResponse" : {
+        "properties" : {
+          "data" : {
+            "$ref" : "#/components/schemas/PlaceOrderResponse"
+          },
+          "meta" : {
+            "$ref" : "#/components/schemas/ResponseMeta"
+          }
+        },
+        "type" : "object"
+      },
       "ApiResponsePlaceResult" : {
         "properties" : {
           "data" : {
             "$ref" : "#/components/schemas/PlaceResult"
+          },
+          "meta" : {
+            "$ref" : "#/components/schemas/ResponseMeta"
+          }
+        },
+        "type" : "object"
+      },
+      "ApiResponsePremiumResponse" : {
+        "properties" : {
+          "data" : {
+            "$ref" : "#/components/schemas/PremiumResponse"
           },
           "meta" : {
             "$ref" : "#/components/schemas/ResponseMeta"
@@ -220,10 +275,43 @@
         },
         "type" : "object"
       },
+      "ApiResponseRegisterWebhookResponse" : {
+        "properties" : {
+          "data" : {
+            "$ref" : "#/components/schemas/RegisterWebhookResponse"
+          },
+          "meta" : {
+            "$ref" : "#/components/schemas/ResponseMeta"
+          }
+        },
+        "type" : "object"
+      },
       "ApiResponseRiskProfileResponse" : {
         "properties" : {
           "data" : {
             "$ref" : "#/components/schemas/RiskProfileResponse"
+          },
+          "meta" : {
+            "$ref" : "#/components/schemas/ResponseMeta"
+          }
+        },
+        "type" : "object"
+      },
+      "ApiResponseSignupResponse" : {
+        "properties" : {
+          "data" : {
+            "$ref" : "#/components/schemas/SignupResponse"
+          },
+          "meta" : {
+            "$ref" : "#/components/schemas/ResponseMeta"
+          }
+        },
+        "type" : "object"
+      },
+      "ApiResponseSubscribeResponse" : {
+        "properties" : {
+          "data" : {
+            "$ref" : "#/components/schemas/SubscribeResponse"
           },
           "meta" : {
             "$ref" : "#/components/schemas/ResponseMeta"
@@ -257,6 +345,17 @@
         "properties" : {
           "data" : {
             "$ref" : "#/components/schemas/TokenResponse"
+          },
+          "meta" : {
+            "$ref" : "#/components/schemas/ResponseMeta"
+          }
+        },
+        "type" : "object"
+      },
+      "ApiResponseTokenSummaryResponse" : {
+        "properties" : {
+          "data" : {
+            "$ref" : "#/components/schemas/TokenSummaryResponse"
           },
           "meta" : {
             "$ref" : "#/components/schemas/ResponseMeta"
@@ -343,6 +442,21 @@
         },
         "type" : "object"
       },
+      "CancelOrderResponse" : {
+        "properties" : {
+          "filledUnits" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "orderId" : {
+            "type" : "string"
+          },
+          "status" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
       "CashRequest" : {
         "properties" : {
           "amount" : {
@@ -396,6 +510,18 @@
           }
         },
         "required" : [ "assetType", "name", "splitRatio" ],
+        "type" : "object"
+      },
+      "CreateAssetResponse" : {
+        "properties" : {
+          "assetCode" : {
+            "type" : "string"
+          },
+          "assetId" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        },
         "type" : "object"
       },
       "CreateIssuanceRequest" : {
@@ -464,10 +590,6 @@
       },
       "ExecutionResponse" : {
         "properties" : {
-          "buyFee" : {
-            "format" : "int64",
-            "type" : "integer"
-          },
           "executedAt" : {
             "type" : "string"
           },
@@ -482,7 +604,19 @@
             "format" : "int64",
             "type" : "integer"
           },
-          "sellFee" : {
+          "units" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        },
+        "type" : "object"
+      },
+      "ExecutionSummary" : {
+        "properties" : {
+          "executedAt" : {
+            "type" : "string"
+          },
+          "price" : {
             "format" : "int64",
             "type" : "integer"
           },
@@ -696,6 +830,42 @@
         },
         "type" : "object"
       },
+      "OrderResponse" : {
+        "properties" : {
+          "filledUnits" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "orderId" : {
+            "type" : "string"
+          },
+          "orderType" : {
+            "type" : "string"
+          },
+          "price" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "remainingUnits" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "side" : {
+            "type" : "string"
+          },
+          "status" : {
+            "type" : "string"
+          },
+          "tokenSymbol" : {
+            "type" : "string"
+          },
+          "units" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        },
+        "type" : "object"
+      },
       "PlaceOrderRequest" : {
         "properties" : {
           "orderType" : {
@@ -721,6 +891,31 @@
         "required" : [ "orderType", "side", "tokenSymbol", "units" ],
         "type" : "object"
       },
+      "PlaceOrderResponse" : {
+        "properties" : {
+          "executions" : {
+            "items" : {
+              "$ref" : "#/components/schemas/ExecutionSummary"
+            },
+            "type" : "array"
+          },
+          "filledUnits" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "orderId" : {
+            "type" : "string"
+          },
+          "remainingUnits" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "status" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
       "PlaceResult" : {
         "properties" : {
           "executionIds" : {
@@ -742,6 +937,25 @@
             "type" : "boolean"
           },
           "status" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "PremiumResponse" : {
+        "properties" : {
+          "lastExecutedPrice" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "premiumRate" : {
+            "type" : "number"
+          },
+          "referencePrice" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "tokenSymbol" : {
             "type" : "string"
           }
         },
@@ -793,6 +1007,21 @@
           }
         },
         "required" : [ "events", "secret", "url" ],
+        "type" : "object"
+      },
+      "RegisterWebhookResponse" : {
+        "properties" : {
+          "events" : {
+            "type" : "string"
+          },
+          "url" : {
+            "type" : "string"
+          },
+          "webhookId" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        },
         "type" : "object"
       },
       "ResponseMeta" : {
@@ -862,6 +1091,15 @@
         "required" : [ "email", "name", "password" ],
         "type" : "object"
       },
+      "SignupResponse" : {
+        "properties" : {
+          "investorId" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        },
+        "type" : "object"
+      },
       "SubscribeRequest" : {
         "properties" : {
           "issuanceId" : {
@@ -874,6 +1112,25 @@
           }
         },
         "required" : [ "issuanceId", "units" ],
+        "type" : "object"
+      },
+      "SubscribeResponse" : {
+        "properties" : {
+          "depositAmount" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "requestedUnits" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "status" : {
+            "type" : "string"
+          },
+          "subscriptionId" : {
+            "type" : "string"
+          }
+        },
         "type" : "object"
       },
       "SuitabilityAckRequest" : {
@@ -931,6 +1188,31 @@
           },
           "tokenType" : {
             "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "TokenSummaryResponse" : {
+        "properties" : {
+          "brokerTicker" : {
+            "type" : "string"
+          },
+          "riskGrade" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "splitRatio" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "status" : {
+            "type" : "string"
+          },
+          "tokenSymbol" : {
+            "type" : "string"
+          },
+          "tradable" : {
+            "type" : "boolean"
           }
         },
         "type" : "object"
@@ -1230,7 +1512,7 @@
             "content" : {
               "*/*" : {
                 "schema" : {
-                  "$ref" : "#/components/schemas/ApiResponseMapStringObject"
+                  "$ref" : "#/components/schemas/ApiResponseCreateAssetResponse"
                 }
               }
             },
@@ -1286,7 +1568,7 @@
             "content" : {
               "*/*" : {
                 "schema" : {
-                  "$ref" : "#/components/schemas/ApiResponseMapStringObject"
+                  "$ref" : "#/components/schemas/ApiResponseSignupResponse"
                 }
               }
             },
@@ -1861,7 +2143,7 @@
             "content" : {
               "*/*" : {
                 "schema" : {
-                  "$ref" : "#/components/schemas/ApiResponseMapStringObject"
+                  "$ref" : "#/components/schemas/ApiResponseBalanceResponse"
                 }
               }
             },
@@ -1881,7 +2163,7 @@
             "content" : {
               "*/*" : {
                 "schema" : {
-                  "$ref" : "#/components/schemas/ApiResponseListMapStringObject"
+                  "$ref" : "#/components/schemas/ApiResponseListOrderResponse"
                 }
               }
             },
@@ -1961,7 +2243,7 @@
             "content" : {
               "*/*" : {
                 "schema" : {
-                  "$ref" : "#/components/schemas/ApiResponseMapStringObject"
+                  "$ref" : "#/components/schemas/ApiResponsePlaceOrderResponse"
                 }
               }
             },
@@ -1989,7 +2271,7 @@
             "content" : {
               "*/*" : {
                 "schema" : {
-                  "$ref" : "#/components/schemas/ApiResponseMapStringObject"
+                  "$ref" : "#/components/schemas/ApiResponseCancelOrderResponse"
                 }
               }
             },
@@ -2027,7 +2309,7 @@
             "content" : {
               "*/*" : {
                 "schema" : {
-                  "$ref" : "#/components/schemas/ApiResponseMapStringObject"
+                  "$ref" : "#/components/schemas/ApiResponseSubscribeResponse"
                 }
               }
             },
@@ -2047,7 +2329,7 @@
             "content" : {
               "*/*" : {
                 "schema" : {
-                  "$ref" : "#/components/schemas/ApiResponseListMapStringObject"
+                  "$ref" : "#/components/schemas/ApiResponseListTokenSummaryResponse"
                 }
               }
             },
@@ -2075,7 +2357,7 @@
             "content" : {
               "*/*" : {
                 "schema" : {
-                  "$ref" : "#/components/schemas/ApiResponseMapStringObject"
+                  "$ref" : "#/components/schemas/ApiResponseTokenSummaryResponse"
                 }
               }
             },
@@ -2121,7 +2403,7 @@
             "content" : {
               "*/*" : {
                 "schema" : {
-                  "$ref" : "#/components/schemas/ApiResponseListMapStringObject"
+                  "$ref" : "#/components/schemas/ApiResponseListExecutionResponse"
                 }
               }
             },
@@ -2158,7 +2440,7 @@
             "content" : {
               "*/*" : {
                 "schema" : {
-                  "$ref" : "#/components/schemas/ApiResponseMapStringObject"
+                  "$ref" : "#/components/schemas/ApiResponseOrderBookResponse"
                 }
               }
             },
@@ -2186,7 +2468,7 @@
             "content" : {
               "*/*" : {
                 "schema" : {
-                  "$ref" : "#/components/schemas/ApiResponseMapStringObject"
+                  "$ref" : "#/components/schemas/ApiResponsePremiumResponse"
                 }
               }
             },
@@ -2216,7 +2498,7 @@
             "content" : {
               "*/*" : {
                 "schema" : {
-                  "$ref" : "#/components/schemas/ApiResponseMapStringObject"
+                  "$ref" : "#/components/schemas/ApiResponseRegisterWebhookResponse"
                 }
               }
             },
@@ -2236,7 +2518,7 @@
             "content" : {
               "*/*" : {
                 "schema" : {
-                  "$ref" : "#/components/schemas/ApiResponseMapStringObject"
+                  "$ref" : "#/components/schemas/ApiResponseBalanceResponse"
                 }
               }
             },
@@ -2256,7 +2538,7 @@
             "content" : {
               "*/*" : {
                 "schema" : {
-                  "$ref" : "#/components/schemas/ApiResponseListMapStringObject"
+                  "$ref" : "#/components/schemas/ApiResponseListOrderResponse"
                 }
               }
             },
@@ -2336,7 +2618,7 @@
             "content" : {
               "*/*" : {
                 "schema" : {
-                  "$ref" : "#/components/schemas/ApiResponseMapStringObject"
+                  "$ref" : "#/components/schemas/ApiResponsePlaceOrderResponse"
                 }
               }
             },
@@ -2364,7 +2646,7 @@
             "content" : {
               "*/*" : {
                 "schema" : {
-                  "$ref" : "#/components/schemas/ApiResponseMapStringObject"
+                  "$ref" : "#/components/schemas/ApiResponseCancelOrderResponse"
                 }
               }
             },
@@ -2402,7 +2684,7 @@
             "content" : {
               "*/*" : {
                 "schema" : {
-                  "$ref" : "#/components/schemas/ApiResponseMapStringObject"
+                  "$ref" : "#/components/schemas/ApiResponseSubscribeResponse"
                 }
               }
             },
@@ -2422,7 +2704,7 @@
             "content" : {
               "*/*" : {
                 "schema" : {
-                  "$ref" : "#/components/schemas/ApiResponseListMapStringObject"
+                  "$ref" : "#/components/schemas/ApiResponseListTokenSummaryResponse"
                 }
               }
             },
@@ -2450,7 +2732,7 @@
             "content" : {
               "*/*" : {
                 "schema" : {
-                  "$ref" : "#/components/schemas/ApiResponseMapStringObject"
+                  "$ref" : "#/components/schemas/ApiResponseTokenSummaryResponse"
                 }
               }
             },
@@ -2496,7 +2778,7 @@
             "content" : {
               "*/*" : {
                 "schema" : {
-                  "$ref" : "#/components/schemas/ApiResponseListMapStringObject"
+                  "$ref" : "#/components/schemas/ApiResponseListExecutionResponse"
                 }
               }
             },
@@ -2533,7 +2815,7 @@
             "content" : {
               "*/*" : {
                 "schema" : {
-                  "$ref" : "#/components/schemas/ApiResponseMapStringObject"
+                  "$ref" : "#/components/schemas/ApiResponseOrderBookResponse"
                 }
               }
             },
@@ -2561,7 +2843,7 @@
             "content" : {
               "*/*" : {
                 "schema" : {
-                  "$ref" : "#/components/schemas/ApiResponseMapStringObject"
+                  "$ref" : "#/components/schemas/ApiResponsePremiumResponse"
                 }
               }
             },
@@ -2591,7 +2873,7 @@
             "content" : {
               "*/*" : {
                 "schema" : {
-                  "$ref" : "#/components/schemas/ApiResponseMapStringObject"
+                  "$ref" : "#/components/schemas/ApiResponseRegisterWebhookResponse"
                 }
               }
             },
@@ -2605,7 +2887,7 @@
   },
   "servers" : [ {
     "description" : "Generated server url",
-    "url" : "http://localhost:58488"
+    "url" : "http://localhost:54745"
   } ],
   "tags" : [ {
     "description" : "잔고·주문 내역 조회",

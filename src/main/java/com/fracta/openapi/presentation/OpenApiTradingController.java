@@ -1,8 +1,6 @@
 package com.fracta.openapi.presentation;
 
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -54,6 +52,21 @@ public class OpenApiTradingController {
         this.subscriptions = subscriptions;
     }
 
+    /** 주문 접수 결과. 즉시 체결된 건은 executions에 요약이 실린다. */
+    public record PlaceOrderResponse(String orderId, String status, long filledUnits,
+                                     long remainingUnits, List<ExecutionSummary> executions) {
+
+        public record ExecutionSummary(long price, long units, String executedAt) {
+        }
+    }
+
+    public record CancelOrderResponse(String orderId, String status, long filledUnits) {
+    }
+
+    public record SubscribeResponse(String subscriptionId, long requestedUnits, long depositAmount,
+                                    String status) {
+    }
+
     @Operation(summary = "주문",
             description = "지정가/시장가 주문. `Idempotency-Key` 헤더 필수. "
                     + "예: {\"tokenSymbol\":\"FR-ESRK-001\",\"side\":\"BUY\","
@@ -61,35 +74,29 @@ public class OpenApiTradingController {
     @RequiredScope(value = ApiScope.ORDER_WRITE, idempotent = true)
     @PostMapping({"/open/v1/orders", "/open/sandbox/v1/orders"})
     @ResponseStatus(HttpStatus.CREATED)
-    public ApiResponse<Map<String, Object>> placeOrder(
+    public ApiResponse<PlaceOrderResponse> placeOrder(
             @RequestHeader("Idempotency-Key") String idempotencyKey,
             @Valid @RequestBody PlaceOrderRequest request) {
         InvestorId investor = InvestorId.of(OpenApiContext.current().ownerInvestorId());
         var result = trading.place(request.tokenSymbol(), investor, request.side(),
                 request.orderType(), request.price(), request.units(), idempotencyKey);
 
-        Map<String, Object> body = new HashMap<>();
-        body.put("orderId", OpenApiIds.order(result.orderId()));
-        body.put("status", result.status());
-        body.put("filledUnits", result.filledUnits());
-        body.put("remainingUnits", request.units() - result.filledUnits());
-        body.put("executions", executionSummaries(request.tokenSymbol(), result.executionIds()));
-        return ApiResponse.of(body);
+        return ApiResponse.of(new PlaceOrderResponse(OpenApiIds.order(result.orderId()),
+                result.status(), result.filledUnits(),
+                request.units() - result.filledUnits(),
+                executionSummaries(request.tokenSymbol(), result.executionIds())));
     }
 
     @Operation(summary = "주문 취소",
             description = "미체결 잔량만 취소된다. 예: DELETE /open/v1/orders/ord_42")
     @RequiredScope(value = ApiScope.ORDER_WRITE, idempotent = true)
     @DeleteMapping({"/open/v1/orders/{orderId}", "/open/sandbox/v1/orders/{orderId}"})
-    public ApiResponse<Map<String, Object>> cancelOrder(@PathVariable("orderId") String orderId) {
+    public ApiResponse<CancelOrderResponse> cancelOrder(@PathVariable("orderId") String orderId) {
         InvestorId investor = InvestorId.of(OpenApiContext.current().ownerInvestorId());
         var result = trading.cancel(OpenApiIds.parseOrder(orderId), investor);
 
-        Map<String, Object> body = new HashMap<>();
-        body.put("orderId", OpenApiIds.order(result.orderId()));
-        body.put("status", result.status());
-        body.put("filledUnits", result.filledUnits());
-        return ApiResponse.of(body);
+        return ApiResponse.of(new CancelOrderResponse(OpenApiIds.order(result.orderId()),
+                result.status(), result.filledUnits()));
     }
 
     @Operation(summary = "청약",
@@ -98,35 +105,28 @@ public class OpenApiTradingController {
     @RequiredScope(value = ApiScope.SUBSCRIPTION_WRITE, idempotent = true)
     @PostMapping({"/open/v1/subscriptions", "/open/sandbox/v1/subscriptions"})
     @ResponseStatus(HttpStatus.CREATED)
-    public ApiResponse<Map<String, Object>> subscribe(
+    public ApiResponse<SubscribeResponse> subscribe(
             @RequestHeader("Idempotency-Key") String idempotencyKey,
             @Valid @RequestBody SubscribeRequest request) {
         InvestorId investor = InvestorId.of(OpenApiContext.current().ownerInvestorId());
         var result = subscriptions.apply(request.issuanceId(), investor,
                 request.units(), idempotencyKey);
 
-        Map<String, Object> body = new HashMap<>();
-        body.put("subscriptionId", OpenApiIds.subscription(result.orderId()));
-        body.put("requestedUnits", result.requestedUnits());
-        body.put("depositAmount", result.depositAmount());
-        body.put("status", result.status());
-        return ApiResponse.of(body);
+        return ApiResponse.of(new SubscribeResponse(
+                OpenApiIds.subscription(result.orderId()), result.requestedUnits(),
+                result.depositAmount(), result.status()));
     }
 
-    private List<Map<String, Object>> executionSummaries(String symbol, List<Long> executionIds) {
+    private List<PlaceOrderResponse.ExecutionSummary> executionSummaries(String symbol,
+                                                                        List<Long> executionIds) {
         if (executionIds.isEmpty()) {
             return List.of();
         }
         return trading.executions(symbol, org.springframework.data.domain.PageRequest.of(0, 50))
                 .stream()
                 .filter(e -> executionIds.contains(e.id()))
-                .map(e -> {
-                    Map<String, Object> m = new HashMap<>();
-                    m.put("price", e.price());
-                    m.put("units", e.units());
-                    m.put("executedAt", e.executedAt().toString());
-                    return m;
-                })
+                .map(e -> new PlaceOrderResponse.ExecutionSummary(e.price(), e.units(),
+                        e.executedAt().toString()))
                 .toList();
     }
 }

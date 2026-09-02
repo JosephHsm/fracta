@@ -16,21 +16,13 @@ import { mapValues } from '../runtime';
 /**
  * 
  * @export
- * @interface ExecutionResponse
+ * @interface ExecutionSummary
  */
-export interface ExecutionResponse {
+export interface ExecutionSummary {
     /**
      * 
      */
     executedAt?: string;
-    /**
-     * 
-     */
-    executionId?: number;
-    /**
-     * 
-     */
-    premiumRate?: number;
     /**
      * 
      */
@@ -42,35 +34,33 @@ export interface ExecutionResponse {
 }
 
 /**
- * Check if a given object implements the ExecutionResponse interface.
+ * Check if a given object implements the ExecutionSummary interface.
  */
-export function instanceOfExecutionResponse(value: object): value is ExecutionResponse {
+export function instanceOfExecutionSummary(value: object): value is ExecutionSummary {
     return true;
 }
 
-export function ExecutionResponseFromJSON(json: any): ExecutionResponse {
-    return ExecutionResponseFromJSONTyped(json, false);
+export function ExecutionSummaryFromJSON(json: any): ExecutionSummary {
+    return ExecutionSummaryFromJSONTyped(json, false);
 }
 
-export function ExecutionResponseFromJSONTyped(json: any, ignoreDiscriminator: boolean): ExecutionResponse {
+export function ExecutionSummaryFromJSONTyped(json: any, ignoreDiscriminator: boolean): ExecutionSummary {
     if (json == null) {
         return json;
     }
     return {
         
         'executedAt': json['executedAt'] == null ? undefined : json['executedAt'],
-        'executionId': json['executionId'] == null ? undefined : json['executionId'],
-        'premiumRate': json['premiumRate'] == null ? undefined : json['premiumRate'],
         'price': json['price'] == null ? undefined : json['price'],
         'units': json['units'] == null ? undefined : json['units'],
     };
 }
 
-export function ExecutionResponseToJSON(json: any): ExecutionResponse {
-    return ExecutionResponseToJSONTyped(json, false);
+export function ExecutionSummaryToJSON(json: any): ExecutionSummary {
+    return ExecutionSummaryToJSONTyped(json, false);
 }
 
-export function ExecutionResponseToJSONTyped(value?: ExecutionResponse | null, ignoreDiscriminator: boolean = false): any {
+export function ExecutionSummaryToJSONTyped(value?: ExecutionSummary | null, ignoreDiscriminator: boolean = false): any {
     if (value == null) {
         return value;
     }
@@ -78,8 +68,6 @@ export function ExecutionResponseToJSONTyped(value?: ExecutionResponse | null, i
     return {
         
         'executedAt': value['executedAt'],
-        'executionId': value['executionId'],
-        'premiumRate': value['premiumRate'],
         'price': value['price'],
         'units': value['units'],
     };

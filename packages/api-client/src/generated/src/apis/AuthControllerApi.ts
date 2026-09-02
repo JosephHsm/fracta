@@ -14,10 +14,10 @@
 
 import * as runtime from '../runtime';
 import {
-    type ApiResponseMapStringObject,
-    ApiResponseMapStringObjectFromJSON,
-    ApiResponseMapStringObjectToJSON,
-} from '../models/ApiResponseMapStringObject';
+    type ApiResponseSignupResponse,
+    ApiResponseSignupResponseFromJSON,
+    ApiResponseSignupResponseToJSON,
+} from '../models/ApiResponseSignupResponse';
 import {
     type ApiResponseTokenResponse,
     ApiResponseTokenResponseFromJSON,
@@ -129,16 +129,16 @@ export class AuthControllerApi extends runtime.BaseAPI {
 
     /**
      */
-    async signupRaw(requestParameters: SignupOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ApiResponseMapStringObject>> {
+    async signupRaw(requestParameters: SignupOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ApiResponseSignupResponse>> {
         const requestOptions = await this.signupRequestOpts(requestParameters);
         const response = await this.request(requestOptions, initOverrides);
 
-        return new runtime.JSONApiResponse(response, (jsonValue) => ApiResponseMapStringObjectFromJSON(jsonValue));
+        return new runtime.JSONApiResponse(response, (jsonValue) => ApiResponseSignupResponseFromJSON(jsonValue));
     }
 
     /**
      */
-    async signup(requestParameters: SignupOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ApiResponseMapStringObject> {
+    async signup(requestParameters: SignupOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ApiResponseSignupResponse> {
         const response = await this.signupRaw(requestParameters, initOverrides);
         return await response.value();
     }

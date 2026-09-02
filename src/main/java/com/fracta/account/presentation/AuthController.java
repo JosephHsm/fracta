@@ -1,7 +1,5 @@
 package com.fracta.account.presentation;
 
-import java.util.Map;
-
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -31,6 +29,10 @@ public class AuthController {
     public record LoginRequest(@NotBlank @Email String email, @NotBlank String password) {
     }
 
+    /** 가입 결과. 온보딩 화면이 이 값으로 다음 단계(KYC)로 넘어간다. */
+    public record SignupResponse(long investorId) {
+    }
+
     private final AuthService authService;
 
     public AuthController(AuthService authService) {
@@ -39,9 +41,9 @@ public class AuthController {
 
     @PostMapping("/signup")
     @ResponseStatus(HttpStatus.CREATED)
-    public ApiResponse<Map<String, Object>> signup(@Valid @RequestBody SignupRequest request) {
+    public ApiResponse<SignupResponse> signup(@Valid @RequestBody SignupRequest request) {
         InvestorId id = authService.signup(request.name(), request.email(), request.password());
-        return ApiResponse.of(Map.of("investorId", id.value()));
+        return ApiResponse.of(new SignupResponse(id.value()));
     }
 
     @PostMapping("/login")
