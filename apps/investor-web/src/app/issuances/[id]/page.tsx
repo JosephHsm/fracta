@@ -29,7 +29,7 @@ import * as React from "react";
 import { AppShell } from "@/components/app-shell";
 import { RISK_LABEL } from "@/app/page";
 import { useIssuances, useMe } from "@/lib/queries";
-import { useRequireSession } from "@/lib/session";
+import { useSession } from "@/lib/session";
 
 /**
  * 청약 화면 (FSD §11.2) — 수량 입력 → 증거금 확인 → 적합성 경고 → 신청.
@@ -39,11 +39,10 @@ import { useRequireSession } from "@/lib/session";
  * 확인 서명 동선으로 연결한다.
  */
 export default function SubscriptionPage() {
-  const session = useRequireSession();
   const params = useParams<{ id: string }>();
   const issuanceId = Number(params.id);
 
-  const { client } = useSessionClient();
+  const { client } = useSession();
   const toast = useToast();
   const queryClient = useQueryClient();
 
@@ -58,8 +57,6 @@ export default function SubscriptionPage() {
     null,
   );
   const [confirmOpen, setConfirmOpen] = React.useState(false);
-
-  if (!session.ready || !session.token) return null;
 
   const total = issuance?.totalUnits ?? 0;
   const remaining = issuance?.remainingUnits ?? 0;
@@ -358,8 +355,3 @@ function Stat({ label, value }: { label: string; value: React.ReactNode }) {
   );
 }
 
-/** 세션 훅을 화면 상단에서 두 번 호출하지 않게 감싼다. */
-function useSessionClient() {
-  const { client } = useRequireSession();
-  return { client };
-}

@@ -33,14 +33,12 @@ import { AppShell } from "@/components/app-shell";
 import { OrderBook } from "@/components/order-book";
 import { OrderForm } from "@/components/order-form";
 import { useExecutions, useIssuances } from "@/lib/queries";
-import { useRequireSession } from "@/lib/session";
 
 /**
  * 종목 상세 — 이 프로젝트의 얼굴 화면 (FSD §11.2).
  * 발행 정보 + 괴리율 배지 + 호가창 + 체결 내역 + 주문 폼.
  */
 export default function TokenDetailPage() {
-  const session = useRequireSession();
   const params = useParams<{ symbol: string }>();
   const symbol = decodeURIComponent(params.symbol ?? "");
 
@@ -58,8 +56,6 @@ export default function TokenDetailPage() {
 
   const seedPrice = latest?.price ?? issuance?.unitPrice;
   const price = priceInput ?? (seedPrice == null ? "" : String(seedPrice));
-
-  if (!session.ready || !session.token) return null;
 
   return (
     <AppShell>

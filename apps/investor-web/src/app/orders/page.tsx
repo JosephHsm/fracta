@@ -26,7 +26,7 @@ import * as React from "react";
 
 import { AppShell } from "@/components/app-shell";
 import { useMyOrders } from "@/lib/queries";
-import { useRequireSession } from "@/lib/session";
+import { useSession } from "@/lib/session";
 
 const ORDER_STATUS: Record<string, { label: string; tone: "neutral" | "success" | "warning" }> = {
   OPEN: { label: "미체결", tone: "warning" },
@@ -38,14 +38,11 @@ const ORDER_STATUS: Record<string, { label: string; tone: "neutral" | "success" 
 
 /** 주문 내역 — 미체결 주문 취소까지 여기서 처리한다. */
 export default function OrdersPage() {
-  const session = useRequireSession();
-  const { client } = session;
+  const { client } = useSession();
   const toast = useToast();
   const queryClient = useQueryClient();
   const { data: orders, isLoading } = useMyOrders();
   const [cancelling, setCancelling] = React.useState<number | null>(null);
-
-  if (!session.ready || !session.token) return null;
 
   const cancel = async (orderId: number) => {
     setCancelling(orderId);

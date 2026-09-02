@@ -28,7 +28,6 @@ import * as React from "react";
 import { AppShell } from "@/components/app-shell";
 import { RISK_LABEL } from "@/app/page";
 import { useIssuances, useMe, useMySubscriptions } from "@/lib/queries";
-import { useRequireSession } from "@/lib/session";
 
 const SUBSCRIPTION_STATUS: Record<string, { label: string; tone: "neutral" | "success" | "warning" | "danger" }> = {
   APPLIED: { label: "신청 완료", tone: "warning" },
@@ -46,12 +45,9 @@ const SUBSCRIPTION_STATUS: Record<string, { label: string; tone: "neutral" | "su
  * 서버에 평가금액 API가 생기면 그때 붙인다.
  */
 export default function PortfolioPage() {
-  const session = useRequireSession();
   const { data: me } = useMe();
   const { data: subscriptions, isLoading } = useMySubscriptions();
   const { data: issuances } = useIssuances();
-
-  if (!session.ready || !session.token) return null;
 
   const byId = new Map((issuances ?? []).map((item) => [item.issuanceId, item]));
   const allotted = (subscriptions ?? []).filter((item) => (item.allottedUnits ?? 0) > 0);

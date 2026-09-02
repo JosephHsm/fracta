@@ -24,7 +24,6 @@ import * as React from "react";
 import { AppShell } from "@/components/app-shell";
 import { TokenPremium } from "@/components/token-premium";
 import { useIssuances, useMe } from "@/lib/queries";
-import { useRequireSession } from "@/lib/session";
 
 export const RISK_LABEL: Record<number, string> = {
   1: "안정형",
@@ -36,11 +35,8 @@ export const RISK_LABEL: Record<number, string> = {
 
 /** 홈 — 청약 중 / 상장 종목 (FSD §11.2). Bento로 지표와 목록을 함께 배치한다. */
 export default function HomePage() {
-  const session = useRequireSession();
   const { data: me } = useMe();
   const { data: issuances, isLoading } = useIssuances();
-
-  if (!session.ready || !session.token) return null;
 
   const subscribing = (issuances ?? []).filter((item) => item.status === "SUBSCRIBING");
   const listed = (issuances ?? []).filter(

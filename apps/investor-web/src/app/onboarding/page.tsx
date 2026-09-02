@@ -19,7 +19,7 @@ import * as React from "react";
 import { AppShell } from "@/components/app-shell";
 import { RISK_LABEL } from "@/app/page";
 import { useMe } from "@/lib/queries";
-import { useRequireSession } from "@/lib/session";
+import { useSession } from "@/lib/session";
 
 /**
  * 투자성향 진단 8문항 (FSD §11.2 온보딩).
@@ -47,8 +47,7 @@ const CHOICES = [
 ];
 
 export default function OnboardingPage() {
-  const session = useRequireSession();
-  const { client } = session;
+  const { client } = useSession();
   const router = useRouter();
   const toast = useToast();
   const queryClient = useQueryClient();
@@ -58,8 +57,6 @@ export default function OnboardingPage() {
   const [state, setState] = React.useState<"idle" | "pending" | "done">("idle");
   const [error, setError] = React.useState<string | null>(null);
   const [result, setResult] = React.useState<{ grade: number; gradeName: string } | null>(null);
-
-  if (!session.ready || !session.token) return null;
 
   const complete = answers.every((answer) => answer > 0);
 
