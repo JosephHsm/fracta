@@ -1,6 +1,9 @@
 "use client";
 
-import { FractaApiError } from "@fracta/api-client";
+import {
+  FractaApiError,
+  type IssuanceSummaryResponseAllotmentMethodEnum,
+} from "@fracta/api-client";
 import {
   Badge,
   Button,
@@ -30,6 +33,12 @@ import { AppShell } from "@/components/app-shell";
 import { RISK_LABEL } from "@/app/page";
 import { useIssuances, useMe } from "@/lib/queries";
 import { useSession } from "@/lib/session";
+
+/** 서버 enum을 전부 덮는다 — 값이 늘면 컴파일이 깨져 원시 코드가 화면에 새지 않는다. */
+const ALLOTMENT_METHOD: Record<IssuanceSummaryResponseAllotmentMethodEnum, string> = {
+  FCFS: "선착순",
+  PRORATA: "비례배분",
+};
 
 /**
  * 청약 화면 (FSD §11.2) — 수량 입력 → 증거금 확인 → 적합성 경고 → 신청.
@@ -173,7 +182,7 @@ export default function SubscriptionPage() {
                 <Stat label="잔여 수량" value={<Units units={remaining} />} />
                 <Stat
                   label="배정 방식"
-                  value={issuance?.allotmentMethod === "PRO_RATA" ? "비례배분" : "선착순"}
+                  value={issuance?.allotmentMethod ? ALLOTMENT_METHOD[issuance.allotmentMethod] : "—"}
                 />
               </dl>
 

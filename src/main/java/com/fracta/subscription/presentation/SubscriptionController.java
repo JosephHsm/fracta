@@ -18,6 +18,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.fracta.account.api.InvestorId;
 import com.fracta.common.response.ApiResponse;
 import com.fracta.subscription.application.SubscriptionService;
+import com.fracta.subscription.domain.SubscriptionOrder;
 
 import io.swagger.v3.oas.annotations.Operation;
 import jakarta.validation.Valid;
@@ -65,7 +66,7 @@ public class SubscriptionController {
     public ApiResponse<List<MySubscriptionResponse>> mine(@AuthenticationPrincipal Jwt jwt) {
         var list = subscriptionService.ordersOf(investorIdOf(jwt)).stream()
                 .map(o -> new MySubscriptionResponse(o.id(), o.issuanceId(), o.requestedUnits(),
-                        o.allottedUnits(), o.depositAmount(), o.status().name()))
+                        o.allottedUnits(), o.depositAmount(), o.status()))
                 .toList();
         return ApiResponse.of(list);
     }
@@ -75,7 +76,8 @@ public class SubscriptionController {
      * (미배정과 배정 0조각은 다른 상태다).
      */
     public record MySubscriptionResponse(Long orderId, long issuanceId, long requestedUnits,
-                                         Long allottedUnits, long depositAmount, String status) {
+                                         Long allottedUnits, long depositAmount,
+                                         SubscriptionOrder.Status status) {
     }
 
     private InvestorId investorIdOf(Jwt jwt) {

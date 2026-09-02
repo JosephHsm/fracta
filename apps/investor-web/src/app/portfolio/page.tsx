@@ -25,15 +25,29 @@ import { Landmark, Wallet } from "lucide-react";
 import Link from "next/link";
 import * as React from "react";
 
+import type { MySubscriptionResponseStatusEnum } from "@fracta/api-client";
+
 import { AppShell } from "@/components/app-shell";
 import { RISK_LABEL } from "@/app/page";
 import { useIssuances, useMe, useMySubscriptions } from "@/lib/queries";
 
-const SUBSCRIPTION_STATUS: Record<string, { label: string; tone: "neutral" | "success" | "warning" | "danger" }> = {
-  APPLIED: { label: "신청 완료", tone: "warning" },
+/**
+ * 청약 상태 문구.
+ *
+ * <p><b>`Record<Enum, ...>`이라 값이 하나라도 빠지면 컴파일이 깨진다.</b> 이전에는
+ * `Record<string, ...>`이라 서버에 있는 DEPOSITED·PENDING·SETTLED가 매핑에 없었고,
+ * 화면에 원시 코드 "DEPOSITED"가 그대로 노출됐다 —
+ * Phase 10 완료 조건 "원시 코드 노출 0건" 위반이었다.
+ */
+type StatusStyle = { label: string; tone: "neutral" | "success" | "warning" | "danger" };
+
+const SUBSCRIPTION_STATUS: Record<MySubscriptionResponseStatusEnum, StatusStyle> = {
+  PENDING: { label: "접수 중", tone: "warning" },
+  DEPOSITED: { label: "증거금 납입", tone: "warning" },
   ALLOTTED: { label: "배정 완료", tone: "success" },
   PARTIALLY_ALLOTTED: { label: "부분 배정", tone: "success" },
-  REFUNDED: { label: "환불", tone: "neutral" },
+  SETTLED: { label: "정산 완료", tone: "success" },
+  REJECTED: { label: "미배정", tone: "neutral" },
   CANCELLED: { label: "취소", tone: "neutral" },
 };
 
@@ -106,10 +120,10 @@ export default function PortfolioPage() {
                 <Tbody>
                   {(subscriptions ?? []).map((subscription) => {
                     const issuance = byId.get(subscription.issuanceId);
-                    const status = SUBSCRIPTION_STATUS[subscription.status ?? ""] ?? {
-                      label: subscription.status ?? "—",
-                      tone: "neutral" as const,
-                    };
+                    // 폴백에서도 원시 코드를 쓰지 않는다
+                    const status = subscription.status
+                      ? SUBSCRIPTION_STATUS[subscription.status]
+                      : { label: "확인 중", tone: "neutral" as const };
                     return (
                       <Tr key={subscription.orderId}>
                         <Td>

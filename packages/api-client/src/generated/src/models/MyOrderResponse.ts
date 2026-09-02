@@ -30,7 +30,7 @@ export interface MyOrderResponse {
     /**
      * 
      */
-    orderType?: string;
+    orderType?: MyOrderResponseOrderTypeEnum;
     /**
      * 
      */
@@ -38,11 +38,11 @@ export interface MyOrderResponse {
     /**
      * 
      */
-    side?: string;
+    side?: MyOrderResponseSideEnum;
     /**
      * 
      */
-    status?: string;
+    status?: MyOrderResponseStatusEnum;
     /**
      * 
      */
@@ -52,6 +52,38 @@ export interface MyOrderResponse {
      */
     units?: number;
 }
+
+
+/**
+ * @export
+ */
+export const MyOrderResponseOrderTypeEnum = {
+    Limit: 'LIMIT',
+    Market: 'MARKET',
+} as const;
+export type MyOrderResponseOrderTypeEnum = typeof MyOrderResponseOrderTypeEnum[keyof typeof MyOrderResponseOrderTypeEnum];
+
+/**
+ * @export
+ */
+export const MyOrderResponseSideEnum = {
+    Buy: 'BUY',
+    Sell: 'SELL',
+} as const;
+export type MyOrderResponseSideEnum = typeof MyOrderResponseSideEnum[keyof typeof MyOrderResponseSideEnum];
+
+/**
+ * @export
+ */
+export const MyOrderResponseStatusEnum = {
+    Open: 'OPEN',
+    PartiallyFilled: 'PARTIALLY_FILLED',
+    Filled: 'FILLED',
+    Cancelled: 'CANCELLED',
+    Rejected: 'REJECTED',
+} as const;
+export type MyOrderResponseStatusEnum = typeof MyOrderResponseStatusEnum[keyof typeof MyOrderResponseStatusEnum];
+
 
 /**
  * Check if a given object implements the MyOrderResponse interface.

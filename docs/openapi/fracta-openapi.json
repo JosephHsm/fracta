@@ -764,6 +764,7 @@
             "type" : "integer"
           },
           "status" : {
+            "enum" : [ "DRAFT", "PENDING_APPROVAL", "APPROVED", "SUBSCRIBING", "ALLOTTING", "LISTED", "SUSPENDED", "DELISTED", "REJECTED" ],
             "type" : "string"
           },
           "tokenSymbol" : {
@@ -783,6 +784,7 @@
       "IssuanceSummaryResponse" : {
         "properties" : {
           "allotmentMethod" : {
+            "enum" : [ "FCFS", "PRORATA" ],
             "type" : "string"
           },
           "assetName" : {
@@ -804,6 +806,7 @@
             "type" : "integer"
           },
           "status" : {
+            "enum" : [ "DRAFT", "PENDING_APPROVAL", "APPROVED", "SUBSCRIBING", "ALLOTTING", "LISTED", "SUSPENDED", "DELISTED", "REJECTED" ],
             "type" : "string"
           },
           "subscriptionEndAt" : {
@@ -871,6 +874,7 @@
             "type" : "integer"
           },
           "orderType" : {
+            "enum" : [ "LIMIT", "MARKET" ],
             "type" : "string"
           },
           "price" : {
@@ -878,9 +882,11 @@
             "type" : "integer"
           },
           "side" : {
+            "enum" : [ "BUY", "SELL" ],
             "type" : "string"
           },
           "status" : {
+            "enum" : [ "OPEN", "PARTIALLY_FILLED", "FILLED", "CANCELLED", "REJECTED" ],
             "type" : "string"
           },
           "tokenSymbol" : {
@@ -916,6 +922,7 @@
             "type" : "integer"
           },
           "status" : {
+            "enum" : [ "PENDING", "DEPOSITED", "ALLOTTED", "PARTIALLY_ALLOTTED", "REJECTED", "SETTLED", "CANCELLED" ],
             "type" : "string"
           }
         },
@@ -3159,7 +3166,7 @@
   } ],
   "servers" : [ {
     "description" : "Generated server url",
-    "url" : "http://localhost:52903"
+    "url" : "http://localhost:49194"
   } ],
   "tags" : [ {
     "description" : "잔고·주문 내역 조회",

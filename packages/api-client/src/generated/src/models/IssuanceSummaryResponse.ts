@@ -22,7 +22,7 @@ export interface IssuanceSummaryResponse {
     /**
      * 
      */
-    allotmentMethod?: string;
+    allotmentMethod?: IssuanceSummaryResponseAllotmentMethodEnum;
     /**
      * 
      */
@@ -46,7 +46,7 @@ export interface IssuanceSummaryResponse {
     /**
      * 
      */
-    status?: string;
+    status?: IssuanceSummaryResponseStatusEnum;
     /**
      * 
      */
@@ -68,6 +68,33 @@ export interface IssuanceSummaryResponse {
      */
     unitPrice?: number;
 }
+
+
+/**
+ * @export
+ */
+export const IssuanceSummaryResponseAllotmentMethodEnum = {
+    Fcfs: 'FCFS',
+    Prorata: 'PRORATA',
+} as const;
+export type IssuanceSummaryResponseAllotmentMethodEnum = typeof IssuanceSummaryResponseAllotmentMethodEnum[keyof typeof IssuanceSummaryResponseAllotmentMethodEnum];
+
+/**
+ * @export
+ */
+export const IssuanceSummaryResponseStatusEnum = {
+    Draft: 'DRAFT',
+    PendingApproval: 'PENDING_APPROVAL',
+    Approved: 'APPROVED',
+    Subscribing: 'SUBSCRIBING',
+    Allotting: 'ALLOTTING',
+    Listed: 'LISTED',
+    Suspended: 'SUSPENDED',
+    Delisted: 'DELISTED',
+    Rejected: 'REJECTED',
+} as const;
+export type IssuanceSummaryResponseStatusEnum = typeof IssuanceSummaryResponseStatusEnum[keyof typeof IssuanceSummaryResponseStatusEnum];
+
 
 /**
  * Check if a given object implements the IssuanceSummaryResponse interface.

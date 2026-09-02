@@ -42,8 +42,24 @@ export interface MySubscriptionResponse {
     /**
      * 
      */
-    status?: string;
+    status?: MySubscriptionResponseStatusEnum;
 }
+
+
+/**
+ * @export
+ */
+export const MySubscriptionResponseStatusEnum = {
+    Pending: 'PENDING',
+    Deposited: 'DEPOSITED',
+    Allotted: 'ALLOTTED',
+    PartiallyAllotted: 'PARTIALLY_ALLOTTED',
+    Rejected: 'REJECTED',
+    Settled: 'SETTLED',
+    Cancelled: 'CANCELLED',
+} as const;
+export type MySubscriptionResponseStatusEnum = typeof MySubscriptionResponseStatusEnum[keyof typeof MySubscriptionResponseStatusEnum];
+
 
 /**
  * Check if a given object implements the MySubscriptionResponse interface.

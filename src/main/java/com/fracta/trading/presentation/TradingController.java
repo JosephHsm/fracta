@@ -22,6 +22,7 @@ import com.fracta.account.api.InvestorId;
 import com.fracta.common.response.ApiResponse;
 import com.fracta.trading.application.TradingService;
 import com.fracta.trading.domain.OrderSide;
+import com.fracta.trading.domain.OrderStatus;
 import com.fracta.trading.domain.OrderType;
 
 import io.swagger.v3.oas.annotations.Operation;
@@ -45,8 +46,9 @@ public class TradingController {
      * 옮긴 것이다. 스펙에 타입이 실려야 프론트의 생성 클라이언트가 필드 변경을 컴파일 시점에
      * 잡아낸다(FSD §11.1). Map으로 두면 필드명을 바꿔도 프론트는 런타임에 undefined가 될 뿐이다.
      */
-    public record MyOrderResponse(Long orderId, String tokenSymbol, String side, String orderType,
-                                  Long price, long units, long filledUnits, String status) {
+    public record MyOrderResponse(Long orderId, String tokenSymbol, OrderSide side,
+                                  OrderType orderType, Long price, long units, long filledUnits,
+                                  OrderStatus status) {
     }
 
     /** 호가창 10호가 (TR-05). */
@@ -93,9 +95,8 @@ public class TradingController {
     @GetMapping("/api/v1/orders/me")
     public ApiResponse<List<MyOrderResponse>> myOrders(@AuthenticationPrincipal Jwt jwt) {
         var list = tradingService.ordersOf(investorIdOf(jwt)).stream()
-                .map(o -> new MyOrderResponse(o.id(), o.tokenSymbol(), o.side().name(),
-                        o.orderType().name(), o.price(), o.units(), o.filledUnits(),
-                        o.status().name()))
+                .map(o -> new MyOrderResponse(o.id(), o.tokenSymbol(), o.side(), o.orderType(),
+                        o.price(), o.units(), o.filledUnits(), o.status()))
                 .toList();
         return ApiResponse.of(list);
     }

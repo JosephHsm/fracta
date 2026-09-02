@@ -49,9 +49,9 @@ public class IssuanceController {
      */
     public record IssuanceSummaryResponse(Long issuanceId, String tokenSymbol, String assetName,
                                           String assetType, long totalUnits, long unitPrice,
-                                          long remainingUnits, String status, int riskGrade,
-                                          String allotmentMethod, String subscriptionStartAt,
-                                          String subscriptionEndAt) {
+                                          long remainingUnits, IssuanceStatus status, int riskGrade,
+                                          Issuance.AllotmentMethod allotmentMethod,
+                                          String subscriptionStartAt, String subscriptionEndAt) {
     }
 
     /**
@@ -59,7 +59,7 @@ public class IssuanceController {
      * 종목 상세 화면이 이 계약에 의존하므로 타입이 스펙에 실려야 한다.
      */
     public record IssuanceDetailResponse(Long issuanceId, String tokenSymbol, long totalUnits,
-                                         long unitPrice, long remainingUnits, String status,
+                                         long unitPrice, long remainingUnits, IssuanceStatus status,
                                          String prospectusFileKey) {
     }
 
@@ -112,8 +112,7 @@ public class IssuanceController {
                 asset == null ? null : asset.name(),
                 asset == null ? null : asset.assetType().name(),
                 issuance.totalUnits(), issuance.unitPrice(), issuance.remainingUnits(),
-                issuance.status().name(), issuance.riskGrade(),
-                issuance.allotmentMethod().name(),
+                issuance.status(), issuance.riskGrade(), issuance.allotmentMethod(),
                 issuance.subscriptionStartAt().toString(),
                 issuance.subscriptionEndAt().toString());
     }
@@ -124,6 +123,6 @@ public class IssuanceController {
         Issuance issuance = issuanceService.get(id);
         return ApiResponse.of(new IssuanceDetailResponse(issuance.id(), issuance.tokenSymbol(),
                 issuance.totalUnits(), issuance.unitPrice(), issuance.remainingUnits(),
-                issuance.status().name(), issuance.prospectusFileKey()));
+                issuance.status(), issuance.prospectusFileKey()));
     }
 }

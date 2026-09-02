@@ -34,7 +34,7 @@ export interface IssuanceDetailResponse {
     /**
      * 
      */
-    status?: string;
+    status?: IssuanceDetailResponseStatusEnum;
     /**
      * 
      */
@@ -48,6 +48,24 @@ export interface IssuanceDetailResponse {
      */
     unitPrice?: number;
 }
+
+
+/**
+ * @export
+ */
+export const IssuanceDetailResponseStatusEnum = {
+    Draft: 'DRAFT',
+    PendingApproval: 'PENDING_APPROVAL',
+    Approved: 'APPROVED',
+    Subscribing: 'SUBSCRIBING',
+    Allotting: 'ALLOTTING',
+    Listed: 'LISTED',
+    Suspended: 'SUSPENDED',
+    Delisted: 'DELISTED',
+    Rejected: 'REJECTED',
+} as const;
+export type IssuanceDetailResponseStatusEnum = typeof IssuanceDetailResponseStatusEnum[keyof typeof IssuanceDetailResponseStatusEnum];
+
 
 /**
  * Check if a given object implements the IssuanceDetailResponse interface.

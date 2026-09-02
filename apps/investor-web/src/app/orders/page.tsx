@@ -20,6 +20,10 @@ import {
   formatNumber,
   useToast,
 } from "@fracta/ui";
+import type {
+  MyOrderResponseOrderTypeEnum,
+  MyOrderResponseStatusEnum,
+} from "@fracta/api-client";
 import { useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import * as React from "react";
@@ -28,12 +32,18 @@ import { AppShell } from "@/components/app-shell";
 import { useMyOrders } from "@/lib/queries";
 import { useSession } from "@/lib/session";
 
-const ORDER_STATUS: Record<string, { label: string; tone: "neutral" | "success" | "warning" }> = {
+/** Record<Enum, ...>이라 서버가 상태를 추가하면 여기서 컴파일이 깨진다 — 원시 코드가 새지 않는다. */
+const ORDER_STATUS: Record<MyOrderResponseStatusEnum, { label: string; tone: "neutral" | "success" | "warning" }> = {
   OPEN: { label: "미체결", tone: "warning" },
   PARTIALLY_FILLED: { label: "부분 체결", tone: "warning" },
   FILLED: { label: "체결 완료", tone: "success" },
   CANCELLED: { label: "취소", tone: "neutral" },
   REJECTED: { label: "거부", tone: "neutral" },
+};
+
+const ORDER_TYPE: Record<MyOrderResponseOrderTypeEnum, string> = {
+  LIMIT: "지정가",
+  MARKET: "시장가",
 };
 
 /** 주문 내역 — 미체결 주문 취소까지 여기서 처리한다. */
@@ -91,10 +101,9 @@ export default function OrdersPage() {
                 </Thead>
                 <Tbody>
                   {(orders ?? []).map((order) => {
-                    const status = ORDER_STATUS[order.status ?? ""] ?? {
-                      label: order.status ?? "—",
-                      tone: "neutral" as const,
-                    };
+                    const status = order.status
+                      ? ORDER_STATUS[order.status]
+                      : { label: "확인 중", tone: "neutral" as const };
                     const open = order.status === "OPEN" || order.status === "PARTIALLY_FILLED";
                     const buy = order.side === "BUY";
 
@@ -114,7 +123,7 @@ export default function OrdersPage() {
                           </span>
                         </Td>
                         <Td className="text-fg-muted text-xs">
-                          {order.orderType === "LIMIT" ? "지정가" : "시장가"}
+                          {order.orderType ? ORDER_TYPE[order.orderType] : "—"}
                         </Td>
                         <Td className="fr-numeric">
                           {order.price == null ? "시장가" : formatNumber(order.price)}
