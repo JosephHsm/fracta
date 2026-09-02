@@ -23,7 +23,7 @@ const SIZE = {
 
 export function Money({ amount, size = "md", className, ...props }: MoneyProps) {
   return (
-    <span className={cn("fr-numeric", SIZE[size], className)} {...props}>
+    <span className={cn("fr-numeric whitespace-nowrap", SIZE[size], className)} {...props}>
       {formatWon(amount)}
     </span>
   );

@@ -12,6 +12,23 @@ import { useLatestQuota } from "@/lib/quota-store";
 import { useSelectedClient } from "@/lib/selected-client";
 import { usePortalSession } from "@/lib/session";
 
+/**
+ * 차트 X축 날짜 라벨.
+ *
+ * <p>서버는 "2026-08-27" 문자열을 준다. 그런데 Recharts가 축 값을 Date로 변환하는 경우가 있어
+ * 그냥 `String(value).slice(5)` 하면 "Sat Aug 29 2026 ...".slice(5) = "ug 29 2026 ..."가 화면에 뜬다.
+ * 실제로 그렇게 깨졌다. `type="category"`로 변환을 막고, 포맷터도 두 형태를 모두 받게 한다.
+ */
+function formatChartDate(value: unknown): string {
+  if (typeof value === "string" && /^\d{4}-\d{2}-\d{2}/.test(value)) {
+    return value.slice(5);
+  }
+  const parsed = new Date(value as string | number);
+  return Number.isNaN(parsed.getTime())
+    ? String(value)
+    : `${String(parsed.getMonth() + 1).padStart(2, "0")}-${String(parsed.getDate()).padStart(2, "0")}`;
+}
+
 export default function DashboardPage() {
   const { client } = usePortalSession();
   const { selected, loading } = useSelectedClient();
@@ -38,7 +55,7 @@ export default function DashboardPage() {
           <BentoItem span={3}><StatTile label="평균 지연" value={`${formatNumber(data?.averageLatencyMs)}ms`} hint="최근 7일" icon={<Clock3 aria-hidden className="size-4" />} /></BentoItem>
           <BentoItem span={8}>
             <Card className="h-full"><CardHeader><CardTitle>일별 호출량</CardTitle></CardHeader><CardBody className="h-72">
-              <ResponsiveContainer width="100%" height="100%"><AreaChart data={data?.dailyUsage ?? []} margin={{ top: 8, right: 8, bottom: 0, left: -16 }}><defs><linearGradient id="calls" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="var(--fr-chart-1)" stopOpacity={0.35} /><stop offset="100%" stopColor="var(--fr-chart-1)" stopOpacity={0.02} /></linearGradient></defs><CartesianGrid stroke="var(--fr-border)" vertical={false} /><XAxis dataKey="date" tick={{ fill: "var(--fr-text-muted)", fontSize: 11 }} tickFormatter={(value) => String(value).slice(5)} /><YAxis allowDecimals={false} tick={{ fill: "var(--fr-text-muted)", fontSize: 11 }} /><Tooltip contentStyle={{ background: "var(--fr-surface-elevated)", border: "1px solid var(--fr-border)", borderRadius: "var(--fr-radius-md)" }} /><Area type="monotone" dataKey="calls" name="호출" stroke="var(--fr-chart-1)" fill="url(#calls)" strokeWidth={2} /></AreaChart></ResponsiveContainer>
+              <ResponsiveContainer width="100%" height="100%"><AreaChart data={data?.dailyUsage ?? []} margin={{ top: 8, right: 8, bottom: 0, left: -16 }}><defs><linearGradient id="calls" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="var(--fr-chart-1)" stopOpacity={0.35} /><stop offset="100%" stopColor="var(--fr-chart-1)" stopOpacity={0.02} /></linearGradient></defs><CartesianGrid stroke="var(--fr-border)" vertical={false} /><XAxis dataKey="date" type="category" tick={{ fill: "var(--fr-text-muted)", fontSize: 11 }} tickFormatter={formatChartDate} /><YAxis allowDecimals={false} tick={{ fill: "var(--fr-text-muted)", fontSize: 11 }} /><Tooltip contentStyle={{ background: "var(--fr-surface-elevated)", border: "1px solid var(--fr-border)", borderRadius: "var(--fr-radius-md)" }} /><Area type="monotone" dataKey="calls" name="호출" stroke="var(--fr-chart-1)" fill="url(#calls)" strokeWidth={2} /></AreaChart></ResponsiveContainer>
             </CardBody></Card>
           </BentoItem>
           <BentoItem span={4}>

@@ -25,6 +25,11 @@ export function Providers({ children }: { children: React.ReactNode }) {
     () =>
       new QueryClient({
         queryCache: new QueryCache({
+          // 성공한 요청이 하나라도 들어오면 지난 오류는 유효하지 않다.
+          // 이게 없으면 로그인 전 401 배너가 로그인 성공 후에도 남는다 (실제로 그랬다).
+          onSuccess() {
+            apiErrorStore.clear();
+          },
           onError(error) {
             if (error instanceof FractaApiError && error.status === 401) {
               // 401은 조회·변경 어디서 나든 세션 종료로 처리한다

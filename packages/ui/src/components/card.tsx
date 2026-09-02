@@ -5,9 +5,12 @@ import { cn } from "../lib/cn";
 /**
  * Bento 그리드 — 지표 종류가 많은 금융 화면의 정보 구조 (FSD §11.4).
  * 12칸 기준. 자식은 `<BentoItem span={...}>`으로 폭을 잡는다.
+ *
+ * <p>가장 좁은 화면에서는 1열이다. 2열로 두면 카드 폭이 180px 정도가 되어
+ * "95,160,276원" 같은 금액이 줄바꿈되고 "원"만 다음 줄로 떨어진다.
  */
 export function BentoGrid({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
-  return <div className={cn("grid grid-cols-2 gap-4 md:grid-cols-12", className)} {...props} />;
+  return <div className={cn("grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-12", className)} {...props} />;
 }
 
 const SPAN: Record<number, string> = {
