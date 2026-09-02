@@ -20,6 +20,8 @@
  */
 import { execFileSync } from "node:child_process";
 
+import { DEMO_PROSPECTUS_PAGES, buildPdf } from "./prospectus.mjs";
+
 const BASE = process.env.FRACTA_API ?? "http://localhost:8080";
 const PASSWORD = "demo-password-1!";
 
@@ -158,6 +160,39 @@ async function createIssuance(issuer, { assetName, assetType, brokerTicker, spli
     token: issuer.token,
   });
   return { ...issuance, assetId: asset.assetId };
+}
+
+/**
+ * 투자설명서 업로드 + AI 인덱싱.
+ *
+ * <p>둘 다 해야 투자설명서 화면의 AI 사이드패널이 동작한다 — 업로드만 하면 PDF는 보이지만
+ * 질의에 답할 근거(pgvector 청크)가 없다.
+ *
+ * <p>AI 서비스가 꺼져 있으면 인덱싱만 건너뛴다. 뷰어는 그래도 뜬다.
+ */
+async function attachProspectus(issuer, admin, issuanceId) {
+  const pdf = buildPdf(DEMO_PROSPECTUS_PAGES);
+  const form = new FormData();
+  form.append("file", new Blob([pdf], { type: "application/pdf" }), "prospectus.pdf");
+
+  const response = await fetch(`${BASE}/api/v1/issuances/${issuanceId}/prospectus`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${issuer.token}` },
+    body: form,
+  });
+  if (!response.ok) {
+    throw new Error(`투자설명서 업로드 실패 ${response.status}: ${await response.text()}`);
+  }
+
+  try {
+    await api(`/api/v1/admin/ai/issuances/${issuanceId}/index`, {
+      method: "POST",
+      token: admin.token,
+    });
+    return "인덱싱 완료";
+  } catch (error) {
+    return `인덱싱 건너뜀 (${String(error.message).split("→")[1]?.trim() ?? error.message})`;
+  }
 }
 
 async function approveAndOpen(admin, issuanceId) {
@@ -314,6 +349,10 @@ async function main() {
     await approveAndOpen(admin, issuance.issuanceId);
     log("승인 → 청약 개시");
 
+    if (listed.length === 0) {
+      log(`투자설명서 첨부 — ${await attachProspectus(issuer, admin, issuance.issuanceId)}`);
+    }
+
     // 청약 수량이 곧 상장 후 매도 가능 물량이 된다
     for (const [index, user] of sellers.entries()) {
       await subscribe(user, issuance.issuanceId, 300 + index * 100);
@@ -346,6 +385,7 @@ async function main() {
     subscriptionDays: 10,
   });
   await approveAndOpen(admin, subscribing.issuanceId);
+  log(`투자설명서 ${DEMO_PROSPECTUS_PAGES.length}쪽 — ${await attachProspectus(issuer, admin, subscribing.issuanceId)}`);
   for (const [index, user] of crowd.entries()) {
     await subscribe(user, subscribing.issuanceId, 150 + index * 50);
   }

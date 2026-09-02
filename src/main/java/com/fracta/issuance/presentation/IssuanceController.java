@@ -4,7 +4,10 @@ import java.io.IOException;
 import java.time.Instant;
 import java.util.List;
 
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -115,6 +118,27 @@ public class IssuanceController {
                 issuance.status(), issuance.riskGrade(), issuance.allotmentMethod(),
                 issuance.subscriptionStartAt().toString(),
                 issuance.subscriptionEndAt().toString());
+    }
+
+    /**
+     * 투자설명서 원본 PDF (FSD §11.2 뷰어).
+     *
+     * <p>{@code ApiResponse} 봉투를 쓰지 않는다 — 바이너리라 감싸면 뷰어가 못 읽는다.
+     * {@code inline}으로 내려야 새 탭 다운로드가 아니라 임베드 뷰어에서 열린다.
+     *
+     * <p>인증이 필요한 경로라 브라우저의 {@code <iframe src>}로 직접 열 수 없다.
+     * 프론트가 토큰을 붙여 받아온 뒤 blob URL로 만들어 띄운다.
+     */
+    @Operation(operationId = "downloadProspectus", summary = "투자설명서 PDF")
+    @GetMapping(value = "/{id}/prospectus", produces = MediaType.APPLICATION_PDF_VALUE)
+    public ResponseEntity<byte[]> downloadProspectus(@PathVariable("id") long id) {
+        return prospectusService.download(id)
+                .map(bytes -> ResponseEntity.ok()
+                        .contentType(MediaType.APPLICATION_PDF)
+                        .header(HttpHeaders.CONTENT_DISPOSITION,
+                                "inline; filename=\"prospectus-" + id + ".pdf\"")
+                        .body(bytes))
+                .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
     @Operation(operationId = "getIssuance", summary = "발행 상세")

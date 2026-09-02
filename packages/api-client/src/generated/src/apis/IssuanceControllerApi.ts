@@ -56,6 +56,13 @@ export interface CreateRequest {
     createIssuanceRequest: CreateIssuanceRequest;
 }
 
+export interface DownloadProspectusRequest {
+    /**
+     * 
+     */
+    id: number;
+}
+
 export interface GetIssuanceRequest {
     /**
      * 
@@ -143,6 +150,63 @@ export class IssuanceControllerApi extends runtime.BaseAPI {
      */
     async create(requestParameters: CreateRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ApiResponseCreateResult> {
         const response = await this.createRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for downloadProspectus without sending the request
+     */
+    async downloadProspectusRequestOpts(requestParameters: DownloadProspectusRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling downloadProspectus().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            const token = this.configuration.accessToken;
+            const tokenString = await token("bearerAuth", []);
+
+            if (tokenString) {
+                headerParameters["Authorization"] = `Bearer ${tokenString}`;
+            }
+        }
+
+        let urlPath = `/api/v1/issuances/{id}/prospectus`;
+        urlPath = urlPath.replace('{id}', encodeURIComponent(String(requestParameters['id'])));
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * 투자설명서 PDF
+     */
+    async downloadProspectusRaw(requestParameters: DownloadProspectusRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<string>> {
+        const requestOptions = await this.downloadProspectusRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        if (this.isJsonMime(response.headers.get('content-type'))) {
+            return new runtime.JSONApiResponse<string>(response);
+        } else {
+            return new runtime.TextApiResponse(response) as any;
+        }
+    }
+
+    /**
+     * 투자설명서 PDF
+     */
+    async downloadProspectus(requestParameters: DownloadProspectusRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<string> {
+        const response = await this.downloadProspectusRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

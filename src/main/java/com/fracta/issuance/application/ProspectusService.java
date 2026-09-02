@@ -22,6 +22,18 @@ public class ProspectusService {
         this.issuanceService = issuanceService;
     }
 
+    /**
+     * 투자설명서 원본 바이트. 뷰어(FSD §11.2)가 브라우저에 그대로 내려주려고 쓴다.
+     * 아직 업로드되지 않았으면 비어 있다.
+     */
+    public java.util.Optional<byte[]> download(long issuanceId) {
+        String fileKey = issuanceService.get(issuanceId).prospectusFileKey();
+        if (fileKey == null || fileKey.isBlank() || !storage.exists(fileKey)) {
+            return java.util.Optional.empty();
+        }
+        return java.util.Optional.of(storage.read(fileKey));
+    }
+
     public String upload(long issuanceId, String filename, byte[] content, String contentType) {
         if (content == null || content.length == 0) {
             throw new IllegalArgumentException("빈 파일은 업로드할 수 없다");

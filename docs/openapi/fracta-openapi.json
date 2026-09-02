@@ -2080,6 +2080,33 @@
       }
     },
     "/api/v1/issuances/{id}/prospectus" : {
+      "get" : {
+        "operationId" : "downloadProspectus",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/pdf" : {
+                "schema" : {
+                  "format" : "byte",
+                  "type" : "string"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "summary" : "투자설명서 PDF",
+        "tags" : [ "issuance-controller" ]
+      },
       "post" : {
         "operationId" : "uploadProspectus",
         "parameters" : [ {
@@ -3166,7 +3193,7 @@
   } ],
   "servers" : [ {
     "description" : "Generated server url",
-    "url" : "http://localhost:49194"
+    "url" : "http://localhost:62686"
   } ],
   "tags" : [ {
     "description" : "잔고·주문 내역 조회",

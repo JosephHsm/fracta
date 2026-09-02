@@ -25,6 +25,7 @@ import {
   viewTransitionName,
 } from "@fracta/ui";
 import { ArrowLeft } from "lucide-react";
+import type { Route } from "next";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import * as React from "react";
@@ -141,10 +142,10 @@ export default function TokenDetailPage() {
               </CardHeader>
               <CardBody className="pt-3">
                 <Link
-                  href={`/issuances/${issuance?.issuanceId ?? 0}`}
+                  href={`/issuances/${issuance?.issuanceId ?? 0}/prospectus` as Route}
                   className="text-accent text-sm hover:underline"
                 >
-                  발행 상세와 AI 질의로 이동
+                  투자설명서 열기 · AI 질의
                 </Link>
               </CardBody>
             </Card>

@@ -8,6 +8,7 @@ import com.fracta.common.config.MinioProperties;
 import com.fracta.issuance.application.ProspectusStorage;
 
 import io.minio.BucketExistsArgs;
+import io.minio.GetObjectArgs;
 import io.minio.MakeBucketArgs;
 import io.minio.MinioClient;
 import io.minio.PutObjectArgs;
@@ -55,6 +56,18 @@ public class MinioProspectusStorage implements ProspectusStorage {
                     .build());
         } catch (Exception e) {
             throw new IllegalStateException("투자설명서 업로드 실패: " + fileKey, e);
+        }
+    }
+
+    @Override
+    public byte[] read(String fileKey) {
+        try (var stream = client.getObject(GetObjectArgs.builder()
+                .bucket(properties.bucket())
+                .object(fileKey)
+                .build())) {
+            return stream.readAllBytes();
+        } catch (Exception e) {
+            throw new IllegalStateException("투자설명서 조회 실패: " + fileKey, e);
         }
     }
 

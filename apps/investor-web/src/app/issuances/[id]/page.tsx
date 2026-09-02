@@ -24,7 +24,8 @@ import {
   viewTransitionName,
 } from "@fracta/ui";
 import { useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, ShieldAlert } from "lucide-react";
+import { ArrowLeft, FileText, ShieldAlert } from "lucide-react";
+import type { Route } from "next";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import * as React from "react";
@@ -186,10 +187,19 @@ export default function SubscriptionPage() {
                 />
               </dl>
 
-              <p className="text-fg-subtle text-xs">
-                청약 기간 {formatDateTime(issuance?.subscriptionStartAt)} ~{" "}
-                {formatDateTime(issuance?.subscriptionEndAt)}
-              </p>
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <p className="text-fg-subtle text-xs">
+                  청약 기간 {formatDateTime(issuance?.subscriptionStartAt)} ~{" "}
+                  {formatDateTime(issuance?.subscriptionEndAt)}
+                </p>
+                <Link
+                  href={`/issuances/${issuanceId}/prospectus` as Route}
+                  className="text-accent inline-flex items-center gap-1.5 text-sm hover:underline"
+                >
+                  <FileText aria-hidden className="size-4" />
+                  투자설명서 · AI 질의
+                </Link>
+              </div>
             </CardBody>
           </Card>
 
