@@ -2,8 +2,8 @@
 
 > 기간 2주 · 선행 Phase 7 · FSD 참조 §11, §6.5, §10
 >
-> **진행 중** — investor-web 7개 화면 완료, dev-portal 6개 화면이 다음 작업이다.
-> 이어받는 사람은 [`phase-10-handoff.md`](phase-10-handoff.md)를 먼저 읽을 것.
+> **코드 구현 완료** — investor-web 7개 화면과 dev-portal 6개 화면 구현 및 자동 검증 완료.
+> 실제 브라우저 기반 반응형·접근성 시각 점검과 데모 캡처는 Phase 11에서 마감한다.
 
 ## 목표
 
@@ -121,7 +121,7 @@ panel  200~300ms     page   250~400ms
 ## 완료 조건 체크리스트
 
 - [x] investor-web 7개 화면 전부 동작
-- [ ] dev-portal 6개 화면 전부 동작
+- [x] dev-portal 6개 화면 전부 동작
 - [x] `packages/api-client`가 OpenAPI 스펙에서 **자동 생성**됨 (수동 작성 코드 0)
 - [x] 스펙 변경 → 재생성 → 타입 오류로 깨진 곳이 드러남 (파이프라인 검증)
       → 드리프트 주입 시험으로 확인. `packages/api-client/src/contract-guard.ts`
@@ -131,28 +131,39 @@ panel  200~300ms     page   250~400ms
 - [x] AI 인용 `[p.N]` 클릭 → PDF 뷰어 해당 페이지 이동 — 서버의 `citedPages`를 그대로 사용
 - [x] AI 가드레일 차단 응답이 사용자에게 적절히 표시됨
 - [x] 호가 클릭 → 주문 폼 자동 입력
-- [ ] `client_secret`이 발급 직후 1회만 표시, 이후 마스킹
-- [ ] 쿼터 사용률이 응답 헤더 기반으로 표시됨
-- [ ] 샌드박스 콘솔에서 LIVE 키 사용이 차단됨
-- [ ] 웹훅 발송 이력 조회 + 수동 재발송 동작
-- [ ] 모든 API 에러 코드가 사용자 문구로 매핑됨 (원시 코드 노출 0건)
-- [ ] 금액을 프론트에서 재계산하지 않음 (코드 리뷰로 확인). 금액에 카운트업 애니메이션 없음
-- [ ] 모바일 뷰포트에서 레이아웃 깨짐 없음
-- [ ] `npm run build` 성공, 타입 오류 0
+- [x] `client_secret`이 발급 직후 1회만 표시, 이후 마스킹
+- [x] 쿼터 사용률이 응답 헤더 기반으로 표시됨
+- [x] 샌드박스 콘솔에서 LIVE 키 사용이 차단됨
+- [x] 웹훅 발송 이력 조회 + 수동 재발송 동작
+- [x] 모든 API 에러 코드가 사용자 문구로 매핑됨 (원시 코드 노출 0건)
+- [x] 금액을 프론트에서 재계산하지 않음 (코드 리뷰로 확인). 금액에 카운트업 애니메이션 없음
+- [ ] 모바일 뷰포트에서 레이아웃 깨짐 없음 — **실제 브라우저 확인 필요(Phase 11)**
+- [x] `pnpm build` 성공, 타입 오류 0
 
 ### 요소 기술 (FSD §11.4)
 
-- [ ] 색상 리터럴이 앱 코드에 0건 — 전부 `packages/ui`의 OKLCH 토큰 경유
-- [ ] 라이트/다크 양쪽에서 괴리율 배지 3단계 대비비 AA 충족
-- [ ] 등락 색이 상승 = 적색 / 하락 = 청색이고, 색 외에 아이콘·부호로도 구분됨
-- [ ] 리스트 → 상세가 View Transition으로 이어짐
-- [ ] `prefers-reduced-motion: reduce`에서 View Transition·카운트업·행 진입이 전부 꺼짐
-- [ ] 카드 컴포넌트가 뷰포트가 아니라 **부모 폭**에 따라 레이아웃을 바꿈 (Container Query — 넓은 영역 / 사이드바 양쪽 확인)
-- [ ] 모션 지속시간이 전부 모션 스케일 범위 안 (page ≤ 400ms)
-- [ ] `Ctrl+K` 커맨드 팔레트로 종목 검색·주요 화면 이동 가능, 키보드만으로 조작됨
-- [ ] Glass 효과가 스티키 헤더·모달·플로팅 외 요소에 쓰이지 않음
-- [ ] anchor positioning을 쓴 팝오버가 미지원 브라우저에서도 정상 배치됨 (`@supports` 폴백)
-- [ ] 키보드만으로 온보딩 → 청약 → 주문 완주 가능, 포커스 링이 항상 보임
+- [x] 색상 리터럴이 앱 코드에 0건 — 전부 `packages/ui`의 OKLCH 토큰 경유
+- [x] 라이트/다크 양쪽에서 괴리율 배지 3단계 대비비 AA 충족 — `pnpm design:contrast` 6쌍 전부 통과(최저 4.61:1)
+- [x] 등락 색이 상승 = 적색 / 하락 = 청색이고, 색 외에 아이콘·부호로도 구분됨 — ▲▼－ 기호 + `sr-only` 라벨
+- [x] 리스트 → 상세가 View Transition으로 이어짐 — `viewTransitionName` 홈·종목상세·청약 3화면 연결
+- [x] `prefers-reduced-motion: reduce`에서 View Transition·카운트업·행 진입이 전부 꺼짐 — 토큰을 0ms로 덮고 `useCountUp`이 JS에서도 분기
+- [x] 카드 컴포넌트가 뷰포트가 아니라 **부모 폭**에 따라 레이아웃을 바꿈 — `Card`가 `@container`, `StatTile`이 `@[18rem]` 분기
+- [x] 모션 지속시간이 전부 모션 스케일 범위 안 — page 320ms
+- [x] `Ctrl+K` 커맨드 팔레트로 종목 검색·주요 화면 이동 가능 — 두 앱 모두 적용
+- [x] Glass 효과가 스티키 헤더·모달·플로팅 외 요소에 쓰이지 않음 — 사용처 5곳(두 앱 헤더·팔레트·모달·토스트), 카드에는 미사용
+- [x] anchor positioning 미사용 — Base UI의 JS 위치 계산만 사용해 폴백 불필요
+- [ ] 키보드만으로 온보딩 → 청약 → 주문 완주 가능 — **실제 브라우저 확인 필요(Phase 11)**
+
+### 자동 검증 기록 (2026-09-02)
+
+- `./gradlew test`: Java 279건 통과 (실패 0, 오류 0, 스킵 0)
+- `pnpm -r typecheck`: `api-client`, `ui`, `investor-web`, `dev-portal` 통과
+- `pnpm -r lint`: `investor-web`, `dev-portal` 통과
+- `pnpm build`: 두 앱 프로덕션 빌드 통과, dev-portal 정적 경로 7개 생성 (`/login` 포함)
+- OpenAPI 스펙 재생성 및 생성 클라이언트 타입 검증 통과
+- `pnpm design:contrast`: 토큰 19쌍 × 라이트/다크 전부 WCAG AA 충족
+- 개발자 포털 엔드포인트 실서버 호출 확인 — 앱 목록·생성(secret 1회 노출)·대시보드
+  (호출량·에러율·평균지연·쿼터)·로그·웹훅 정상
 
 ## 흔한 실수
 
@@ -167,6 +178,10 @@ panel  200~300ms     page   250~400ms
 9. 다크 모드를 색 반전으로만 처리 → 괴리율 배지·등락 색 대비비가 깨진다. 토큰을 라이트/다크 각각 정의
 10. anchor positioning을 폴백 없이 사용 → 미지원 브라우저에서 팝오버가 화면 밖에 붙는다
 11. 금액에 카운트업 애니메이션 → 중간 프레임이 서버가 주지 않은 금액이다. 진행률에만 사용
+12. TanStack Query 에러를 `unhandledrejection`으로 잡으려 함 → Query가 에러를 잡아 상태로 바꾸므로 절대 안 걸린다. 401 처리·오류 배너는 `QueryCache.onError`에 둘 것. **조회 실패를 빈 목록으로 보여주면 안 된다** — 통신 실패와 데이터 없음은 다른 상태다
+13. 상태 매핑을 `Record<string, ...>`로 선언 → 빠진 값을 타입이 못 잡아 화면에 원시 코드가 샌다. 서버 응답 필드를 도메인 enum 타입으로 두고 프론트는 `Record<Enum, ...>`로 받을 것 (JSON은 안 바뀐다)
+14. 컨트롤러 간 중첩 record 이름 중복 → springdoc이 하나로 병합해 스펙이 조용히 틀어진다. 오픈 API 쪽은 `OpenApi*` 접두사. 중복 검사:
+    `grep -rhoE "public record [A-Za-z]+" src/main/java --include=*Controller.java | sed 's/public record //' | sort | uniq -c | awk '$1>1'`
 
 ## 문서화
 

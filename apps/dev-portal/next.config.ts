@@ -12,7 +12,13 @@ const nextConfig: NextConfig = {
    * 생성 클라이언트의 basePath를 ""로 둘 수 있다.
    */
   async rewrites() {
-    return [{ source: "/api/:path*", destination: `${API_ORIGIN}/api/:path*` }];
+    return [
+      { source: "/api/:path*", destination: `${API_ORIGIN}/api/:path*` },
+      { source: "/open/:path*", destination: `${API_ORIGIN}/open/:path*` },
+      { source: "/v3/api-docs/:path*", destination: `${API_ORIGIN}/v3/api-docs/:path*` },
+      { source: "/swagger-ui/:path*", destination: `${API_ORIGIN}/swagger-ui/:path*` },
+      { source: "/swagger-ui.html", destination: `${API_ORIGIN}/swagger-ui.html` },
+    ];
   },
 };
 

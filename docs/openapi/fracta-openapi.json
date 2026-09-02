@@ -34,6 +34,17 @@
         },
         "type" : "object"
       },
+      "ApiResponseClientView" : {
+        "properties" : {
+          "data" : {
+            "$ref" : "#/components/schemas/ClientView"
+          },
+          "meta" : {
+            "$ref" : "#/components/schemas/ResponseMeta"
+          }
+        },
+        "type" : "object"
+      },
       "ApiResponseCreateAssetResponse" : {
         "properties" : {
           "data" : {
@@ -49,6 +60,17 @@
         "properties" : {
           "data" : {
             "$ref" : "#/components/schemas/CreateResult"
+          },
+          "meta" : {
+            "$ref" : "#/components/schemas/ResponseMeta"
+          }
+        },
+        "type" : "object"
+      },
+      "ApiResponseDashboardView" : {
+        "properties" : {
+          "data" : {
+            "$ref" : "#/components/schemas/DashboardView"
           },
           "meta" : {
             "$ref" : "#/components/schemas/ResponseMeta"
@@ -100,11 +122,61 @@
         },
         "type" : "object"
       },
+      "ApiResponseIssuedClientView" : {
+        "properties" : {
+          "data" : {
+            "$ref" : "#/components/schemas/IssuedClientView"
+          },
+          "meta" : {
+            "$ref" : "#/components/schemas/ResponseMeta"
+          }
+        },
+        "type" : "object"
+      },
+      "ApiResponseIssuedWebhookView" : {
+        "properties" : {
+          "data" : {
+            "$ref" : "#/components/schemas/IssuedWebhookView"
+          },
+          "meta" : {
+            "$ref" : "#/components/schemas/ResponseMeta"
+          }
+        },
+        "type" : "object"
+      },
+      "ApiResponseListCallLogView" : {
+        "properties" : {
+          "data" : {
+            "items" : {
+              "$ref" : "#/components/schemas/CallLogView"
+            },
+            "type" : "array"
+          },
+          "meta" : {
+            "$ref" : "#/components/schemas/ResponseMeta"
+          }
+        },
+        "type" : "object"
+      },
       "ApiResponseListCashTransactionResponse" : {
         "properties" : {
           "data" : {
             "items" : {
               "$ref" : "#/components/schemas/CashTransactionResponse"
+            },
+            "type" : "array"
+          },
+          "meta" : {
+            "$ref" : "#/components/schemas/ResponseMeta"
+          }
+        },
+        "type" : "object"
+      },
+      "ApiResponseListClientView" : {
+        "properties" : {
+          "data" : {
+            "items" : {
+              "$ref" : "#/components/schemas/ClientView"
             },
             "type" : "array"
           },
@@ -203,6 +275,34 @@
           "data" : {
             "items" : {
               "$ref" : "#/components/schemas/TokenSummaryResponse"
+            },
+            "type" : "array"
+          },
+          "meta" : {
+            "$ref" : "#/components/schemas/ResponseMeta"
+          }
+        },
+        "type" : "object"
+      },
+      "ApiResponseListWebhookDeliveryView" : {
+        "properties" : {
+          "data" : {
+            "items" : {
+              "$ref" : "#/components/schemas/WebhookDeliveryView"
+            },
+            "type" : "array"
+          },
+          "meta" : {
+            "$ref" : "#/components/schemas/ResponseMeta"
+          }
+        },
+        "type" : "object"
+      },
+      "ApiResponseListWebhookView" : {
+        "properties" : {
+          "data" : {
+            "items" : {
+              "$ref" : "#/components/schemas/WebhookView"
             },
             "type" : "array"
           },
@@ -435,6 +535,17 @@
         },
         "type" : "object"
       },
+      "ApiResponseWebhookDeliveryView" : {
+        "properties" : {
+          "data" : {
+            "$ref" : "#/components/schemas/WebhookDeliveryView"
+          },
+          "meta" : {
+            "$ref" : "#/components/schemas/ResponseMeta"
+          }
+        },
+        "type" : "object"
+      },
       "ApplyRequest" : {
         "properties" : {
           "idempotencyKey" : {
@@ -492,6 +603,39 @@
         },
         "type" : "object"
       },
+      "CallLogView" : {
+        "properties" : {
+          "calledAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "clientId" : {
+            "type" : "string"
+          },
+          "endpoint" : {
+            "type" : "string"
+          },
+          "id" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "idempotencyKey" : {
+            "type" : "string"
+          },
+          "latencyMs" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "method" : {
+            "type" : "string"
+          },
+          "statusCode" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        },
+        "type" : "object"
+      },
       "CancelOrderResponse" : {
         "properties" : {
           "filledUnits" : {
@@ -529,6 +673,44 @@
           },
           "type" : {
             "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "ClientView" : {
+        "properties" : {
+          "active" : {
+            "type" : "boolean"
+          },
+          "clientId" : {
+            "type" : "string"
+          },
+          "createdAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "env" : {
+            "enum" : [ "LIVE", "SANDBOX" ],
+            "type" : "string"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "rateLimitPerDay" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "rateLimitPerSec" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "scopes" : {
+            "items" : {
+              "enum" : [ "MARKET_READ", "ACCOUNT_READ", "ORDER_WRITE", "SUBSCRIPTION_WRITE" ],
+              "type" : "string"
+            },
+            "type" : "array",
+            "uniqueItems" : true
           }
         },
         "type" : "object"
@@ -618,6 +800,56 @@
         },
         "type" : "object"
       },
+      "DailyUsageView" : {
+        "properties" : {
+          "averageLatencyMs" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "calls" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "date" : {
+            "format" : "date",
+            "type" : "string"
+          },
+          "errors" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        },
+        "type" : "object"
+      },
+      "DashboardView" : {
+        "properties" : {
+          "averageLatencyMs" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "callsLastSevenDays" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "callsToday" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "dailyUsage" : {
+            "items" : {
+              "$ref" : "#/components/schemas/DailyUsageView"
+            },
+            "type" : "array"
+          },
+          "errorRatePercent" : {
+            "type" : "number"
+          },
+          "quota" : {
+            "$ref" : "#/components/schemas/QuotaView"
+          }
+        },
+        "type" : "object"
+      },
       "DevPortalAskResponse" : {
         "properties" : {
           "answer" : {
@@ -636,6 +868,64 @@
             "type" : "boolean"
           }
         },
+        "type" : "object"
+      },
+      "DeveloperCreateClientRequest" : {
+        "properties" : {
+          "env" : {
+            "enum" : [ "LIVE", "SANDBOX" ],
+            "type" : "string"
+          },
+          "name" : {
+            "maxLength" : 100,
+            "minLength" : 0,
+            "type" : "string"
+          },
+          "scopes" : {
+            "items" : {
+              "enum" : [ "MARKET_READ", "ACCOUNT_READ", "ORDER_WRITE", "SUBSCRIPTION_WRITE" ],
+              "type" : "string"
+            },
+            "type" : "array",
+            "uniqueItems" : true
+          }
+        },
+        "required" : [ "name", "scopes" ],
+        "type" : "object"
+      },
+      "DeveloperCreateWebhookRequest" : {
+        "properties" : {
+          "clientId" : {
+            "type" : "string"
+          },
+          "events" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array",
+            "uniqueItems" : true
+          },
+          "url" : {
+            "maxLength" : 500,
+            "minLength" : 0,
+            "type" : "string"
+          }
+        },
+        "required" : [ "clientId", "events", "url" ],
+        "type" : "object"
+      },
+      "DeveloperUpdateScopesRequest" : {
+        "properties" : {
+          "scopes" : {
+            "items" : {
+              "enum" : [ "MARKET_READ", "ACCOUNT_READ", "ORDER_WRITE", "SUBSCRIPTION_WRITE" ],
+              "type" : "string"
+            },
+            "type" : "array",
+            "uniqueItems" : true
+          }
+        },
+        "required" : [ "scopes" ],
         "type" : "object"
       },
       "ExecutionResponse" : {
@@ -825,6 +1115,51 @@
           "unitPrice" : {
             "format" : "int64",
             "type" : "integer"
+          }
+        },
+        "type" : "object"
+      },
+      "IssuedClientView" : {
+        "properties" : {
+          "clientId" : {
+            "type" : "string"
+          },
+          "clientSecret" : {
+            "type" : "string"
+          },
+          "env" : {
+            "enum" : [ "LIVE", "SANDBOX" ],
+            "type" : "string"
+          },
+          "scopes" : {
+            "items" : {
+              "enum" : [ "MARKET_READ", "ACCOUNT_READ", "ORDER_WRITE", "SUBSCRIPTION_WRITE" ],
+              "type" : "string"
+            },
+            "type" : "array",
+            "uniqueItems" : true
+          }
+        },
+        "type" : "object"
+      },
+      "IssuedWebhookView" : {
+        "properties" : {
+          "events" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array",
+            "uniqueItems" : true
+          },
+          "url" : {
+            "type" : "string"
+          },
+          "webhookId" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "webhookSecret" : {
+            "type" : "string"
           }
         },
         "type" : "object"
@@ -1220,6 +1555,27 @@
         },
         "type" : "object"
       },
+      "QuotaView" : {
+        "properties" : {
+          "perDayLimit" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "perSecondLimit" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "remainingToday" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "usedToday" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        },
+        "type" : "object"
+      },
       "RegisterWebhookRequest" : {
         "properties" : {
           "events" : {
@@ -1458,6 +1814,70 @@
           },
           "to" : {
             "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "WebhookDeliveryView" : {
+        "properties" : {
+          "attempts" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "createdAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "deliveredAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "deliveryId" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "eventType" : {
+            "type" : "string"
+          },
+          "lastError" : {
+            "type" : "string"
+          },
+          "status" : {
+            "enum" : [ "PENDING", "DELIVERED", "DEAD" ],
+            "type" : "string"
+          },
+          "webhookId" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        },
+        "type" : "object"
+      },
+      "WebhookView" : {
+        "properties" : {
+          "active" : {
+            "type" : "boolean"
+          },
+          "clientId" : {
+            "type" : "string"
+          },
+          "createdAt" : {
+            "format" : "date-time",
+            "type" : "string"
+          },
+          "events" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array",
+            "uniqueItems" : true
+          },
+          "url" : {
+            "type" : "string"
+          },
+          "webhookId" : {
+            "format" : "int64",
+            "type" : "integer"
           }
         },
         "type" : "object"
@@ -1817,6 +2237,321 @@
           }
         },
         "tags" : [ "auth-controller" ]
+      }
+    },
+    "/api/v1/developer/clients" : {
+      "get" : {
+        "description" : "평문 client_secret은 포함하지 않는다.",
+        "operationId" : "clients",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseListClientView"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "summary" : "내 앱 목록",
+        "tags" : [ "개발자 포털" ]
+      },
+      "post" : {
+        "description" : "client_secret은 이 응답에서 한 번만 표시된다.",
+        "operationId" : "registerClient",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/DeveloperCreateClientRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "201" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseIssuedClientView"
+                }
+              }
+            },
+            "description" : "Created"
+          }
+        },
+        "summary" : "앱 등록",
+        "tags" : [ "개발자 포털" ]
+      }
+    },
+    "/api/v1/developer/clients/{clientId}/scopes" : {
+      "put" : {
+        "description" : "이후 발급되는 액세스 토큰부터 새 Scope가 적용된다.",
+        "operationId" : "updateScopes",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "clientId",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/DeveloperUpdateScopesRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseClientView"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "summary" : "앱 Scope 변경",
+        "tags" : [ "개발자 포털" ]
+      }
+    },
+    "/api/v1/developer/clients/{clientId}/secret" : {
+      "post" : {
+        "description" : "기존 시크릿은 즉시 무효가 되며 새 값은 한 번만 표시된다.",
+        "operationId" : "rotateSecret",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "clientId",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseIssuedClientView"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "summary" : "앱 시크릿 재발급",
+        "tags" : [ "개발자 포털" ]
+      }
+    },
+    "/api/v1/developer/dashboard" : {
+      "get" : {
+        "description" : "최근 7일 호출량, 에러율, 지연시간과 일일 쿼터를 조회한다.",
+        "operationId" : "dashboard",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "clientId",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseDashboardView"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "summary" : "호출 대시보드",
+        "tags" : [ "개발자 포털" ]
+      }
+    },
+    "/api/v1/developer/logs" : {
+      "get" : {
+        "description" : "엔드포인트, 상태 코드, 기간으로 최근 200건을 검색한다.",
+        "operationId" : "logs",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "clientId",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "endpoint",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "statusCode",
+          "required" : false,
+          "schema" : {
+            "format" : "int32",
+            "type" : "integer"
+          }
+        }, {
+          "in" : "query",
+          "name" : "from",
+          "required" : false,
+          "schema" : {
+            "format" : "date-time",
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "to",
+          "required" : false,
+          "schema" : {
+            "format" : "date-time",
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseListCallLogView"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "summary" : "호출 로그 검색",
+        "tags" : [ "개발자 포털" ]
+      }
+    },
+    "/api/v1/developer/webhooks" : {
+      "get" : {
+        "description" : "서명 시크릿은 포함하지 않는다.",
+        "operationId" : "webhooks",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "clientId",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseListWebhookView"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "summary" : "웹훅 목록",
+        "tags" : [ "개발자 포털" ]
+      },
+      "post" : {
+        "description" : "webhook_secret은 이 응답에서 한 번만 표시된다.",
+        "operationId" : "registerDeveloperWebhook",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/DeveloperCreateWebhookRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "201" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseIssuedWebhookView"
+                }
+              }
+            },
+            "description" : "Created"
+          }
+        },
+        "summary" : "웹훅 등록",
+        "tags" : [ "개발자 포털" ]
+      }
+    },
+    "/api/v1/developer/webhooks/deliveries/{deliveryId}/redeliver" : {
+      "post" : {
+        "description" : "최종 실패(DEAD)한 발송 건만 다시 큐에 넣는다.",
+        "operationId" : "redeliver",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "deliveryId",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseWebhookDeliveryView"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "summary" : "웹훅 수동 재발송",
+        "tags" : [ "개발자 포털" ]
+      }
+    },
+    "/api/v1/developer/webhooks/{webhookId}/deliveries" : {
+      "get" : {
+        "description" : "본문과 시크릿을 제외한 최근 200건을 조회한다.",
+        "operationId" : "deliveries",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "webhookId",
+          "required" : true,
+          "schema" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseListWebhookDeliveryView"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "summary" : "웹훅 발송 이력",
+        "tags" : [ "개발자 포털" ]
       }
     },
     "/api/v1/investors/me" : {
@@ -3193,9 +3928,12 @@
   } ],
   "servers" : [ {
     "description" : "Generated server url",
-    "url" : "http://localhost:62686"
+    "url" : "http://localhost:58337"
   } ],
   "tags" : [ {
+    "description" : "앱, 호출 통계, 로그, 웹훅 관리",
+    "name" : "개발자 포털"
+  }, {
     "description" : "잔고·주문 내역 조회",
     "name" : "계좌"
   }, {

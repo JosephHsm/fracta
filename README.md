@@ -4,9 +4,9 @@
 
 부동산·리츠 등 실물 기반 자산을 조각 단위 **토큰증권**으로 발행하고, 투자자가 청약·매매하며, 그 전 기능을 외부 개발자에게 **Open API**로 개방하는 플랫폼.
 
-> **현재 상태: Phase 1~7·9 완료 + Phase 8 AI·Claude 실측 완료**
-> (기반 · 원장 · 계좌/발행 · 청약 · 증권사 연동 · 유통/결제 · 오픈 API · AI 가드레일 · 배치)
-> 테스트 **410건** 전부 통과 — Java 270건(Testcontainers) + Python 140건(pytest).
+> **현재 상태: Phase 1~7·9 완료 + Phase 8·10 코드/자동 검증 완료**
+> (기반 · 원장 · 계좌/발행 · 청약 · 증권사 연동 · 유통/결제 · 오픈 API · AI 가드레일 · 배치 · 프론트엔드)
+> 테스트 **419건** 전부 통과 — Java 279건(Testcontainers) + Python 140건(pytest).
 > 실측 자료는 아래 [실측 기록](#실측-기록) 참조.
 > Phase 8은 폐쇄망(Ollama) 품질·지연 비교와 캡처만 남았습니다 — RTX 4080 데스크탑에서
 > 측정합니다. 추정치로 표를 채우지 않습니다.
@@ -227,7 +227,7 @@ docker compose --profile offline exec ollama ollama pull qwen3:14b
 | 7 | [오픈 API](docs/phases/phase-07-openapi.md) | ✅ |
 | 8 | [AI](docs/phases/phase-08-ai.md) | 🟡 코드·테스트 완료 / 폐쇄망 실측 대기 |
 | 9 | [배치](docs/phases/phase-09-batch.md) | ✅ |
-| 10 | [프론트](docs/phases/phase-10-frontend.md) | ⬜ |
+| 10 | [프론트](docs/phases/phase-10-frontend.md) | 🟡 코드·자동 검증 완료 / 시각 QA·캡처 대기 |
 | 11 | [마감](docs/phases/phase-11-release.md) | ⬜ |
 
 ---

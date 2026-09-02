@@ -49,6 +49,8 @@ class OpenApiSpecExportTest extends IntegrationTestBase {
         // 투자자 웹앱과 개발자 포털이 각각 물고 있는 대표 경로가 빠지면 생성 클라이언트도 빈다
         assertThat(paths.has("/api/v1/issuances")).as("investor-web 발행 목록").isTrue();
         assertThat(paths.has("/open/v1/tokens")).as("dev-portal 공개 API").isTrue();
+        assertThat(paths.has("/api/v1/developer/clients")).as("dev-portal 앱 관리").isTrue();
+        assertThat(paths.has("/api/v1/developer/logs")).as("dev-portal 호출 로그").isTrue();
         assertThat(spec.path("components").path("schemas").size()).isGreaterThan(0);
 
         // 키 정렬 후 저장 — springdoc의 리플렉션 순서가 실행마다 흔들려도 diff가 뜨지 않게 한다

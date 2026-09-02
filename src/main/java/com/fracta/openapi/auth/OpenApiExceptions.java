@@ -11,6 +11,13 @@ public final class OpenApiExceptions {
     private OpenApiExceptions() {
     }
 
+    /** 개발자 포털에서 다른 투자자 소유의 앱을 조작하려는 요청. */
+    public static class ClientOwnershipException extends DomainException {
+        public ClientOwnershipException() {
+            super(ErrorCode.AUTH_FORBIDDEN);
+        }
+    }
+
     public static class InvalidClientException extends DomainException {
         public InvalidClientException(String clientId) {
             super(ErrorCode.AUTH_INVALID_CLIENT,

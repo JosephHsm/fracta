@@ -197,7 +197,9 @@ public class WebhookDispatcher {
                 .orElseThrow(() -> new IllegalArgumentException("웹훅 발송 건이 없다: " + deliveryId));
         delivery.resetForRetry();
         WebhookDelivery saved = deliveries.save(delivery);
-        enqueue(saved.id());
+        // 포털 애플리케이션 서비스의 트랜잭션 안에서 호출될 수 있다. 커밋 전에 큐에 넣으면
+        // 워커가 아직 PENDING 변경을 보지 못하고 레코드를 버릴 수 있으므로 커밋 뒤 공개한다.
+        enqueueAfterCommit(java.util.List.of(saved.id()));
         return saved;
     }
 

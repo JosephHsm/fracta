@@ -111,4 +111,12 @@ public class WebhookDelivery {
     public String lastError() {
         return lastError;
     }
+
+    public Instant createdAt() {
+        return createdAt;
+    }
+
+    public Instant deliveredAt() {
+        return deliveredAt;
+    }
 }

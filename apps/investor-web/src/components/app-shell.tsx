@@ -68,13 +68,13 @@ function Shell({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-dvh">
       <header className="fr-glass border-border sticky top-0 z-30 border-b">
-        <div className="mx-auto flex h-14 max-w-7xl items-center gap-6 px-6">
+        <div className="mx-auto flex min-h-14 max-w-7xl flex-wrap items-center gap-2 px-4 py-2 sm:px-6 lg:h-14 lg:flex-nowrap lg:gap-6 lg:py-0">
           <Link href="/" className="flex items-center gap-2 font-semibold tracking-tight">
             <Building2 aria-hidden className="text-accent size-5" />
             FRACTA
           </Link>
 
-          <nav className="flex items-center gap-1" aria-label="주요 메뉴">
+          <nav className="order-last grid w-full grid-cols-3 items-center gap-1 lg:order-none lg:flex lg:w-auto" aria-label="주요 메뉴">
             {NAV.map((item) => {
               const active = item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
               return (
@@ -83,7 +83,7 @@ function Shell({ children }: { children: React.ReactNode }) {
                   href={item.href}
                   aria-current={active ? "page" : undefined}
                   className={cn(
-                    "rounded-md px-3 py-1.5 text-sm transition-colors duration-(--fr-motion-hover)",
+                    "rounded-md px-2 py-1.5 text-center text-xs transition-colors duration-(--fr-motion-hover) sm:text-sm lg:px-3",
                     active
                       ? "bg-surface-sunken text-fg font-medium"
                       : "text-fg-muted hover:text-fg hover:bg-surface-sunken/60",

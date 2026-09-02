@@ -3,14 +3,17 @@ package com.fracta.common.error;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.fracta.ai.AiUnavailableException;
 import com.fracta.common.response.ErrorResponse;
@@ -26,6 +29,32 @@ public class GlobalExceptionHandler {
         log.warn("domain exception: code={} message={}", e.errorCode().name(), e.getMessage());
         return ResponseEntity.status(e.errorCode().status())
                 .body(ErrorResponse.of(e.errorCode().name(), e.getMessage(), e.details()));
+    }
+
+    /**
+     * 필수 쿼리 파라미터 누락·타입 불일치·본문 파싱 실패는 <b>클라이언트 잘못</b>이다.
+     *
+     * <p>핸들러가 없으면 마지막 {@code Exception} 핸들러가 잡아 500 INTERNAL_ERROR로 내려간다.
+     * 실제로 {@code GET /api/v1/developer/dashboard}를 clientId 없이 부르면 500이 나왔다 —
+     * 호출자는 서버가 깨진 줄 알고, 개발자는 로그를 뒤진다. 400으로 정확히 돌려준다.
+     */
+    @ExceptionHandler({
+            MissingServletRequestParameterException.class,
+            MethodArgumentTypeMismatchException.class,
+            HttpMessageNotReadableException.class,
+    })
+    public ResponseEntity<ErrorResponse> handleBadRequest(Exception e) {
+        Map<String, Object> details = new LinkedHashMap<>();
+        if (e instanceof MissingServletRequestParameterException missing) {
+            details.put(missing.getParameterName(), "필수 파라미터가 없습니다");
+        } else if (e instanceof MethodArgumentTypeMismatchException mismatch) {
+            details.put(mismatch.getName(), "값의 형식이 올바르지 않습니다");
+        }
+        // 본문 파싱 실패는 원문을 details에 넣지 않는다 — 요청 본문이 로그·응답에 새면 안 된다
+        log.warn("bad request: {}", e.getMessage());
+        return ResponseEntity.badRequest()
+                .body(ErrorResponse.of(ErrorCode.VALID_INVALID_INPUT.name(),
+                        ErrorCode.VALID_INVALID_INPUT.defaultMessage(), details));
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)

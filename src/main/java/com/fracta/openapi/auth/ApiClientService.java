@@ -71,9 +71,37 @@ public class ApiClientService {
     public RegisteredClient rotateSecret(String clientId) {
         ApiClient client = clients.findByClientId(clientId)
                 .orElseThrow(() -> new OpenApiExceptions.InvalidClientException(clientId));
+        return rotate(client);
+    }
+
+    /** 포털용 재발급. URL의 clientId만 바꿔 다른 사용자의 시크릿을 돌릴 수 없게 소유권을 확인한다. */
+    @Transactional
+    @Auditable(action = "API_CLIENT_ROTATE_SECRET", targetType = "API_CLIENT", targetId = "#p0")
+    public RegisteredClient rotateOwnedSecret(String clientId, long ownerInvestorId) {
+        ApiClient client = requireOwned(clientId, ownerInvestorId);
+        return rotate(client);
+    }
+
+    @Transactional
+    @Auditable(action = "API_CLIENT_UPDATE_SCOPES", targetType = "API_CLIENT", targetId = "#p0")
+    public void updateScopes(String clientId, long ownerInvestorId, Set<ApiScope> scopes) {
+        ApiClient client = requireOwned(clientId, ownerInvestorId);
+        client.updateScopes(ApiScope.join(scopes));
+    }
+
+    private RegisteredClient rotate(ApiClient client) {
         String secret = "sec_" + randomToken(32);
         client.rotateSecret(sha256(secret));
         return new RegisteredClient(client.clientId(), secret, client.scopes(), client.env());
+    }
+
+    private ApiClient requireOwned(String clientId, long ownerInvestorId) {
+        ApiClient client = clients.findByClientId(clientId)
+                .orElseThrow(() -> new OpenApiExceptions.InvalidClientException(clientId));
+        if (client.ownerInvestorId() != ownerInvestorId) {
+            throw new OpenApiExceptions.ClientOwnershipException();
+        }
+        return client;
     }
 
     /** client_credentials 그랜트. 시크릿은 해시 비교하고 타이밍 세이프하게 본다. */

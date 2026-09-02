@@ -85,4 +85,8 @@ public class WebhookEndpoint {
     public boolean active() {
         return active;
     }
+
+    public Instant createdAt() {
+        return createdAt;
+    }
 }

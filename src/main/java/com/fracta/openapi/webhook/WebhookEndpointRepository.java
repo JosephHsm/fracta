@@ -10,4 +10,6 @@ public interface WebhookEndpointRepository extends JpaRepository<WebhookEndpoint
     List<WebhookEndpoint> findByActiveTrue();
 
     List<WebhookEndpoint> findByClientIdAndActiveTrue(String clientId);
+
+    List<WebhookEndpoint> findByClientIdOrderByIdDesc(String clientId);
 }

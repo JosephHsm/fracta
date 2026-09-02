@@ -72,6 +72,8 @@ export function createFractaClient(options: FractaClientOptions = {}) {
     adminIssuance: new AdminIssuanceControllerApi(configuration),
     adminSubscription: new AdminSubscriptionControllerApi(configuration),
     adminAi: new AdminAiControllerApi(configuration),
+    /** 웹앱 JWT로 접근하는 개발자 포털 관리 API. */
+    developer: new DefaultApi(configuration),
     /** 태그가 없는 공개 API(/open/**) — dev-portal 샌드박스가 쓴다 */
     open: new DefaultApi(configuration),
   };

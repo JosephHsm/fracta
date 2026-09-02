@@ -1,6 +1,7 @@
-import { ToastProvider } from "@fracta/ui";
 import type { Metadata } from "next";
 import localFont from "next/font/local";
+
+import { PortalProviders } from "@/lib/providers";
 
 import "./globals.css";
 
@@ -40,7 +41,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <script dangerouslySetInnerHTML={{ __html: THEME_INIT }} />
       </head>
       <body>
-        <ToastProvider>{children}</ToastProvider>
+        <PortalProviders>{children}</PortalProviders>
       </body>
     </html>
   );

@@ -68,6 +68,10 @@ public class ApiCallLog {
         return endpoint;
     }
 
+    public String method() {
+        return method;
+    }
+
     public int statusCode() {
         return statusCode;
     }
@@ -78,5 +82,9 @@ public class ApiCallLog {
 
     public String idempotencyKey() {
         return idempotencyKey;
+    }
+
+    public Instant calledAt() {
+        return calledAt;
     }
 }

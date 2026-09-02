@@ -19,6 +19,36 @@ import {
     ApiResponseCancelOrderResponseToJSON,
 } from '../models/ApiResponseCancelOrderResponse';
 import {
+    type ApiResponseClientView,
+    ApiResponseClientViewFromJSON,
+    ApiResponseClientViewToJSON,
+} from '../models/ApiResponseClientView';
+import {
+    type ApiResponseDashboardView,
+    ApiResponseDashboardViewFromJSON,
+    ApiResponseDashboardViewToJSON,
+} from '../models/ApiResponseDashboardView';
+import {
+    type ApiResponseIssuedClientView,
+    ApiResponseIssuedClientViewFromJSON,
+    ApiResponseIssuedClientViewToJSON,
+} from '../models/ApiResponseIssuedClientView';
+import {
+    type ApiResponseIssuedWebhookView,
+    ApiResponseIssuedWebhookViewFromJSON,
+    ApiResponseIssuedWebhookViewToJSON,
+} from '../models/ApiResponseIssuedWebhookView';
+import {
+    type ApiResponseListCallLogView,
+    ApiResponseListCallLogViewFromJSON,
+    ApiResponseListCallLogViewToJSON,
+} from '../models/ApiResponseListCallLogView';
+import {
+    type ApiResponseListClientView,
+    ApiResponseListClientViewFromJSON,
+    ApiResponseListClientViewToJSON,
+} from '../models/ApiResponseListClientView';
+import {
     type ApiResponseListOpenApiExecutionResponse,
     ApiResponseListOpenApiExecutionResponseFromJSON,
     ApiResponseListOpenApiExecutionResponseToJSON,
@@ -33,6 +63,16 @@ import {
     ApiResponseListTokenSummaryResponseFromJSON,
     ApiResponseListTokenSummaryResponseToJSON,
 } from '../models/ApiResponseListTokenSummaryResponse';
+import {
+    type ApiResponseListWebhookDeliveryView,
+    ApiResponseListWebhookDeliveryViewFromJSON,
+    ApiResponseListWebhookDeliveryViewToJSON,
+} from '../models/ApiResponseListWebhookDeliveryView';
+import {
+    type ApiResponseListWebhookView,
+    ApiResponseListWebhookViewFromJSON,
+    ApiResponseListWebhookViewToJSON,
+} from '../models/ApiResponseListWebhookView';
 import {
     type ApiResponseOpenApiBalanceResponse,
     ApiResponseOpenApiBalanceResponseFromJSON,
@@ -74,6 +114,26 @@ import {
     ApiResponseTokenSummaryResponseToJSON,
 } from '../models/ApiResponseTokenSummaryResponse';
 import {
+    type ApiResponseWebhookDeliveryView,
+    ApiResponseWebhookDeliveryViewFromJSON,
+    ApiResponseWebhookDeliveryViewToJSON,
+} from '../models/ApiResponseWebhookDeliveryView';
+import {
+    type DeveloperCreateClientRequest,
+    DeveloperCreateClientRequestFromJSON,
+    DeveloperCreateClientRequestToJSON,
+} from '../models/DeveloperCreateClientRequest';
+import {
+    type DeveloperCreateWebhookRequest,
+    DeveloperCreateWebhookRequestFromJSON,
+    DeveloperCreateWebhookRequestToJSON,
+} from '../models/DeveloperCreateWebhookRequest';
+import {
+    type DeveloperUpdateScopesRequest,
+    DeveloperUpdateScopesRequestFromJSON,
+    DeveloperUpdateScopesRequestToJSON,
+} from '../models/DeveloperUpdateScopesRequest';
+import {
     type OpenApiPlaceOrderRequest,
     OpenApiPlaceOrderRequestFromJSON,
     OpenApiPlaceOrderRequestToJSON,
@@ -101,6 +161,20 @@ export interface CancelOrder1Request {
      * 
      */
     orderId: string;
+}
+
+export interface DashboardRequest {
+    /**
+     *
+     */
+    clientId: string;
+}
+
+export interface DeliveriesRequest {
+    /**
+     *
+     */
+    webhookId: number;
 }
 
 export interface ExecutionsRequest {
@@ -131,6 +205,29 @@ export interface Executions1Request {
      * 
      */
     size?: number;
+}
+
+export interface LogsRequest {
+    /**
+     *
+     */
+    clientId: string;
+    /**
+     *
+     */
+    endpoint?: string;
+    /**
+     *
+     */
+    statusCode?: number;
+    /**
+     *
+     */
+    from?: Date;
+    /**
+     *
+     */
+    to?: Date;
 }
 
 export interface OrderbookRequest {
@@ -191,6 +288,13 @@ export interface Premium1Request {
     symbol: string;
 }
 
+export interface RedeliverRequest {
+    /**
+     *
+     */
+    deliveryId: number;
+}
+
 export interface RegisterRequest {
     /**
      * 
@@ -203,6 +307,27 @@ export interface Register1Request {
      * 
      */
     registerWebhookRequest: RegisterWebhookRequest;
+}
+
+export interface RegisterClientRequest {
+    /**
+     *
+     */
+    developerCreateClientRequest: DeveloperCreateClientRequest;
+}
+
+export interface RegisterDeveloperWebhookRequest {
+    /**
+     *
+     */
+    developerCreateWebhookRequest: DeveloperCreateWebhookRequest;
+}
+
+export interface RotateSecretRequest {
+    /**
+     *
+     */
+    clientId: string;
 }
 
 export interface SubscribeOperationRequest {
@@ -269,6 +394,24 @@ export interface Token3Request {
      * 
      */
     symbol: string;
+}
+
+export interface UpdateScopesRequest {
+    /**
+     *
+     */
+    clientId: string;
+    /**
+     *
+     */
+    developerUpdateScopesRequest: DeveloperUpdateScopesRequest;
+}
+
+export interface WebhooksRequest {
+    /**
+     *
+     */
+    clientId: string;
 }
 
 /**
@@ -481,6 +624,166 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
+     * Creates request options for clients without sending the request
+     */
+    async clientsRequestOpts(): Promise<runtime.RequestOpts> {
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            const token = this.configuration.accessToken;
+            const tokenString = await token("bearerAuth", []);
+
+            if (tokenString) {
+                headerParameters["Authorization"] = `Bearer ${tokenString}`;
+            }
+        }
+
+        let urlPath = `/api/v1/developer/clients`;
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * 평문 client_secret은 포함하지 않는다.
+     * 내 앱 목록
+     */
+    async clientsRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ApiResponseListClientView>> {
+        const requestOptions = await this.clientsRequestOpts();
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => ApiResponseListClientViewFromJSON(jsonValue));
+    }
+
+    /**
+     * 평문 client_secret은 포함하지 않는다.
+     * 내 앱 목록
+     */
+    async clients(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ApiResponseListClientView> {
+        const response = await this.clientsRaw(initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for dashboard without sending the request
+     */
+    async dashboardRequestOpts(requestParameters: DashboardRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['clientId'] == null) {
+            throw new runtime.RequiredError(
+                'clientId',
+                'Required parameter "clientId" was null or undefined when calling dashboard().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        if (requestParameters['clientId'] != null) {
+            queryParameters['clientId'] = requestParameters['clientId'];
+        }
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            const token = this.configuration.accessToken;
+            const tokenString = await token("bearerAuth", []);
+
+            if (tokenString) {
+                headerParameters["Authorization"] = `Bearer ${tokenString}`;
+            }
+        }
+
+        let urlPath = `/api/v1/developer/dashboard`;
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * 최근 7일 호출량, 에러율, 지연시간과 일일 쿼터를 조회한다.
+     * 호출 대시보드
+     */
+    async dashboardRaw(requestParameters: DashboardRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ApiResponseDashboardView>> {
+        const requestOptions = await this.dashboardRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => ApiResponseDashboardViewFromJSON(jsonValue));
+    }
+
+    /**
+     * 최근 7일 호출량, 에러율, 지연시간과 일일 쿼터를 조회한다.
+     * 호출 대시보드
+     */
+    async dashboard(requestParameters: DashboardRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ApiResponseDashboardView> {
+        const response = await this.dashboardRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for deliveries without sending the request
+     */
+    async deliveriesRequestOpts(requestParameters: DeliveriesRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['webhookId'] == null) {
+            throw new runtime.RequiredError(
+                'webhookId',
+                'Required parameter "webhookId" was null or undefined when calling deliveries().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            const token = this.configuration.accessToken;
+            const tokenString = await token("bearerAuth", []);
+
+            if (tokenString) {
+                headerParameters["Authorization"] = `Bearer ${tokenString}`;
+            }
+        }
+
+        let urlPath = `/api/v1/developer/webhooks/{webhookId}/deliveries`;
+        urlPath = urlPath.replace('{webhookId}', encodeURIComponent(String(requestParameters['webhookId'])));
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * 본문과 시크릿을 제외한 최근 200건을 조회한다.
+     * 웹훅 발송 이력
+     */
+    async deliveriesRaw(requestParameters: DeliveriesRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ApiResponseListWebhookDeliveryView>> {
+        const requestOptions = await this.deliveriesRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => ApiResponseListWebhookDeliveryViewFromJSON(jsonValue));
+    }
+
+    /**
+     * 본문과 시크릿을 제외한 최근 200건을 조회한다.
+     * 웹훅 발송 이력
+     */
+    async deliveries(requestParameters: DeliveriesRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ApiResponseListWebhookDeliveryView> {
+        const response = await this.deliveriesRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
      * Creates request options for executions without sending the request
      */
     async executionsRequestOpts(requestParameters: ExecutionsRequest): Promise<runtime.RequestOpts> {
@@ -603,6 +906,80 @@ export class DefaultApi extends runtime.BaseAPI {
      */
     async executions1(requestParameters: Executions1Request, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ApiResponseListOpenApiExecutionResponse> {
         const response = await this.executions1Raw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for logs without sending the request
+     */
+    async logsRequestOpts(requestParameters: LogsRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['clientId'] == null) {
+            throw new runtime.RequiredError(
+                'clientId',
+                'Required parameter "clientId" was null or undefined when calling logs().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        if (requestParameters['clientId'] != null) {
+            queryParameters['clientId'] = requestParameters['clientId'];
+        }
+
+        if (requestParameters['endpoint'] != null) {
+            queryParameters['endpoint'] = requestParameters['endpoint'];
+        }
+
+        if (requestParameters['statusCode'] != null) {
+            queryParameters['statusCode'] = requestParameters['statusCode'];
+        }
+
+        if (requestParameters['from'] != null) {
+            queryParameters['from'] = runtime.serializeDateTime(requestParameters['from'] as any);
+        }
+
+        if (requestParameters['to'] != null) {
+            queryParameters['to'] = runtime.serializeDateTime(requestParameters['to'] as any);
+        }
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            const token = this.configuration.accessToken;
+            const tokenString = await token("bearerAuth", []);
+
+            if (tokenString) {
+                headerParameters["Authorization"] = `Bearer ${tokenString}`;
+            }
+        }
+
+        let urlPath = `/api/v1/developer/logs`;
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * 엔드포인트, 상태 코드, 기간으로 최근 200건을 검색한다.
+     * 호출 로그 검색
+     */
+    async logsRaw(requestParameters: LogsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ApiResponseListCallLogView>> {
+        const requestOptions = await this.logsRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => ApiResponseListCallLogViewFromJSON(jsonValue));
+    }
+
+    /**
+     * 엔드포인트, 상태 코드, 기간으로 최근 200건을 검색한다.
+     * 호출 로그 검색
+     */
+    async logs(requestParameters: LogsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ApiResponseListCallLogView> {
+        const response = await this.logsRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
@@ -1065,6 +1442,61 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
+     * Creates request options for redeliver without sending the request
+     */
+    async redeliverRequestOpts(requestParameters: RedeliverRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['deliveryId'] == null) {
+            throw new runtime.RequiredError(
+                'deliveryId',
+                'Required parameter "deliveryId" was null or undefined when calling redeliver().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            const token = this.configuration.accessToken;
+            const tokenString = await token("bearerAuth", []);
+
+            if (tokenString) {
+                headerParameters["Authorization"] = `Bearer ${tokenString}`;
+            }
+        }
+
+        let urlPath = `/api/v1/developer/webhooks/deliveries/{deliveryId}/redeliver`;
+        urlPath = urlPath.replace('{deliveryId}', encodeURIComponent(String(requestParameters['deliveryId'])));
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * 최종 실패(DEAD)한 발송 건만 다시 큐에 넣는다.
+     * 웹훅 수동 재발송
+     */
+    async redeliverRaw(requestParameters: RedeliverRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ApiResponseWebhookDeliveryView>> {
+        const requestOptions = await this.redeliverRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => ApiResponseWebhookDeliveryViewFromJSON(jsonValue));
+    }
+
+    /**
+     * 최종 실패(DEAD)한 발송 건만 다시 큐에 넣는다.
+     * 웹훅 수동 재발송
+     */
+    async redeliver(requestParameters: RedeliverRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ApiResponseWebhookDeliveryView> {
+        const response = await this.redeliverRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
      * Creates request options for register without sending the request
      */
     async registerRequestOpts(requestParameters: RegisterRequest): Promise<runtime.RequestOpts> {
@@ -1175,6 +1607,175 @@ export class DefaultApi extends runtime.BaseAPI {
      */
     async register1(requestParameters: Register1Request, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ApiResponseRegisterWebhookResponse> {
         const response = await this.register1Raw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for registerClient without sending the request
+     */
+    async registerClientRequestOpts(requestParameters: RegisterClientRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['developerCreateClientRequest'] == null) {
+            throw new runtime.RequiredError(
+                'developerCreateClientRequest',
+                'Required parameter "developerCreateClientRequest" was null or undefined when calling registerClient().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+        if (this.configuration && this.configuration.accessToken) {
+            const token = this.configuration.accessToken;
+            const tokenString = await token("bearerAuth", []);
+
+            if (tokenString) {
+                headerParameters["Authorization"] = `Bearer ${tokenString}`;
+            }
+        }
+
+        let urlPath = `/api/v1/developer/clients`;
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: DeveloperCreateClientRequestToJSON(requestParameters['developerCreateClientRequest']),
+        };
+    }
+
+    /**
+     * client_secret은 이 응답에서 한 번만 표시된다.
+     * 앱 등록
+     */
+    async registerClientRaw(requestParameters: RegisterClientRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ApiResponseIssuedClientView>> {
+        const requestOptions = await this.registerClientRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => ApiResponseIssuedClientViewFromJSON(jsonValue));
+    }
+
+    /**
+     * client_secret은 이 응답에서 한 번만 표시된다.
+     * 앱 등록
+     */
+    async registerClient(requestParameters: RegisterClientRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ApiResponseIssuedClientView> {
+        const response = await this.registerClientRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for registerDeveloperWebhook without sending the request
+     */
+    async registerDeveloperWebhookRequestOpts(requestParameters: RegisterDeveloperWebhookRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['developerCreateWebhookRequest'] == null) {
+            throw new runtime.RequiredError(
+                'developerCreateWebhookRequest',
+                'Required parameter "developerCreateWebhookRequest" was null or undefined when calling registerDeveloperWebhook().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+        if (this.configuration && this.configuration.accessToken) {
+            const token = this.configuration.accessToken;
+            const tokenString = await token("bearerAuth", []);
+
+            if (tokenString) {
+                headerParameters["Authorization"] = `Bearer ${tokenString}`;
+            }
+        }
+
+        let urlPath = `/api/v1/developer/webhooks`;
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: DeveloperCreateWebhookRequestToJSON(requestParameters['developerCreateWebhookRequest']),
+        };
+    }
+
+    /**
+     * webhook_secret은 이 응답에서 한 번만 표시된다.
+     * 웹훅 등록
+     */
+    async registerDeveloperWebhookRaw(requestParameters: RegisterDeveloperWebhookRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ApiResponseIssuedWebhookView>> {
+        const requestOptions = await this.registerDeveloperWebhookRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => ApiResponseIssuedWebhookViewFromJSON(jsonValue));
+    }
+
+    /**
+     * webhook_secret은 이 응답에서 한 번만 표시된다.
+     * 웹훅 등록
+     */
+    async registerDeveloperWebhook(requestParameters: RegisterDeveloperWebhookRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ApiResponseIssuedWebhookView> {
+        const response = await this.registerDeveloperWebhookRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for rotateSecret without sending the request
+     */
+    async rotateSecretRequestOpts(requestParameters: RotateSecretRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['clientId'] == null) {
+            throw new runtime.RequiredError(
+                'clientId',
+                'Required parameter "clientId" was null or undefined when calling rotateSecret().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            const token = this.configuration.accessToken;
+            const tokenString = await token("bearerAuth", []);
+
+            if (tokenString) {
+                headerParameters["Authorization"] = `Bearer ${tokenString}`;
+            }
+        }
+
+        let urlPath = `/api/v1/developer/clients/{clientId}/secret`;
+        urlPath = urlPath.replace('{clientId}', encodeURIComponent(String(requestParameters['clientId'])));
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * 기존 시크릿은 즉시 무효가 되며 새 값은 한 번만 표시된다.
+     * 앱 시크릿 재발급
+     */
+    async rotateSecretRaw(requestParameters: RotateSecretRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ApiResponseIssuedClientView>> {
+        const requestOptions = await this.rotateSecretRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => ApiResponseIssuedClientViewFromJSON(jsonValue));
+    }
+
+    /**
+     * 기존 시크릿은 즉시 무효가 되며 새 값은 한 번만 표시된다.
+     * 앱 시크릿 재발급
+     */
+    async rotateSecret(requestParameters: RotateSecretRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ApiResponseIssuedClientView> {
+        const response = await this.rotateSecretRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
@@ -1675,6 +2276,129 @@ export class DefaultApi extends runtime.BaseAPI {
      */
     async tokens1(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ApiResponseListTokenSummaryResponse> {
         const response = await this.tokens1Raw(initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for updateScopes without sending the request
+     */
+    async updateScopesRequestOpts(requestParameters: UpdateScopesRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['clientId'] == null) {
+            throw new runtime.RequiredError(
+                'clientId',
+                'Required parameter "clientId" was null or undefined when calling updateScopes().'
+            );
+        }
+
+        if (requestParameters['developerUpdateScopesRequest'] == null) {
+            throw new runtime.RequiredError(
+                'developerUpdateScopesRequest',
+                'Required parameter "developerUpdateScopesRequest" was null or undefined when calling updateScopes().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+        if (this.configuration && this.configuration.accessToken) {
+            const token = this.configuration.accessToken;
+            const tokenString = await token("bearerAuth", []);
+
+            if (tokenString) {
+                headerParameters["Authorization"] = `Bearer ${tokenString}`;
+            }
+        }
+
+        let urlPath = `/api/v1/developer/clients/{clientId}/scopes`;
+        urlPath = urlPath.replace('{clientId}', encodeURIComponent(String(requestParameters['clientId'])));
+
+        return {
+            path: urlPath,
+            method: 'PUT',
+            headers: headerParameters,
+            query: queryParameters,
+            body: DeveloperUpdateScopesRequestToJSON(requestParameters['developerUpdateScopesRequest']),
+        };
+    }
+
+    /**
+     * 이후 발급되는 액세스 토큰부터 새 Scope가 적용된다.
+     * 앱 Scope 변경
+     */
+    async updateScopesRaw(requestParameters: UpdateScopesRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ApiResponseClientView>> {
+        const requestOptions = await this.updateScopesRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => ApiResponseClientViewFromJSON(jsonValue));
+    }
+
+    /**
+     * 이후 발급되는 액세스 토큰부터 새 Scope가 적용된다.
+     * 앱 Scope 변경
+     */
+    async updateScopes(requestParameters: UpdateScopesRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ApiResponseClientView> {
+        const response = await this.updateScopesRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for webhooks without sending the request
+     */
+    async webhooksRequestOpts(requestParameters: WebhooksRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['clientId'] == null) {
+            throw new runtime.RequiredError(
+                'clientId',
+                'Required parameter "clientId" was null or undefined when calling webhooks().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        if (requestParameters['clientId'] != null) {
+            queryParameters['clientId'] = requestParameters['clientId'];
+        }
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            const token = this.configuration.accessToken;
+            const tokenString = await token("bearerAuth", []);
+
+            if (tokenString) {
+                headerParameters["Authorization"] = `Bearer ${tokenString}`;
+            }
+        }
+
+        let urlPath = `/api/v1/developer/webhooks`;
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * 서명 시크릿은 포함하지 않는다.
+     * 웹훅 목록
+     */
+    async webhooksRaw(requestParameters: WebhooksRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ApiResponseListWebhookView>> {
+        const requestOptions = await this.webhooksRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => ApiResponseListWebhookViewFromJSON(jsonValue));
+    }
+
+    /**
+     * 서명 시크릿은 포함하지 않는다.
+     * 웹훅 목록
+     */
+    async webhooks(requestParameters: WebhooksRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ApiResponseListWebhookView> {
+        const response = await this.webhooksRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

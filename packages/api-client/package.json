@@ -9,6 +9,7 @@
     ".": "./src/index.ts"
   },
   "scripts": {
+    "build": "tsc --noEmit",
     "generate": "openapi-generator-cli generate -c ./openapi-generator.yaml && node scripts/prune-generated.mjs",
     "clean": "node -e \"require('node:fs').rmSync('src/generated',{recursive:true,force:true})\"",
     "regenerate": "pnpm clean && pnpm generate",

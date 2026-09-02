@@ -78,6 +78,11 @@ public class ApiClient {
         this.active = false;
     }
 
+    /** 포털에서 Scope를 바꾸면 이후 발급되는 토큰부터 새 권한이 적용된다. */
+    public void updateScopes(String scopes) {
+        this.scopes = scopes;
+    }
+
     public Long id() {
         return id;
     }
@@ -116,5 +121,9 @@ public class ApiClient {
 
     public boolean active() {
         return active;
+    }
+
+    public Instant createdAt() {
+        return createdAt;
     }
 }
