@@ -2,8 +2,6 @@ package com.fracta.issuance.presentation;
 
 import java.io.IOException;
 import java.time.Instant;
-import java.util.HashMap;
-import java.util.Map;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -36,6 +34,19 @@ public class IssuanceController {
             @NotNull Instant subscriptionEndAt) {
     }
 
+    /** 투자설명서 업로드 결과. */
+    public record ProspectusUploadResponse(String fileKey) {
+    }
+
+    /**
+     * 발행 상세. 기존 {@code Map<String,Object>} 응답을 같은 필드명·같은 JSON으로 옮긴 것이다 —
+     * 종목 상세 화면이 이 계약에 의존하므로 타입이 스펙에 실려야 한다.
+     */
+    public record IssuanceDetailResponse(Long issuanceId, String tokenSymbol, long totalUnits,
+                                         long unitPrice, long remainingUnits, String status,
+                                         String prospectusFileKey) {
+    }
+
     private final IssuanceService issuanceService;
     private final ProspectusService prospectusService;
 
@@ -57,25 +68,19 @@ public class IssuanceController {
     }
 
     @PostMapping("/{id}/prospectus")
-    public ApiResponse<Map<String, Object>> uploadProspectus(@PathVariable("id") long id,
-                                                             @RequestParam("file") MultipartFile file)
+    public ApiResponse<ProspectusUploadResponse> uploadProspectus(@PathVariable("id") long id,
+                                                                  @RequestParam("file") MultipartFile file)
             throws IOException {
         String fileKey = prospectusService.upload(id, file.getOriginalFilename(),
                 file.getBytes(), file.getContentType());
-        return ApiResponse.of(Map.of("fileKey", fileKey));
+        return ApiResponse.of(new ProspectusUploadResponse(fileKey));
     }
 
     @GetMapping("/{id}")
-    public ApiResponse<Map<String, Object>> get(@PathVariable("id") long id) {
+    public ApiResponse<IssuanceDetailResponse> get(@PathVariable("id") long id) {
         Issuance issuance = issuanceService.get(id);
-        Map<String, Object> body = new HashMap<>();
-        body.put("issuanceId", issuance.id());
-        body.put("tokenSymbol", issuance.tokenSymbol());
-        body.put("totalUnits", issuance.totalUnits());
-        body.put("unitPrice", issuance.unitPrice());
-        body.put("remainingUnits", issuance.remainingUnits());
-        body.put("status", issuance.status().name());
-        body.put("prospectusFileKey", issuance.prospectusFileKey());
-        return ApiResponse.of(body);
+        return ApiResponse.of(new IssuanceDetailResponse(issuance.id(), issuance.tokenSymbol(),
+                issuance.totalUnits(), issuance.unitPrice(), issuance.remainingUnits(),
+                issuance.status().name(), issuance.prospectusFileKey()));
     }
 }

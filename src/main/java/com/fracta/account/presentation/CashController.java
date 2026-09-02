@@ -1,7 +1,7 @@
 package com.fracta.account.presentation;
 
+import java.math.BigDecimal;
 import java.util.List;
-import java.util.Map;
 
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -26,6 +26,13 @@ public class CashController {
     public record CashRequest(@NotNull @Positive Long amount) {
     }
 
+    /** 입출금 후 잔액. 금액은 서버가 계산한 값을 그대로 내보낸다 — 프론트는 재계산하지 않는다. */
+    public record BalanceResponse(BigDecimal balance) {
+    }
+
+    public record CashTransactionResponse(String type, long amount, long balanceAfter) {
+    }
+
     private final CashService cashService;
 
     public CashController(CashService cashService) {
@@ -33,26 +40,24 @@ public class CashController {
     }
 
     @PostMapping("/deposit")
-    public ApiResponse<Map<String, Object>> deposit(@AuthenticationPrincipal Jwt jwt,
-                                                    @Valid @RequestBody CashRequest request) {
+    public ApiResponse<BalanceResponse> deposit(@AuthenticationPrincipal Jwt jwt,
+                                                @Valid @RequestBody CashRequest request) {
         Money balance = cashService.deposit(InvestorController.investorIdOf(jwt), Money.of(request.amount()));
-        return ApiResponse.of(Map.of("balance", balance.toDisplay()));
+        return ApiResponse.of(new BalanceResponse(balance.toDisplay()));
     }
 
     @PostMapping("/withdrawal")
-    public ApiResponse<Map<String, Object>> withdraw(@AuthenticationPrincipal Jwt jwt,
-                                                     @Valid @RequestBody CashRequest request) {
+    public ApiResponse<BalanceResponse> withdraw(@AuthenticationPrincipal Jwt jwt,
+                                                 @Valid @RequestBody CashRequest request) {
         Money balance = cashService.withdraw(InvestorController.investorIdOf(jwt), Money.of(request.amount()));
-        return ApiResponse.of(Map.of("balance", balance.toDisplay()));
+        return ApiResponse.of(new BalanceResponse(balance.toDisplay()));
     }
 
     @GetMapping("/transactions")
-    public ApiResponse<List<Map<String, Object>>> transactions(@AuthenticationPrincipal Jwt jwt) {
+    public ApiResponse<List<CashTransactionResponse>> transactions(@AuthenticationPrincipal Jwt jwt) {
         var list = cashService.transactionsOf(InvestorController.investorIdOf(jwt)).stream()
-                .map(tx -> Map.<String, Object>of(
-                        "type", tx.txType().name(),
-                        "amount", tx.amount(),
-                        "balanceAfter", tx.balanceAfter()))
+                .map(tx -> new CashTransactionResponse(tx.txType().name(), tx.amount(),
+                        tx.balanceAfter()))
                 .toList();
         return ApiResponse.of(list);
     }

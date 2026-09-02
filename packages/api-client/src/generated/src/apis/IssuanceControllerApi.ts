@@ -19,10 +19,15 @@ import {
     ApiResponseCreateResultToJSON,
 } from '../models/ApiResponseCreateResult';
 import {
-    type ApiResponseMapStringObject,
-    ApiResponseMapStringObjectFromJSON,
-    ApiResponseMapStringObjectToJSON,
-} from '../models/ApiResponseMapStringObject';
+    type ApiResponseIssuanceDetailResponse,
+    ApiResponseIssuanceDetailResponseFromJSON,
+    ApiResponseIssuanceDetailResponseToJSON,
+} from '../models/ApiResponseIssuanceDetailResponse';
+import {
+    type ApiResponseProspectusUploadResponse,
+    ApiResponseProspectusUploadResponseFromJSON,
+    ApiResponseProspectusUploadResponseToJSON,
+} from '../models/ApiResponseProspectusUploadResponse';
 import {
     type ApiResponseTransitionResult,
     ApiResponseTransitionResultFromJSON,
@@ -150,16 +155,16 @@ export class IssuanceControllerApi extends runtime.BaseAPI {
 
     /**
      */
-    async getRaw(requestParameters: GetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ApiResponseMapStringObject>> {
+    async getRaw(requestParameters: GetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ApiResponseIssuanceDetailResponse>> {
         const requestOptions = await this.getRequestOpts(requestParameters);
         const response = await this.request(requestOptions, initOverrides);
 
-        return new runtime.JSONApiResponse(response, (jsonValue) => ApiResponseMapStringObjectFromJSON(jsonValue));
+        return new runtime.JSONApiResponse(response, (jsonValue) => ApiResponseIssuanceDetailResponseFromJSON(jsonValue));
     }
 
     /**
      */
-    async get(requestParameters: GetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ApiResponseMapStringObject> {
+    async get(requestParameters: GetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ApiResponseIssuanceDetailResponse> {
         const response = await this.getRaw(requestParameters, initOverrides);
         return await response.value();
     }
@@ -239,16 +244,16 @@ export class IssuanceControllerApi extends runtime.BaseAPI {
 
     /**
      */
-    async uploadProspectusRaw(requestParameters: UploadProspectusOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ApiResponseMapStringObject>> {
+    async uploadProspectusRaw(requestParameters: UploadProspectusOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ApiResponseProspectusUploadResponse>> {
         const requestOptions = await this.uploadProspectusRequestOpts(requestParameters);
         const response = await this.request(requestOptions, initOverrides);
 
-        return new runtime.JSONApiResponse(response, (jsonValue) => ApiResponseMapStringObjectFromJSON(jsonValue));
+        return new runtime.JSONApiResponse(response, (jsonValue) => ApiResponseProspectusUploadResponseFromJSON(jsonValue));
     }
 
     /**
      */
-    async uploadProspectus(requestParameters: UploadProspectusOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ApiResponseMapStringObject> {
+    async uploadProspectus(requestParameters: UploadProspectusOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ApiResponseProspectusUploadResponse> {
         const response = await this.uploadProspectusRaw(requestParameters, initOverrides);
         return await response.value();
     }

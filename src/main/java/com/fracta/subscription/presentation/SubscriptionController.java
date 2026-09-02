@@ -1,7 +1,6 @@
 package com.fracta.subscription.presentation;
 
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 
 import org.springframework.http.HttpStatus;
@@ -60,20 +59,20 @@ public class SubscriptionController {
     }
 
     @GetMapping("/api/v1/subscriptions/me")
-    public ApiResponse<List<Map<String, Object>>> mine(@AuthenticationPrincipal Jwt jwt) {
+    public ApiResponse<List<MySubscriptionResponse>> mine(@AuthenticationPrincipal Jwt jwt) {
         var list = subscriptionService.ordersOf(investorIdOf(jwt)).stream()
-                .map(o -> {
-                    Map<String, Object> m = new java.util.HashMap<>();
-                    m.put("orderId", o.id());
-                    m.put("issuanceId", o.issuanceId());
-                    m.put("requestedUnits", o.requestedUnits());
-                    m.put("allottedUnits", o.allottedUnits());
-                    m.put("depositAmount", o.depositAmount());
-                    m.put("status", o.status().name());
-                    return m;
-                })
+                .map(o -> new MySubscriptionResponse(o.id(), o.issuanceId(), o.requestedUnits(),
+                        o.allottedUnits(), o.depositAmount(), o.status().name()))
                 .toList();
         return ApiResponse.of(list);
+    }
+
+    /**
+     * 내 청약 내역 한 건. {@code allottedUnits}는 배정 전에는 null이다 — 0과 구분되어야 한다
+     * (미배정과 배정 0조각은 다른 상태다).
+     */
+    public record MySubscriptionResponse(Long orderId, long issuanceId, long requestedUnits,
+                                         Long allottedUnits, long depositAmount, String status) {
     }
 
     private InvestorId investorIdOf(Jwt jwt) {

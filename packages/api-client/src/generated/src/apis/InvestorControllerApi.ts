@@ -14,10 +14,20 @@
 
 import * as runtime from '../runtime';
 import {
-    type ApiResponseMapStringObject,
-    ApiResponseMapStringObjectFromJSON,
-    ApiResponseMapStringObjectToJSON,
-} from '../models/ApiResponseMapStringObject';
+    type ApiResponseMeResponse,
+    ApiResponseMeResponseFromJSON,
+    ApiResponseMeResponseToJSON,
+} from '../models/ApiResponseMeResponse';
+import {
+    type ApiResponseRiskProfileResponse,
+    ApiResponseRiskProfileResponseFromJSON,
+    ApiResponseRiskProfileResponseToJSON,
+} from '../models/ApiResponseRiskProfileResponse';
+import {
+    type ApiResponseSuitabilityAckResponse,
+    ApiResponseSuitabilityAckResponseFromJSON,
+    ApiResponseSuitabilityAckResponseToJSON,
+} from '../models/ApiResponseSuitabilityAckResponse';
 import {
     type ApiResponseSuitabilityResult,
     ApiResponseSuitabilityResultFromJSON,
@@ -91,16 +101,16 @@ export class InvestorControllerApi extends runtime.BaseAPI {
 
     /**
      */
-    async acknowledgeRaw(requestParameters: AcknowledgeRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ApiResponseMapStringObject>> {
+    async acknowledgeRaw(requestParameters: AcknowledgeRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ApiResponseSuitabilityAckResponse>> {
         const requestOptions = await this.acknowledgeRequestOpts(requestParameters);
         const response = await this.request(requestOptions, initOverrides);
 
-        return new runtime.JSONApiResponse(response, (jsonValue) => ApiResponseMapStringObjectFromJSON(jsonValue));
+        return new runtime.JSONApiResponse(response, (jsonValue) => ApiResponseSuitabilityAckResponseFromJSON(jsonValue));
     }
 
     /**
      */
-    async acknowledge(requestParameters: AcknowledgeRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ApiResponseMapStringObject> {
+    async acknowledge(requestParameters: AcknowledgeRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ApiResponseSuitabilityAckResponse> {
         const response = await this.acknowledgeRaw(requestParameters, initOverrides);
         return await response.value();
     }
@@ -172,16 +182,16 @@ export class InvestorControllerApi extends runtime.BaseAPI {
 
     /**
      */
-    async meRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ApiResponseMapStringObject>> {
+    async meRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ApiResponseMeResponse>> {
         const requestOptions = await this.meRequestOpts();
         const response = await this.request(requestOptions, initOverrides);
 
-        return new runtime.JSONApiResponse(response, (jsonValue) => ApiResponseMapStringObjectFromJSON(jsonValue));
+        return new runtime.JSONApiResponse(response, (jsonValue) => ApiResponseMeResponseFromJSON(jsonValue));
     }
 
     /**
      */
-    async me(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ApiResponseMapStringObject> {
+    async me(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ApiResponseMeResponse> {
         const response = await this.meRaw(initOverrides);
         return await response.value();
     }
@@ -217,16 +227,16 @@ export class InvestorControllerApi extends runtime.BaseAPI {
 
     /**
      */
-    async submitRiskProfileRaw(requestParameters: SubmitRiskProfileRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ApiResponseMapStringObject>> {
+    async submitRiskProfileRaw(requestParameters: SubmitRiskProfileRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ApiResponseRiskProfileResponse>> {
         const requestOptions = await this.submitRiskProfileRequestOpts(requestParameters);
         const response = await this.request(requestOptions, initOverrides);
 
-        return new runtime.JSONApiResponse(response, (jsonValue) => ApiResponseMapStringObjectFromJSON(jsonValue));
+        return new runtime.JSONApiResponse(response, (jsonValue) => ApiResponseRiskProfileResponseFromJSON(jsonValue));
     }
 
     /**
      */
-    async submitRiskProfile(requestParameters: SubmitRiskProfileRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ApiResponseMapStringObject> {
+    async submitRiskProfile(requestParameters: SubmitRiskProfileRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ApiResponseRiskProfileResponse> {
         const response = await this.submitRiskProfileRaw(requestParameters, initOverrides);
         return await response.value();
     }

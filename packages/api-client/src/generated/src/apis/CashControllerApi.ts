@@ -14,15 +14,15 @@
 
 import * as runtime from '../runtime';
 import {
-    type ApiResponseListMapStringObject,
-    ApiResponseListMapStringObjectFromJSON,
-    ApiResponseListMapStringObjectToJSON,
-} from '../models/ApiResponseListMapStringObject';
+    type ApiResponseBalanceResponse,
+    ApiResponseBalanceResponseFromJSON,
+    ApiResponseBalanceResponseToJSON,
+} from '../models/ApiResponseBalanceResponse';
 import {
-    type ApiResponseMapStringObject,
-    ApiResponseMapStringObjectFromJSON,
-    ApiResponseMapStringObjectToJSON,
-} from '../models/ApiResponseMapStringObject';
+    type ApiResponseListCashTransactionResponse,
+    ApiResponseListCashTransactionResponseFromJSON,
+    ApiResponseListCashTransactionResponseToJSON,
+} from '../models/ApiResponseListCashTransactionResponse';
 import {
     type CashRequest,
     CashRequestFromJSON,
@@ -79,16 +79,16 @@ export class CashControllerApi extends runtime.BaseAPI {
 
     /**
      */
-    async depositRaw(requestParameters: DepositRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ApiResponseMapStringObject>> {
+    async depositRaw(requestParameters: DepositRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ApiResponseBalanceResponse>> {
         const requestOptions = await this.depositRequestOpts(requestParameters);
         const response = await this.request(requestOptions, initOverrides);
 
-        return new runtime.JSONApiResponse(response, (jsonValue) => ApiResponseMapStringObjectFromJSON(jsonValue));
+        return new runtime.JSONApiResponse(response, (jsonValue) => ApiResponseBalanceResponseFromJSON(jsonValue));
     }
 
     /**
      */
-    async deposit(requestParameters: DepositRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ApiResponseMapStringObject> {
+    async deposit(requestParameters: DepositRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ApiResponseBalanceResponse> {
         const response = await this.depositRaw(requestParameters, initOverrides);
         return await response.value();
     }
@@ -114,16 +114,16 @@ export class CashControllerApi extends runtime.BaseAPI {
 
     /**
      */
-    async transactionsRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ApiResponseListMapStringObject>> {
+    async transactionsRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ApiResponseListCashTransactionResponse>> {
         const requestOptions = await this.transactionsRequestOpts();
         const response = await this.request(requestOptions, initOverrides);
 
-        return new runtime.JSONApiResponse(response, (jsonValue) => ApiResponseListMapStringObjectFromJSON(jsonValue));
+        return new runtime.JSONApiResponse(response, (jsonValue) => ApiResponseListCashTransactionResponseFromJSON(jsonValue));
     }
 
     /**
      */
-    async transactions(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ApiResponseListMapStringObject> {
+    async transactions(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ApiResponseListCashTransactionResponse> {
         const response = await this.transactionsRaw(initOverrides);
         return await response.value();
     }
@@ -159,16 +159,16 @@ export class CashControllerApi extends runtime.BaseAPI {
 
     /**
      */
-    async withdrawRaw(requestParameters: WithdrawRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ApiResponseMapStringObject>> {
+    async withdrawRaw(requestParameters: WithdrawRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ApiResponseBalanceResponse>> {
         const requestOptions = await this.withdrawRequestOpts(requestParameters);
         const response = await this.request(requestOptions, initOverrides);
 
-        return new runtime.JSONApiResponse(response, (jsonValue) => ApiResponseMapStringObjectFromJSON(jsonValue));
+        return new runtime.JSONApiResponse(response, (jsonValue) => ApiResponseBalanceResponseFromJSON(jsonValue));
     }
 
     /**
      */
-    async withdraw(requestParameters: WithdrawRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ApiResponseMapStringObject> {
+    async withdraw(requestParameters: WithdrawRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ApiResponseBalanceResponse> {
         const response = await this.withdrawRaw(requestParameters, initOverrides);
         return await response.value();
     }

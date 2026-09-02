@@ -14,15 +14,20 @@
 
 import * as runtime from '../runtime';
 import {
-    type ApiResponseListMapStringObject,
-    ApiResponseListMapStringObjectFromJSON,
-    ApiResponseListMapStringObjectToJSON,
-} from '../models/ApiResponseListMapStringObject';
+    type ApiResponseListExecutionResponse,
+    ApiResponseListExecutionResponseFromJSON,
+    ApiResponseListExecutionResponseToJSON,
+} from '../models/ApiResponseListExecutionResponse';
 import {
-    type ApiResponseMapStringObject,
-    ApiResponseMapStringObjectFromJSON,
-    ApiResponseMapStringObjectToJSON,
-} from '../models/ApiResponseMapStringObject';
+    type ApiResponseListMyOrderResponse,
+    ApiResponseListMyOrderResponseFromJSON,
+    ApiResponseListMyOrderResponseToJSON,
+} from '../models/ApiResponseListMyOrderResponse';
+import {
+    type ApiResponseOrderBookResponse,
+    ApiResponseOrderBookResponseFromJSON,
+    ApiResponseOrderBookResponseToJSON,
+} from '../models/ApiResponseOrderBookResponse';
 import {
     type ApiResponsePlaceResult,
     ApiResponsePlaceResultFromJSON,
@@ -167,16 +172,16 @@ export class TradingControllerApi extends runtime.BaseAPI {
 
     /**
      */
-    async executions2Raw(requestParameters: Executions2Request, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ApiResponseListMapStringObject>> {
+    async executions2Raw(requestParameters: Executions2Request, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ApiResponseListExecutionResponse>> {
         const requestOptions = await this.executions2RequestOpts(requestParameters);
         const response = await this.request(requestOptions, initOverrides);
 
-        return new runtime.JSONApiResponse(response, (jsonValue) => ApiResponseListMapStringObjectFromJSON(jsonValue));
+        return new runtime.JSONApiResponse(response, (jsonValue) => ApiResponseListExecutionResponseFromJSON(jsonValue));
     }
 
     /**
      */
-    async executions2(requestParameters: Executions2Request, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ApiResponseListMapStringObject> {
+    async executions2(requestParameters: Executions2Request, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ApiResponseListExecutionResponse> {
         const response = await this.executions2Raw(requestParameters, initOverrides);
         return await response.value();
     }
@@ -202,16 +207,16 @@ export class TradingControllerApi extends runtime.BaseAPI {
 
     /**
      */
-    async myOrdersRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ApiResponseListMapStringObject>> {
+    async myOrdersRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ApiResponseListMyOrderResponse>> {
         const requestOptions = await this.myOrdersRequestOpts();
         const response = await this.request(requestOptions, initOverrides);
 
-        return new runtime.JSONApiResponse(response, (jsonValue) => ApiResponseListMapStringObjectFromJSON(jsonValue));
+        return new runtime.JSONApiResponse(response, (jsonValue) => ApiResponseListMyOrderResponseFromJSON(jsonValue));
     }
 
     /**
      */
-    async myOrders(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ApiResponseListMapStringObject> {
+    async myOrders(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ApiResponseListMyOrderResponse> {
         const response = await this.myOrdersRaw(initOverrides);
         return await response.value();
     }
@@ -249,16 +254,16 @@ export class TradingControllerApi extends runtime.BaseAPI {
 
     /**
      */
-    async orderBookRaw(requestParameters: OrderBookRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ApiResponseMapStringObject>> {
+    async orderBookRaw(requestParameters: OrderBookRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ApiResponseOrderBookResponse>> {
         const requestOptions = await this.orderBookRequestOpts(requestParameters);
         const response = await this.request(requestOptions, initOverrides);
 
-        return new runtime.JSONApiResponse(response, (jsonValue) => ApiResponseMapStringObjectFromJSON(jsonValue));
+        return new runtime.JSONApiResponse(response, (jsonValue) => ApiResponseOrderBookResponseFromJSON(jsonValue));
     }
 
     /**
      */
-    async orderBook(requestParameters: OrderBookRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ApiResponseMapStringObject> {
+    async orderBook(requestParameters: OrderBookRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ApiResponseOrderBookResponse> {
         const response = await this.orderBookRaw(requestParameters, initOverrides);
         return await response.value();
     }

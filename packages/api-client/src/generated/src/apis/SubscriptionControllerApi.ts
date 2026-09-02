@@ -19,10 +19,10 @@ import {
     ApiResponseApplyResultToJSON,
 } from '../models/ApiResponseApplyResult';
 import {
-    type ApiResponseListMapStringObject,
-    ApiResponseListMapStringObjectFromJSON,
-    ApiResponseListMapStringObjectToJSON,
-} from '../models/ApiResponseListMapStringObject';
+    type ApiResponseListMySubscriptionResponse,
+    ApiResponseListMySubscriptionResponseFromJSON,
+    ApiResponseListMySubscriptionResponseToJSON,
+} from '../models/ApiResponseListMySubscriptionResponse';
 import {
     type ApplyRequest,
     ApplyRequestFromJSON,
@@ -177,16 +177,16 @@ export class SubscriptionControllerApi extends runtime.BaseAPI {
 
     /**
      */
-    async mineRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ApiResponseListMapStringObject>> {
+    async mineRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ApiResponseListMySubscriptionResponse>> {
         const requestOptions = await this.mineRequestOpts();
         const response = await this.request(requestOptions, initOverrides);
 
-        return new runtime.JSONApiResponse(response, (jsonValue) => ApiResponseListMapStringObjectFromJSON(jsonValue));
+        return new runtime.JSONApiResponse(response, (jsonValue) => ApiResponseListMySubscriptionResponseFromJSON(jsonValue));
     }
 
     /**
      */
-    async mine(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ApiResponseListMapStringObject> {
+    async mine(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ApiResponseListMySubscriptionResponse> {
         const response = await this.mineRaw(initOverrides);
         return await response.value();
     }
