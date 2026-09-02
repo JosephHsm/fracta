@@ -22,6 +22,10 @@ export interface PlaceOrderRequest {
     /**
      * 
      */
+    idempotencyKey?: string;
+    /**
+     * 
+     */
     orderType: PlaceOrderRequestOrderTypeEnum;
     /**
      * 
@@ -31,10 +35,6 @@ export interface PlaceOrderRequest {
      * 
      */
     side: PlaceOrderRequestSideEnum;
-    /**
-     * 
-     */
-    tokenSymbol: string;
     /**
      * 
      */
@@ -67,7 +67,6 @@ export type PlaceOrderRequestSideEnum = typeof PlaceOrderRequestSideEnum[keyof t
 export function instanceOfPlaceOrderRequest(value: object): value is PlaceOrderRequest {
     if (!('orderType' in value) || value['orderType'] === undefined) return false;
     if (!('side' in value) || value['side'] === undefined) return false;
-    if (!('tokenSymbol' in value) || value['tokenSymbol'] === undefined) return false;
     if (!('units' in value) || value['units'] === undefined) return false;
     return true;
 }
@@ -82,10 +81,10 @@ export function PlaceOrderRequestFromJSONTyped(json: any, ignoreDiscriminator: b
     }
     return {
         
+        'idempotencyKey': json['idempotencyKey'] == null ? undefined : json['idempotencyKey'],
         'orderType': json['orderType'],
         'price': json['price'] == null ? undefined : json['price'],
         'side': json['side'],
-        'tokenSymbol': json['tokenSymbol'],
         'units': json['units'],
     };
 }
@@ -101,10 +100,10 @@ export function PlaceOrderRequestToJSONTyped(value?: PlaceOrderRequest | null, i
 
     return {
         
+        'idempotencyKey': value['idempotencyKey'],
         'orderType': value['orderType'],
         'price': value['price'],
         'side': value['side'],
-        'tokenSymbol': value['tokenSymbol'],
         'units': value['units'],
     };
 }

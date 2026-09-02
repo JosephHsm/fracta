@@ -44,7 +44,7 @@ export interface ApplyOperationRequest {
     idempotencyKey?: string;
 }
 
-export interface CancelRequest {
+export interface CancelSubscriptionRequest {
     /**
      * 
      */
@@ -114,13 +114,13 @@ export class SubscriptionControllerApi extends runtime.BaseAPI {
     }
 
     /**
-     * Creates request options for cancel without sending the request
+     * Creates request options for cancelSubscription without sending the request
      */
-    async cancelRequestOpts(requestParameters: CancelRequest): Promise<runtime.RequestOpts> {
+    async cancelSubscriptionRequestOpts(requestParameters: CancelSubscriptionRequest): Promise<runtime.RequestOpts> {
         if (requestParameters['orderId'] == null) {
             throw new runtime.RequiredError(
                 'orderId',
-                'Required parameter "orderId" was null or undefined when calling cancel().'
+                'Required parameter "orderId" was null or undefined when calling cancelSubscription().'
             );
         }
 
@@ -141,25 +141,27 @@ export class SubscriptionControllerApi extends runtime.BaseAPI {
     }
 
     /**
+     * 청약 취소
      */
-    async cancelRaw(requestParameters: CancelRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ApiResponseApplyResult>> {
-        const requestOptions = await this.cancelRequestOpts(requestParameters);
+    async cancelSubscriptionRaw(requestParameters: CancelSubscriptionRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ApiResponseApplyResult>> {
+        const requestOptions = await this.cancelSubscriptionRequestOpts(requestParameters);
         const response = await this.request(requestOptions, initOverrides);
 
         return new runtime.JSONApiResponse(response, (jsonValue) => ApiResponseApplyResultFromJSON(jsonValue));
     }
 
     /**
+     * 청약 취소
      */
-    async cancel(requestParameters: CancelRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ApiResponseApplyResult> {
-        const response = await this.cancelRaw(requestParameters, initOverrides);
+    async cancelSubscription(requestParameters: CancelSubscriptionRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ApiResponseApplyResult> {
+        const response = await this.cancelSubscriptionRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
     /**
-     * Creates request options for mine without sending the request
+     * Creates request options for listMySubscriptions without sending the request
      */
-    async mineRequestOpts(): Promise<runtime.RequestOpts> {
+    async listMySubscriptionsRequestOpts(): Promise<runtime.RequestOpts> {
         const queryParameters: any = {};
 
         const headerParameters: runtime.HTTPHeaders = {};
@@ -176,18 +178,20 @@ export class SubscriptionControllerApi extends runtime.BaseAPI {
     }
 
     /**
+     * 내 청약 내역
      */
-    async mineRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ApiResponseListMySubscriptionResponse>> {
-        const requestOptions = await this.mineRequestOpts();
+    async listMySubscriptionsRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ApiResponseListMySubscriptionResponse>> {
+        const requestOptions = await this.listMySubscriptionsRequestOpts();
         const response = await this.request(requestOptions, initOverrides);
 
         return new runtime.JSONApiResponse(response, (jsonValue) => ApiResponseListMySubscriptionResponseFromJSON(jsonValue));
     }
 
     /**
+     * 내 청약 내역
      */
-    async mine(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ApiResponseListMySubscriptionResponse> {
-        const response = await this.mineRaw(initOverrides);
+    async listMySubscriptions(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ApiResponseListMySubscriptionResponse> {
+        const response = await this.listMySubscriptionsRaw(initOverrides);
         return await response.value();
     }
 

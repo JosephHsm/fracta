@@ -24,6 +24,11 @@ import {
     ApiResponseIssuanceDetailResponseToJSON,
 } from '../models/ApiResponseIssuanceDetailResponse';
 import {
+    type ApiResponseListIssuanceSummaryResponse,
+    ApiResponseListIssuanceSummaryResponseFromJSON,
+    ApiResponseListIssuanceSummaryResponseToJSON,
+} from '../models/ApiResponseListIssuanceSummaryResponse';
+import {
     type ApiResponseProspectusUploadResponse,
     ApiResponseProspectusUploadResponseFromJSON,
     ApiResponseProspectusUploadResponseToJSON,
@@ -51,11 +56,18 @@ export interface CreateRequest {
     createIssuanceRequest: CreateIssuanceRequest;
 }
 
-export interface GetRequest {
+export interface GetIssuanceRequest {
     /**
      * 
      */
     id: number;
+}
+
+export interface ListIssuancesRequest {
+    /**
+     * 
+     */
+    status?: Array<ListIssuancesStatusEnum>;
 }
 
 export interface SubmitRequest {
@@ -127,13 +139,13 @@ export class IssuanceControllerApi extends runtime.BaseAPI {
     }
 
     /**
-     * Creates request options for get without sending the request
+     * Creates request options for getIssuance without sending the request
      */
-    async getRequestOpts(requestParameters: GetRequest): Promise<runtime.RequestOpts> {
+    async getIssuanceRequestOpts(requestParameters: GetIssuanceRequest): Promise<runtime.RequestOpts> {
         if (requestParameters['id'] == null) {
             throw new runtime.RequiredError(
                 'id',
-                'Required parameter "id" was null or undefined when calling get().'
+                'Required parameter "id" was null or undefined when calling getIssuance().'
             );
         }
 
@@ -154,18 +166,61 @@ export class IssuanceControllerApi extends runtime.BaseAPI {
     }
 
     /**
+     * 발행 상세
      */
-    async getRaw(requestParameters: GetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ApiResponseIssuanceDetailResponse>> {
-        const requestOptions = await this.getRequestOpts(requestParameters);
+    async getIssuanceRaw(requestParameters: GetIssuanceRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ApiResponseIssuanceDetailResponse>> {
+        const requestOptions = await this.getIssuanceRequestOpts(requestParameters);
         const response = await this.request(requestOptions, initOverrides);
 
         return new runtime.JSONApiResponse(response, (jsonValue) => ApiResponseIssuanceDetailResponseFromJSON(jsonValue));
     }
 
     /**
+     * 발행 상세
      */
-    async get(requestParameters: GetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ApiResponseIssuanceDetailResponse> {
-        const response = await this.getRaw(requestParameters, initOverrides);
+    async getIssuance(requestParameters: GetIssuanceRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ApiResponseIssuanceDetailResponse> {
+        const response = await this.getIssuanceRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for listIssuances without sending the request
+     */
+    async listIssuancesRequestOpts(requestParameters: ListIssuancesRequest): Promise<runtime.RequestOpts> {
+        const queryParameters: any = {};
+
+        if (requestParameters['status'] != null) {
+            queryParameters['status'] = requestParameters['status'];
+        }
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/v1/issuances`;
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * 발행 목록
+     */
+    async listIssuancesRaw(requestParameters: ListIssuancesRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ApiResponseListIssuanceSummaryResponse>> {
+        const requestOptions = await this.listIssuancesRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => ApiResponseListIssuanceSummaryResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * 발행 목록
+     */
+    async listIssuances(requestParameters: ListIssuancesRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ApiResponseListIssuanceSummaryResponse> {
+        const response = await this.listIssuancesRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
@@ -259,3 +314,19 @@ export class IssuanceControllerApi extends runtime.BaseAPI {
     }
 
 }
+
+/**
+ * @export
+ */
+export const ListIssuancesStatusEnum = {
+    Draft: 'DRAFT',
+    PendingApproval: 'PENDING_APPROVAL',
+    Approved: 'APPROVED',
+    Subscribing: 'SUBSCRIBING',
+    Allotting: 'ALLOTTING',
+    Listed: 'LISTED',
+    Suspended: 'SUSPENDED',
+    Delisted: 'DELISTED',
+    Rejected: 'REJECTED',
+} as const;
+export type ListIssuancesStatusEnum = typeof ListIssuancesStatusEnum[keyof typeof ListIssuancesStatusEnum];

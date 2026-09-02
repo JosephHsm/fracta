@@ -26,7 +26,7 @@ export interface ApproveRequest {
     id: number;
 }
 
-export interface ListRequest {
+export interface ListIssuanceOnMarketRequest {
     /**
      * 
      */
@@ -103,13 +103,13 @@ export class AdminIssuanceControllerApi extends runtime.BaseAPI {
     }
 
     /**
-     * Creates request options for list without sending the request
+     * Creates request options for listIssuanceOnMarket without sending the request
      */
-    async listRequestOpts(requestParameters: ListRequest): Promise<runtime.RequestOpts> {
+    async listIssuanceOnMarketRequestOpts(requestParameters: ListIssuanceOnMarketRequest): Promise<runtime.RequestOpts> {
         if (requestParameters['id'] == null) {
             throw new runtime.RequiredError(
                 'id',
-                'Required parameter "id" was null or undefined when calling list().'
+                'Required parameter "id" was null or undefined when calling listIssuanceOnMarket().'
             );
         }
 
@@ -130,18 +130,20 @@ export class AdminIssuanceControllerApi extends runtime.BaseAPI {
     }
 
     /**
+     * 상장
      */
-    async listRaw(requestParameters: ListRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ApiResponseTransitionResult>> {
-        const requestOptions = await this.listRequestOpts(requestParameters);
+    async listIssuanceOnMarketRaw(requestParameters: ListIssuanceOnMarketRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ApiResponseTransitionResult>> {
+        const requestOptions = await this.listIssuanceOnMarketRequestOpts(requestParameters);
         const response = await this.request(requestOptions, initOverrides);
 
         return new runtime.JSONApiResponse(response, (jsonValue) => ApiResponseTransitionResultFromJSON(jsonValue));
     }
 
     /**
+     * 상장
      */
-    async list(requestParameters: ListRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ApiResponseTransitionResult> {
-        const response = await this.listRaw(requestParameters, initOverrides);
+    async listIssuanceOnMarket(requestParameters: ListIssuanceOnMarketRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ApiResponseTransitionResult> {
+        const response = await this.listIssuanceOnMarketRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

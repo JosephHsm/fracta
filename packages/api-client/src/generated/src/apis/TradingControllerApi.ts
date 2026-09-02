@@ -39,14 +39,14 @@ import {
     PlaceOrderRequestToJSON,
 } from '../models/PlaceOrderRequest';
 
-export interface Cancel1Request {
+export interface CancelMyOrderRequest {
     /**
      * 
      */
     orderId: number;
 }
 
-export interface Executions2Request {
+export interface ListExecutionsRequest {
     /**
      * 
      */
@@ -93,13 +93,13 @@ export interface PlaceRequest {
 export class TradingControllerApi extends runtime.BaseAPI {
 
     /**
-     * Creates request options for cancel1 without sending the request
+     * Creates request options for cancelMyOrder without sending the request
      */
-    async cancel1RequestOpts(requestParameters: Cancel1Request): Promise<runtime.RequestOpts> {
+    async cancelMyOrderRequestOpts(requestParameters: CancelMyOrderRequest): Promise<runtime.RequestOpts> {
         if (requestParameters['orderId'] == null) {
             throw new runtime.RequiredError(
                 'orderId',
-                'Required parameter "orderId" was null or undefined when calling cancel1().'
+                'Required parameter "orderId" was null or undefined when calling cancelMyOrder().'
             );
         }
 
@@ -120,29 +120,31 @@ export class TradingControllerApi extends runtime.BaseAPI {
     }
 
     /**
+     * 주문 취소
      */
-    async cancel1Raw(requestParameters: Cancel1Request, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ApiResponsePlaceResult>> {
-        const requestOptions = await this.cancel1RequestOpts(requestParameters);
+    async cancelMyOrderRaw(requestParameters: CancelMyOrderRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ApiResponsePlaceResult>> {
+        const requestOptions = await this.cancelMyOrderRequestOpts(requestParameters);
         const response = await this.request(requestOptions, initOverrides);
 
         return new runtime.JSONApiResponse(response, (jsonValue) => ApiResponsePlaceResultFromJSON(jsonValue));
     }
 
     /**
+     * 주문 취소
      */
-    async cancel1(requestParameters: Cancel1Request, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ApiResponsePlaceResult> {
-        const response = await this.cancel1Raw(requestParameters, initOverrides);
+    async cancelMyOrder(requestParameters: CancelMyOrderRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ApiResponsePlaceResult> {
+        const response = await this.cancelMyOrderRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
     /**
-     * Creates request options for executions2 without sending the request
+     * Creates request options for listExecutions without sending the request
      */
-    async executions2RequestOpts(requestParameters: Executions2Request): Promise<runtime.RequestOpts> {
+    async listExecutionsRequestOpts(requestParameters: ListExecutionsRequest): Promise<runtime.RequestOpts> {
         if (requestParameters['tokenSymbol'] == null) {
             throw new runtime.RequiredError(
                 'tokenSymbol',
-                'Required parameter "tokenSymbol" was null or undefined when calling executions2().'
+                'Required parameter "tokenSymbol" was null or undefined when calling listExecutions().'
             );
         }
 
@@ -171,25 +173,27 @@ export class TradingControllerApi extends runtime.BaseAPI {
     }
 
     /**
+     * 체결 내역
      */
-    async executions2Raw(requestParameters: Executions2Request, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ApiResponseListExecutionResponse>> {
-        const requestOptions = await this.executions2RequestOpts(requestParameters);
+    async listExecutionsRaw(requestParameters: ListExecutionsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ApiResponseListExecutionResponse>> {
+        const requestOptions = await this.listExecutionsRequestOpts(requestParameters);
         const response = await this.request(requestOptions, initOverrides);
 
         return new runtime.JSONApiResponse(response, (jsonValue) => ApiResponseListExecutionResponseFromJSON(jsonValue));
     }
 
     /**
+     * 체결 내역
      */
-    async executions2(requestParameters: Executions2Request, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ApiResponseListExecutionResponse> {
-        const response = await this.executions2Raw(requestParameters, initOverrides);
+    async listExecutions(requestParameters: ListExecutionsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ApiResponseListExecutionResponse> {
+        const response = await this.listExecutionsRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
     /**
-     * Creates request options for myOrders without sending the request
+     * Creates request options for listMyOrders without sending the request
      */
-    async myOrdersRequestOpts(): Promise<runtime.RequestOpts> {
+    async listMyOrdersRequestOpts(): Promise<runtime.RequestOpts> {
         const queryParameters: any = {};
 
         const headerParameters: runtime.HTTPHeaders = {};
@@ -206,18 +210,20 @@ export class TradingControllerApi extends runtime.BaseAPI {
     }
 
     /**
+     * 내 주문 내역
      */
-    async myOrdersRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ApiResponseListMyOrderResponse>> {
-        const requestOptions = await this.myOrdersRequestOpts();
+    async listMyOrdersRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ApiResponseListMyOrderResponse>> {
+        const requestOptions = await this.listMyOrdersRequestOpts();
         const response = await this.request(requestOptions, initOverrides);
 
         return new runtime.JSONApiResponse(response, (jsonValue) => ApiResponseListMyOrderResponseFromJSON(jsonValue));
     }
 
     /**
+     * 내 주문 내역
      */
-    async myOrders(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ApiResponseListMyOrderResponse> {
-        const response = await this.myOrdersRaw(initOverrides);
+    async listMyOrders(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ApiResponseListMyOrderResponse> {
+        const response = await this.listMyOrdersRaw(initOverrides);
         return await response.value();
     }
 

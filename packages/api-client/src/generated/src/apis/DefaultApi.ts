@@ -14,20 +14,15 @@
 
 import * as runtime from '../runtime';
 import {
-    type ApiResponseBalanceResponse,
-    ApiResponseBalanceResponseFromJSON,
-    ApiResponseBalanceResponseToJSON,
-} from '../models/ApiResponseBalanceResponse';
-import {
     type ApiResponseCancelOrderResponse,
     ApiResponseCancelOrderResponseFromJSON,
     ApiResponseCancelOrderResponseToJSON,
 } from '../models/ApiResponseCancelOrderResponse';
 import {
-    type ApiResponseListExecutionResponse,
-    ApiResponseListExecutionResponseFromJSON,
-    ApiResponseListExecutionResponseToJSON,
-} from '../models/ApiResponseListExecutionResponse';
+    type ApiResponseListOpenApiExecutionResponse,
+    ApiResponseListOpenApiExecutionResponseFromJSON,
+    ApiResponseListOpenApiExecutionResponseToJSON,
+} from '../models/ApiResponseListOpenApiExecutionResponse';
 import {
     type ApiResponseListOrderResponse,
     ApiResponseListOrderResponseFromJSON,
@@ -39,10 +34,15 @@ import {
     ApiResponseListTokenSummaryResponseToJSON,
 } from '../models/ApiResponseListTokenSummaryResponse';
 import {
-    type ApiResponseOrderBookResponse,
-    ApiResponseOrderBookResponseFromJSON,
-    ApiResponseOrderBookResponseToJSON,
-} from '../models/ApiResponseOrderBookResponse';
+    type ApiResponseOpenApiBalanceResponse,
+    ApiResponseOpenApiBalanceResponseFromJSON,
+    ApiResponseOpenApiBalanceResponseToJSON,
+} from '../models/ApiResponseOpenApiBalanceResponse';
+import {
+    type ApiResponseOpenApiOrderBookResponse,
+    ApiResponseOpenApiOrderBookResponseFromJSON,
+    ApiResponseOpenApiOrderBookResponseToJSON,
+} from '../models/ApiResponseOpenApiOrderBookResponse';
 import {
     type ApiResponsePlaceOrderResponse,
     ApiResponsePlaceOrderResponseFromJSON,
@@ -74,10 +74,10 @@ import {
     ApiResponseTokenSummaryResponseToJSON,
 } from '../models/ApiResponseTokenSummaryResponse';
 import {
-    type PlaceOrderRequest,
-    PlaceOrderRequestFromJSON,
-    PlaceOrderRequestToJSON,
-} from '../models/PlaceOrderRequest';
+    type OpenApiPlaceOrderRequest,
+    OpenApiPlaceOrderRequestFromJSON,
+    OpenApiPlaceOrderRequestToJSON,
+} from '../models/OpenApiPlaceOrderRequest';
 import {
     type RegisterWebhookRequest,
     RegisterWebhookRequestFromJSON,
@@ -155,7 +155,7 @@ export interface Orderbook1Request {
     levels?: number;
 }
 
-export interface PlaceOrderOperationRequest {
+export interface PlaceOrderRequest {
     /**
      * 
      */
@@ -163,7 +163,7 @@ export interface PlaceOrderOperationRequest {
     /**
      * 
      */
-    placeOrderRequest: PlaceOrderRequest;
+    openApiPlaceOrderRequest: OpenApiPlaceOrderRequest;
 }
 
 export interface PlaceOrder1Request {
@@ -174,7 +174,7 @@ export interface PlaceOrder1Request {
     /**
      * 
      */
-    placeOrderRequest: PlaceOrderRequest;
+    openApiPlaceOrderRequest: OpenApiPlaceOrderRequest;
 }
 
 export interface PremiumRequest {
@@ -299,18 +299,18 @@ export class DefaultApi extends runtime.BaseAPI {
      * 예치금과 보유 조각 수량. 클라이언트 소유자 계정 기준. 예: GET /open/v1/accounts/balance
      * 잔고 조회
      */
-    async balanceRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ApiResponseBalanceResponse>> {
+    async balanceRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ApiResponseOpenApiBalanceResponse>> {
         const requestOptions = await this.balanceRequestOpts();
         const response = await this.request(requestOptions, initOverrides);
 
-        return new runtime.JSONApiResponse(response, (jsonValue) => ApiResponseBalanceResponseFromJSON(jsonValue));
+        return new runtime.JSONApiResponse(response, (jsonValue) => ApiResponseOpenApiBalanceResponseFromJSON(jsonValue));
     }
 
     /**
      * 예치금과 보유 조각 수량. 클라이언트 소유자 계정 기준. 예: GET /open/v1/accounts/balance
      * 잔고 조회
      */
-    async balance(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ApiResponseBalanceResponse> {
+    async balance(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ApiResponseOpenApiBalanceResponse> {
         const response = await this.balanceRaw(initOverrides);
         return await response.value();
     }
@@ -338,18 +338,18 @@ export class DefaultApi extends runtime.BaseAPI {
      * 예치금과 보유 조각 수량. 클라이언트 소유자 계정 기준. 예: GET /open/v1/accounts/balance
      * 잔고 조회
      */
-    async balance1Raw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ApiResponseBalanceResponse>> {
+    async balance1Raw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ApiResponseOpenApiBalanceResponse>> {
         const requestOptions = await this.balance1RequestOpts();
         const response = await this.request(requestOptions, initOverrides);
 
-        return new runtime.JSONApiResponse(response, (jsonValue) => ApiResponseBalanceResponseFromJSON(jsonValue));
+        return new runtime.JSONApiResponse(response, (jsonValue) => ApiResponseOpenApiBalanceResponseFromJSON(jsonValue));
     }
 
     /**
      * 예치금과 보유 조각 수량. 클라이언트 소유자 계정 기준. 예: GET /open/v1/accounts/balance
      * 잔고 조회
      */
-    async balance1(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ApiResponseBalanceResponse> {
+    async balance1(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ApiResponseOpenApiBalanceResponse> {
         const response = await this.balance1Raw(initOverrides);
         return await response.value();
     }
@@ -487,18 +487,18 @@ export class DefaultApi extends runtime.BaseAPI {
      * 최신순 페이징. 예: GET /open/v1/tokens/FR-ESRK-001/executions?page=0&size=20
      * 체결 내역
      */
-    async executionsRaw(requestParameters: ExecutionsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ApiResponseListExecutionResponse>> {
+    async executionsRaw(requestParameters: ExecutionsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ApiResponseListOpenApiExecutionResponse>> {
         const requestOptions = await this.executionsRequestOpts(requestParameters);
         const response = await this.request(requestOptions, initOverrides);
 
-        return new runtime.JSONApiResponse(response, (jsonValue) => ApiResponseListExecutionResponseFromJSON(jsonValue));
+        return new runtime.JSONApiResponse(response, (jsonValue) => ApiResponseListOpenApiExecutionResponseFromJSON(jsonValue));
     }
 
     /**
      * 최신순 페이징. 예: GET /open/v1/tokens/FR-ESRK-001/executions?page=0&size=20
      * 체결 내역
      */
-    async executions(requestParameters: ExecutionsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ApiResponseListExecutionResponse> {
+    async executions(requestParameters: ExecutionsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ApiResponseListOpenApiExecutionResponse> {
         const response = await this.executionsRaw(requestParameters, initOverrides);
         return await response.value();
     }
@@ -542,18 +542,18 @@ export class DefaultApi extends runtime.BaseAPI {
      * 최신순 페이징. 예: GET /open/v1/tokens/FR-ESRK-001/executions?page=0&size=20
      * 체결 내역
      */
-    async executions1Raw(requestParameters: Executions1Request, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ApiResponseListExecutionResponse>> {
+    async executions1Raw(requestParameters: Executions1Request, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ApiResponseListOpenApiExecutionResponse>> {
         const requestOptions = await this.executions1RequestOpts(requestParameters);
         const response = await this.request(requestOptions, initOverrides);
 
-        return new runtime.JSONApiResponse(response, (jsonValue) => ApiResponseListExecutionResponseFromJSON(jsonValue));
+        return new runtime.JSONApiResponse(response, (jsonValue) => ApiResponseListOpenApiExecutionResponseFromJSON(jsonValue));
     }
 
     /**
      * 최신순 페이징. 예: GET /open/v1/tokens/FR-ESRK-001/executions?page=0&size=20
      * 체결 내역
      */
-    async executions1(requestParameters: Executions1Request, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ApiResponseListExecutionResponse> {
+    async executions1(requestParameters: Executions1Request, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ApiResponseListOpenApiExecutionResponse> {
         const response = await this.executions1Raw(requestParameters, initOverrides);
         return await response.value();
     }
@@ -593,18 +593,18 @@ export class DefaultApi extends runtime.BaseAPI {
      * 매수·매도 각 10호가. 예: GET /open/v1/tokens/FR-ESRK-001/orderbook
      * 10호가
      */
-    async orderbookRaw(requestParameters: OrderbookRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ApiResponseOrderBookResponse>> {
+    async orderbookRaw(requestParameters: OrderbookRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ApiResponseOpenApiOrderBookResponse>> {
         const requestOptions = await this.orderbookRequestOpts(requestParameters);
         const response = await this.request(requestOptions, initOverrides);
 
-        return new runtime.JSONApiResponse(response, (jsonValue) => ApiResponseOrderBookResponseFromJSON(jsonValue));
+        return new runtime.JSONApiResponse(response, (jsonValue) => ApiResponseOpenApiOrderBookResponseFromJSON(jsonValue));
     }
 
     /**
      * 매수·매도 각 10호가. 예: GET /open/v1/tokens/FR-ESRK-001/orderbook
      * 10호가
      */
-    async orderbook(requestParameters: OrderbookRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ApiResponseOrderBookResponse> {
+    async orderbook(requestParameters: OrderbookRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ApiResponseOpenApiOrderBookResponse> {
         const response = await this.orderbookRaw(requestParameters, initOverrides);
         return await response.value();
     }
@@ -644,18 +644,18 @@ export class DefaultApi extends runtime.BaseAPI {
      * 매수·매도 각 10호가. 예: GET /open/v1/tokens/FR-ESRK-001/orderbook
      * 10호가
      */
-    async orderbook1Raw(requestParameters: Orderbook1Request, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ApiResponseOrderBookResponse>> {
+    async orderbook1Raw(requestParameters: Orderbook1Request, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ApiResponseOpenApiOrderBookResponse>> {
         const requestOptions = await this.orderbook1RequestOpts(requestParameters);
         const response = await this.request(requestOptions, initOverrides);
 
-        return new runtime.JSONApiResponse(response, (jsonValue) => ApiResponseOrderBookResponseFromJSON(jsonValue));
+        return new runtime.JSONApiResponse(response, (jsonValue) => ApiResponseOpenApiOrderBookResponseFromJSON(jsonValue));
     }
 
     /**
      * 매수·매도 각 10호가. 예: GET /open/v1/tokens/FR-ESRK-001/orderbook
      * 10호가
      */
-    async orderbook1(requestParameters: Orderbook1Request, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ApiResponseOrderBookResponse> {
+    async orderbook1(requestParameters: Orderbook1Request, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ApiResponseOpenApiOrderBookResponse> {
         const response = await this.orderbook1Raw(requestParameters, initOverrides);
         return await response.value();
     }
@@ -741,7 +741,7 @@ export class DefaultApi extends runtime.BaseAPI {
     /**
      * Creates request options for placeOrder without sending the request
      */
-    async placeOrderRequestOpts(requestParameters: PlaceOrderOperationRequest): Promise<runtime.RequestOpts> {
+    async placeOrderRequestOpts(requestParameters: PlaceOrderRequest): Promise<runtime.RequestOpts> {
         if (requestParameters['idempotencyKey'] == null) {
             throw new runtime.RequiredError(
                 'idempotencyKey',
@@ -749,10 +749,10 @@ export class DefaultApi extends runtime.BaseAPI {
             );
         }
 
-        if (requestParameters['placeOrderRequest'] == null) {
+        if (requestParameters['openApiPlaceOrderRequest'] == null) {
             throw new runtime.RequiredError(
-                'placeOrderRequest',
-                'Required parameter "placeOrderRequest" was null or undefined when calling placeOrder().'
+                'openApiPlaceOrderRequest',
+                'Required parameter "openApiPlaceOrderRequest" was null or undefined when calling placeOrder().'
             );
         }
 
@@ -774,7 +774,7 @@ export class DefaultApi extends runtime.BaseAPI {
             method: 'POST',
             headers: headerParameters,
             query: queryParameters,
-            body: PlaceOrderRequestToJSON(requestParameters['placeOrderRequest']),
+            body: OpenApiPlaceOrderRequestToJSON(requestParameters['openApiPlaceOrderRequest']),
         };
     }
 
@@ -782,7 +782,7 @@ export class DefaultApi extends runtime.BaseAPI {
      * 지정가/시장가 주문. `Idempotency-Key` 헤더 필수. 예: {\"tokenSymbol\":\"FR-ESRK-001\",\"side\":\"BUY\",\"orderType\":\"LIMIT\",\"price\":4200,\"units\":100}
      * 주문
      */
-    async placeOrderRaw(requestParameters: PlaceOrderOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ApiResponsePlaceOrderResponse>> {
+    async placeOrderRaw(requestParameters: PlaceOrderRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ApiResponsePlaceOrderResponse>> {
         const requestOptions = await this.placeOrderRequestOpts(requestParameters);
         const response = await this.request(requestOptions, initOverrides);
 
@@ -793,7 +793,7 @@ export class DefaultApi extends runtime.BaseAPI {
      * 지정가/시장가 주문. `Idempotency-Key` 헤더 필수. 예: {\"tokenSymbol\":\"FR-ESRK-001\",\"side\":\"BUY\",\"orderType\":\"LIMIT\",\"price\":4200,\"units\":100}
      * 주문
      */
-    async placeOrder(requestParameters: PlaceOrderOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ApiResponsePlaceOrderResponse> {
+    async placeOrder(requestParameters: PlaceOrderRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ApiResponsePlaceOrderResponse> {
         const response = await this.placeOrderRaw(requestParameters, initOverrides);
         return await response.value();
     }
@@ -809,10 +809,10 @@ export class DefaultApi extends runtime.BaseAPI {
             );
         }
 
-        if (requestParameters['placeOrderRequest'] == null) {
+        if (requestParameters['openApiPlaceOrderRequest'] == null) {
             throw new runtime.RequiredError(
-                'placeOrderRequest',
-                'Required parameter "placeOrderRequest" was null or undefined when calling placeOrder1().'
+                'openApiPlaceOrderRequest',
+                'Required parameter "openApiPlaceOrderRequest" was null or undefined when calling placeOrder1().'
             );
         }
 
@@ -834,7 +834,7 @@ export class DefaultApi extends runtime.BaseAPI {
             method: 'POST',
             headers: headerParameters,
             query: queryParameters,
-            body: PlaceOrderRequestToJSON(requestParameters['placeOrderRequest']),
+            body: OpenApiPlaceOrderRequestToJSON(requestParameters['openApiPlaceOrderRequest']),
         };
     }
 

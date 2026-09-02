@@ -12,7 +12,7 @@
  * Do not edit the class manually.
  */
 
-export const BASE_PATH = "http://localhost:54745".replace(/\/+$/, "");
+export const BASE_PATH = "http://localhost:50289".replace(/\/+$/, "");
 
 export interface ConfigurationParameters {
     basePath?: string; // override base path
@@ -271,7 +271,7 @@ export class ResponseError extends Error {
 
 export class FetchError extends Error {
     override name: "FetchError" = "FetchError";
-    constructor(public cause: Error, msg?: string) {
+    constructor(public override cause: Error, msg?: string) {
         super(msg);
 
         // restore prototype chain

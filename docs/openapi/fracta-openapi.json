@@ -128,6 +128,20 @@
         },
         "type" : "object"
       },
+      "ApiResponseListIssuanceSummaryResponse" : {
+        "properties" : {
+          "data" : {
+            "items" : {
+              "$ref" : "#/components/schemas/IssuanceSummaryResponse"
+            },
+            "type" : "array"
+          },
+          "meta" : {
+            "$ref" : "#/components/schemas/ResponseMeta"
+          }
+        },
+        "type" : "object"
+      },
       "ApiResponseListMyOrderResponse" : {
         "properties" : {
           "data" : {
@@ -147,6 +161,20 @@
           "data" : {
             "items" : {
               "$ref" : "#/components/schemas/MySubscriptionResponse"
+            },
+            "type" : "array"
+          },
+          "meta" : {
+            "$ref" : "#/components/schemas/ResponseMeta"
+          }
+        },
+        "type" : "object"
+      },
+      "ApiResponseListOpenApiExecutionResponse" : {
+        "properties" : {
+          "data" : {
+            "items" : {
+              "$ref" : "#/components/schemas/OpenApiExecutionResponse"
             },
             "type" : "array"
           },
@@ -202,6 +230,28 @@
         "properties" : {
           "data" : {
             "$ref" : "#/components/schemas/MeResponse"
+          },
+          "meta" : {
+            "$ref" : "#/components/schemas/ResponseMeta"
+          }
+        },
+        "type" : "object"
+      },
+      "ApiResponseOpenApiBalanceResponse" : {
+        "properties" : {
+          "data" : {
+            "$ref" : "#/components/schemas/OpenApiBalanceResponse"
+          },
+          "meta" : {
+            "$ref" : "#/components/schemas/ResponseMeta"
+          }
+        },
+        "type" : "object"
+      },
+      "ApiResponseOpenApiOrderBookResponse" : {
+        "properties" : {
+          "data" : {
+            "$ref" : "#/components/schemas/OpenApiOrderBookResponse"
           },
           "meta" : {
             "$ref" : "#/components/schemas/ResponseMeta"
@@ -590,6 +640,10 @@
       },
       "ExecutionResponse" : {
         "properties" : {
+          "buyFee" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
           "executedAt" : {
             "type" : "string"
           },
@@ -601,6 +655,10 @@
             "type" : "number"
           },
           "price" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "sellFee" : {
             "format" : "int64",
             "type" : "integer"
           },
@@ -646,6 +704,26 @@
             "type" : "integer"
           },
           "soldUnits" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        },
+        "type" : "object"
+      },
+      "Holding" : {
+        "properties" : {
+          "availableUnits" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "lockedUnits" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "tokenSymbol" : {
+            "type" : "string"
+          },
+          "units" : {
             "format" : "int64",
             "type" : "integer"
           }
@@ -702,13 +780,46 @@
         },
         "type" : "object"
       },
-      "Level" : {
+      "IssuanceSummaryResponse" : {
         "properties" : {
-          "price" : {
+          "allotmentMethod" : {
+            "type" : "string"
+          },
+          "assetName" : {
+            "type" : "string"
+          },
+          "assetType" : {
+            "type" : "string"
+          },
+          "issuanceId" : {
             "format" : "int64",
             "type" : "integer"
           },
-          "units" : {
+          "remainingUnits" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "riskGrade" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "status" : {
+            "type" : "string"
+          },
+          "subscriptionEndAt" : {
+            "type" : "string"
+          },
+          "subscriptionStartAt" : {
+            "type" : "string"
+          },
+          "tokenSymbol" : {
+            "type" : "string"
+          },
+          "totalUnits" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "unitPrice" : {
             "format" : "int64",
             "type" : "integer"
           }
@@ -810,17 +921,129 @@
         },
         "type" : "object"
       },
-      "OrderBookResponse" : {
+      "OpenApiBalanceResponse" : {
+        "properties" : {
+          "cashBalance" : {
+            "type" : "number"
+          },
+          "holdings" : {
+            "items" : {
+              "$ref" : "#/components/schemas/Holding"
+            },
+            "type" : "array"
+          },
+          "investorId" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        },
+        "type" : "object"
+      },
+      "OpenApiExecutionResponse" : {
+        "properties" : {
+          "executedAt" : {
+            "type" : "string"
+          },
+          "executionId" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "premiumRate" : {
+            "type" : "number"
+          },
+          "price" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "units" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        },
+        "type" : "object"
+      },
+      "OpenApiOrderBookLevel" : {
+        "properties" : {
+          "price" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "units" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        },
+        "type" : "object"
+      },
+      "OpenApiOrderBookResponse" : {
         "properties" : {
           "asks" : {
             "items" : {
-              "$ref" : "#/components/schemas/Level"
+              "$ref" : "#/components/schemas/OpenApiOrderBookLevel"
             },
             "type" : "array"
           },
           "bids" : {
             "items" : {
-              "$ref" : "#/components/schemas/Level"
+              "$ref" : "#/components/schemas/OpenApiOrderBookLevel"
+            },
+            "type" : "array"
+          },
+          "tokenSymbol" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "OpenApiPlaceOrderRequest" : {
+        "properties" : {
+          "orderType" : {
+            "enum" : [ "LIMIT", "MARKET" ],
+            "type" : "string"
+          },
+          "price" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "side" : {
+            "enum" : [ "BUY", "SELL" ],
+            "type" : "string"
+          },
+          "tokenSymbol" : {
+            "type" : "string"
+          },
+          "units" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        },
+        "required" : [ "orderType", "side", "tokenSymbol", "units" ],
+        "type" : "object"
+      },
+      "OrderBookLevel" : {
+        "properties" : {
+          "price" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "units" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        },
+        "type" : "object"
+      },
+      "OrderBookResponse" : {
+        "properties" : {
+          "asks" : {
+            "items" : {
+              "$ref" : "#/components/schemas/OrderBookLevel"
+            },
+            "type" : "array"
+          },
+          "bids" : {
+            "items" : {
+              "$ref" : "#/components/schemas/OrderBookLevel"
             },
             "type" : "array"
           },
@@ -868,6 +1091,9 @@
       },
       "PlaceOrderRequest" : {
         "properties" : {
+          "idempotencyKey" : {
+            "type" : "string"
+          },
           "orderType" : {
             "enum" : [ "LIMIT", "MARKET" ],
             "type" : "string"
@@ -880,15 +1106,12 @@
             "enum" : [ "BUY", "SELL" ],
             "type" : "string"
           },
-          "tokenSymbol" : {
-            "type" : "string"
-          },
           "units" : {
             "format" : "int64",
             "type" : "integer"
           }
         },
-        "required" : [ "orderType", "side", "tokenSymbol", "units" ],
+        "required" : [ "orderType", "side", "units" ],
         "type" : "object"
       },
       "PlaceOrderResponse" : {
@@ -1296,7 +1519,7 @@
     },
     "/api/v1/admin/issuances/{id}/list" : {
       "post" : {
-        "operationId" : "list",
+        "operationId" : "listIssuanceOnMarket",
         "parameters" : [ {
           "in" : "path",
           "name" : "id",
@@ -1318,6 +1541,7 @@
             "description" : "OK"
           }
         },
+        "summary" : "상장",
         "tags" : [ "admin-issuance-controller" ]
       }
     },
@@ -1496,7 +1720,7 @@
     },
     "/api/v1/assets" : {
       "post" : {
-        "operationId" : "create_1",
+        "operationId" : "createAsset",
         "requestBody" : {
           "content" : {
             "application/json" : {
@@ -1519,6 +1743,7 @@
             "description" : "Created"
           }
         },
+        "summary" : "기초자산 등록",
         "tags" : [ "asset-controller" ]
       }
     },
@@ -1754,6 +1979,35 @@
       }
     },
     "/api/v1/issuances" : {
+      "get" : {
+        "operationId" : "listIssuances",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "status",
+          "required" : false,
+          "schema" : {
+            "items" : {
+              "enum" : [ "DRAFT", "PENDING_APPROVAL", "APPROVED", "SUBSCRIBING", "ALLOTTING", "LISTED", "SUSPENDED", "DELISTED", "REJECTED" ],
+              "type" : "string"
+            },
+            "type" : "array"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseListIssuanceSummaryResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "summary" : "발행 목록",
+        "tags" : [ "issuance-controller" ]
+      },
       "post" : {
         "operationId" : "create",
         "requestBody" : {
@@ -1783,7 +2037,7 @@
     },
     "/api/v1/issuances/{id}" : {
       "get" : {
-        "operationId" : "get",
+        "operationId" : "getIssuance",
         "parameters" : [ {
           "in" : "path",
           "name" : "id",
@@ -1805,6 +2059,7 @@
             "description" : "OK"
           }
         },
+        "summary" : "발행 상세",
         "tags" : [ "issuance-controller" ]
       }
     },
@@ -1924,7 +2179,7 @@
     },
     "/api/v1/orders/me" : {
       "get" : {
-        "operationId" : "myOrders",
+        "operationId" : "listMyOrders",
         "responses" : {
           "200" : {
             "content" : {
@@ -1937,12 +2192,13 @@
             "description" : "OK"
           }
         },
+        "summary" : "내 주문 내역",
         "tags" : [ "trading-controller" ]
       }
     },
     "/api/v1/orders/{orderId}" : {
       "delete" : {
-        "operationId" : "cancel_1",
+        "operationId" : "cancelMyOrder",
         "parameters" : [ {
           "in" : "path",
           "name" : "orderId",
@@ -1964,12 +2220,13 @@
             "description" : "OK"
           }
         },
+        "summary" : "주문 취소",
         "tags" : [ "trading-controller" ]
       }
     },
     "/api/v1/subscriptions/me" : {
       "get" : {
-        "operationId" : "mine",
+        "operationId" : "listMySubscriptions",
         "responses" : {
           "200" : {
             "content" : {
@@ -1982,12 +2239,13 @@
             "description" : "OK"
           }
         },
+        "summary" : "내 청약 내역",
         "tags" : [ "subscription-controller" ]
       }
     },
     "/api/v1/subscriptions/{orderId}" : {
       "delete" : {
-        "operationId" : "cancel",
+        "operationId" : "cancelSubscription",
         "parameters" : [ {
           "in" : "path",
           "name" : "orderId",
@@ -2009,12 +2267,13 @@
             "description" : "OK"
           }
         },
+        "summary" : "청약 취소",
         "tags" : [ "subscription-controller" ]
       }
     },
     "/api/v1/tokens/{tokenSymbol}/executions" : {
       "get" : {
-        "operationId" : "executions_2",
+        "operationId" : "listExecutions",
         "parameters" : [ {
           "in" : "path",
           "name" : "tokenSymbol",
@@ -2053,6 +2312,7 @@
             "description" : "OK"
           }
         },
+        "summary" : "체결 내역",
         "tags" : [ "trading-controller" ]
       }
     },
@@ -2143,7 +2403,7 @@
             "content" : {
               "*/*" : {
                 "schema" : {
-                  "$ref" : "#/components/schemas/ApiResponseBalanceResponse"
+                  "$ref" : "#/components/schemas/ApiResponseOpenApiBalanceResponse"
                 }
               }
             },
@@ -2232,7 +2492,7 @@
           "content" : {
             "application/json" : {
               "schema" : {
-                "$ref" : "#/components/schemas/PlaceOrderRequest"
+                "$ref" : "#/components/schemas/OpenApiPlaceOrderRequest"
               }
             }
           },
@@ -2403,7 +2663,7 @@
             "content" : {
               "*/*" : {
                 "schema" : {
-                  "$ref" : "#/components/schemas/ApiResponseListExecutionResponse"
+                  "$ref" : "#/components/schemas/ApiResponseListOpenApiExecutionResponse"
                 }
               }
             },
@@ -2440,7 +2700,7 @@
             "content" : {
               "*/*" : {
                 "schema" : {
-                  "$ref" : "#/components/schemas/ApiResponseOrderBookResponse"
+                  "$ref" : "#/components/schemas/ApiResponseOpenApiOrderBookResponse"
                 }
               }
             },
@@ -2518,7 +2778,7 @@
             "content" : {
               "*/*" : {
                 "schema" : {
-                  "$ref" : "#/components/schemas/ApiResponseBalanceResponse"
+                  "$ref" : "#/components/schemas/ApiResponseOpenApiBalanceResponse"
                 }
               }
             },
@@ -2607,7 +2867,7 @@
           "content" : {
             "application/json" : {
               "schema" : {
-                "$ref" : "#/components/schemas/PlaceOrderRequest"
+                "$ref" : "#/components/schemas/OpenApiPlaceOrderRequest"
               }
             }
           },
@@ -2778,7 +3038,7 @@
             "content" : {
               "*/*" : {
                 "schema" : {
-                  "$ref" : "#/components/schemas/ApiResponseListExecutionResponse"
+                  "$ref" : "#/components/schemas/ApiResponseListOpenApiExecutionResponse"
                 }
               }
             },
@@ -2815,7 +3075,7 @@
             "content" : {
               "*/*" : {
                 "schema" : {
-                  "$ref" : "#/components/schemas/ApiResponseOrderBookResponse"
+                  "$ref" : "#/components/schemas/ApiResponseOpenApiOrderBookResponse"
                 }
               }
             },
@@ -2887,7 +3147,7 @@
   },
   "servers" : [ {
     "description" : "Generated server url",
-    "url" : "http://localhost:54745"
+    "url" : "http://localhost:55032"
   } ],
   "tags" : [ {
     "description" : "잔고·주문 내역 조회",

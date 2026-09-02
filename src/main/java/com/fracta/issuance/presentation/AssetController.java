@@ -20,6 +20,8 @@ import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
 
+import io.swagger.v3.oas.annotations.Operation;
+
 @RestController
 @RequestMapping("/api/v1/assets")
 public class AssetController {
@@ -44,6 +46,7 @@ public class AssetController {
     }
 
     @PostMapping
+    @Operation(operationId = "createAsset", summary = "기초자산 등록")
     @ResponseStatus(HttpStatus.CREATED)
     public ApiResponse<CreateAssetResponse> create(@AuthenticationPrincipal Jwt jwt,
                                                    @Valid @RequestBody CreateAssetRequest request) {

@@ -13,13 +13,13 @@
  */
 
 import { mapValues } from '../runtime';
-import type { Level } from './Level';
+import type { OrderBookLevel } from './OrderBookLevel';
 import {
-    LevelFromJSON,
-    LevelFromJSONTyped,
-    LevelToJSON,
-    LevelToJSONTyped,
-} from './Level';
+    OrderBookLevelFromJSON,
+    OrderBookLevelFromJSONTyped,
+    OrderBookLevelToJSON,
+    OrderBookLevelToJSONTyped,
+} from './OrderBookLevel';
 
 /**
  * 
@@ -30,11 +30,11 @@ export interface OrderBookResponse {
     /**
      * 
      */
-    asks?: Array<Level>;
+    asks?: Array<OrderBookLevel>;
     /**
      * 
      */
-    bids?: Array<Level>;
+    bids?: Array<OrderBookLevel>;
     /**
      * 
      */
@@ -58,8 +58,8 @@ export function OrderBookResponseFromJSONTyped(json: any, ignoreDiscriminator: b
     }
     return {
         
-        'asks': json['asks'] == null ? undefined : ((json['asks'] as Array<any>).map(LevelFromJSON)),
-        'bids': json['bids'] == null ? undefined : ((json['bids'] as Array<any>).map(LevelFromJSON)),
+        'asks': json['asks'] == null ? undefined : ((json['asks'] as Array<any>).map(OrderBookLevelFromJSON)),
+        'bids': json['bids'] == null ? undefined : ((json['bids'] as Array<any>).map(OrderBookLevelFromJSON)),
         'tokenSymbol': json['tokenSymbol'] == null ? undefined : json['tokenSymbol'],
     };
 }
@@ -75,8 +75,8 @@ export function OrderBookResponseToJSONTyped(value?: OrderBookResponse | null, i
 
     return {
         
-        'asks': value['asks'] == null ? undefined : ((value['asks'] as Array<any>).map(LevelToJSON)),
-        'bids': value['bids'] == null ? undefined : ((value['bids'] as Array<any>).map(LevelToJSON)),
+        'asks': value['asks'] == null ? undefined : ((value['asks'] as Array<any>).map(OrderBookLevelToJSON)),
+        'bids': value['bids'] == null ? undefined : ((value['bids'] as Array<any>).map(OrderBookLevelToJSON)),
         'tokenSymbol': value['tokenSymbol'],
     };
 }

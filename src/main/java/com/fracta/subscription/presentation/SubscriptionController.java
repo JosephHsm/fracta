@@ -19,6 +19,7 @@ import com.fracta.account.api.InvestorId;
 import com.fracta.common.response.ApiResponse;
 import com.fracta.subscription.application.SubscriptionService;
 
+import io.swagger.v3.oas.annotations.Operation;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
@@ -52,12 +53,14 @@ public class SubscriptionController {
                 issuanceId, investorIdOf(jwt), request.units(), key));
     }
 
+    @Operation(operationId = "cancelSubscription", summary = "청약 취소")
     @DeleteMapping("/api/v1/subscriptions/{orderId}")
     public ApiResponse<SubscriptionService.ApplyResult> cancel(@AuthenticationPrincipal Jwt jwt,
                                                                @PathVariable("orderId") long orderId) {
         return ApiResponse.of(subscriptionService.cancel(orderId, investorIdOf(jwt)));
     }
 
+    @Operation(operationId = "listMySubscriptions", summary = "내 청약 내역")
     @GetMapping("/api/v1/subscriptions/me")
     public ApiResponse<List<MySubscriptionResponse>> mine(@AuthenticationPrincipal Jwt jwt) {
         var list = subscriptionService.ordersOf(investorIdOf(jwt)).stream()

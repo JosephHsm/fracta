@@ -3,7 +3,10 @@ package com.fracta.issuance.application;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -217,6 +220,32 @@ public class IssuanceService {
     @Transactional(readOnly = true)
     public Issuance get(long issuanceId) {
         return load(issuanceId);
+    }
+
+    /** 발행 한 건 + 기초자산. 목록 화면이 자산명을 함께 보여줘야 해서 묶어 돌려준다. */
+    public record IssuanceSummary(Issuance issuance, UnderlyingAsset asset) {
+    }
+
+    /**
+     * 상태로 거른 발행 목록 (IS-08). 투자자 홈이 "청약 중"과 "상장" 두 묶음을 보여준다.
+     *
+     * <p>기초자산을 한 번에 읽어 맞춘다 — 발행마다 조회하면 목록 길이만큼 쿼리가 늘어난다.
+     */
+    @Transactional(readOnly = true)
+    public List<IssuanceSummary> list(List<IssuanceStatus> statuses) {
+        List<Issuance> found = statuses.isEmpty()
+                ? issuances.findAll()
+                : issuances.findByStatusIn(statuses);
+
+        Map<Long, UnderlyingAsset> assetsById = assets
+                .findAllById(found.stream().map(Issuance::assetId).distinct().toList())
+                .stream()
+                .collect(Collectors.toMap(UnderlyingAsset::id, asset -> asset));
+
+        return found.stream()
+                .sorted(Comparator.comparing(Issuance::id).reversed())
+                .map(issuance -> new IssuanceSummary(issuance, assetsById.get(issuance.assetId())))
+                .toList();
     }
 
     private TransitionResult transition(long issuanceId, IssuanceStatus target) {

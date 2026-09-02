@@ -22,6 +22,10 @@ export interface ExecutionResponse {
     /**
      * 
      */
+    buyFee?: number;
+    /**
+     * 
+     */
     executedAt?: string;
     /**
      * 
@@ -35,6 +39,10 @@ export interface ExecutionResponse {
      * 
      */
     price?: number;
+    /**
+     * 
+     */
+    sellFee?: number;
     /**
      * 
      */
@@ -58,10 +66,12 @@ export function ExecutionResponseFromJSONTyped(json: any, ignoreDiscriminator: b
     }
     return {
         
+        'buyFee': json['buyFee'] == null ? undefined : json['buyFee'],
         'executedAt': json['executedAt'] == null ? undefined : json['executedAt'],
         'executionId': json['executionId'] == null ? undefined : json['executionId'],
         'premiumRate': json['premiumRate'] == null ? undefined : json['premiumRate'],
         'price': json['price'] == null ? undefined : json['price'],
+        'sellFee': json['sellFee'] == null ? undefined : json['sellFee'],
         'units': json['units'] == null ? undefined : json['units'],
     };
 }
@@ -77,10 +87,12 @@ export function ExecutionResponseToJSONTyped(value?: ExecutionResponse | null, i
 
     return {
         
+        'buyFee': value['buyFee'],
         'executedAt': value['executedAt'],
         'executionId': value['executionId'],
         'premiumRate': value['premiumRate'],
         'price': value['price'],
+        'sellFee': value['sellFee'],
         'units': value['units'],
     };
 }

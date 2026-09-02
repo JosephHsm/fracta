@@ -39,7 +39,7 @@ public class OpenApiAccountController {
     }
 
     /** 공개 API 잔고 응답. 보유가 0인 종목은 목록에서 제외한다. */
-    public record BalanceResponse(long investorId, BigDecimal cashBalance, List<Holding> holdings) {
+    public record OpenApiBalanceResponse(long investorId, BigDecimal cashBalance, List<Holding> holdings) {
 
         public record Holding(String tokenSymbol, long units, long lockedUnits, long availableUnits) {
         }
@@ -55,21 +55,21 @@ public class OpenApiAccountController {
             description = "예치금과 보유 조각 수량. 클라이언트 소유자 계정 기준. 예: GET /open/v1/accounts/balance")
     @RequiredScope(ApiScope.ACCOUNT_READ)
     @GetMapping({"/open/v1/accounts/balance", "/open/sandbox/v1/accounts/balance"})
-    public ApiResponse<BalanceResponse> balance() {
+    public ApiResponse<OpenApiBalanceResponse> balance() {
         InvestorId investor = InvestorId.of(OpenApiContext.current().ownerInvestorId());
 
-        List<BalanceResponse.Holding> holdings = listedTokens.listAll().stream()
+        List<OpenApiBalanceResponse.Holding> holdings = listedTokens.listAll().stream()
                 .map(token -> {
                     var balance = ledger.balanceOf(token.tokenSymbol(),
                             OwnerId.of(investor.value()));
-                    return new BalanceResponse.Holding(token.tokenSymbol(),
+                    return new OpenApiBalanceResponse.Holding(token.tokenSymbol(),
                             balance.units().value(), balance.lockedUnits().value(),
                             balance.available().value());
                 })
                 .filter(holding -> holding.units() > 0)
                 .toList();
 
-        return ApiResponse.of(new BalanceResponse(investor.value(),
+        return ApiResponse.of(new OpenApiBalanceResponse(investor.value(),
                 accounts.cashBalanceOf(investor).toDisplay(), holdings));
     }
 

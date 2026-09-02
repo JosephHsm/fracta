@@ -59,6 +59,18 @@ public class UnderlyingAsset {
         this.issuerId = issuerId;
     }
 
+    public String name() {
+        return name;
+    }
+
+    public AssetType assetType() {
+        return assetType;
+    }
+
+    public String description() {
+        return description;
+    }
+
     public Long id() {
         return id;
     }

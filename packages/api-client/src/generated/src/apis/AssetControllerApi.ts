@@ -24,7 +24,7 @@ import {
     CreateAssetRequestToJSON,
 } from '../models/CreateAssetRequest';
 
-export interface Create1Request {
+export interface CreateAssetOperationRequest {
     /**
      * 
      */
@@ -37,13 +37,13 @@ export interface Create1Request {
 export class AssetControllerApi extends runtime.BaseAPI {
 
     /**
-     * Creates request options for create1 without sending the request
+     * Creates request options for createAsset without sending the request
      */
-    async create1RequestOpts(requestParameters: Create1Request): Promise<runtime.RequestOpts> {
+    async createAssetRequestOpts(requestParameters: CreateAssetOperationRequest): Promise<runtime.RequestOpts> {
         if (requestParameters['createAssetRequest'] == null) {
             throw new runtime.RequiredError(
                 'createAssetRequest',
-                'Required parameter "createAssetRequest" was null or undefined when calling create1().'
+                'Required parameter "createAssetRequest" was null or undefined when calling createAsset().'
             );
         }
 
@@ -66,18 +66,20 @@ export class AssetControllerApi extends runtime.BaseAPI {
     }
 
     /**
+     * 기초자산 등록
      */
-    async create1Raw(requestParameters: Create1Request, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ApiResponseCreateAssetResponse>> {
-        const requestOptions = await this.create1RequestOpts(requestParameters);
+    async createAssetRaw(requestParameters: CreateAssetOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ApiResponseCreateAssetResponse>> {
+        const requestOptions = await this.createAssetRequestOpts(requestParameters);
         const response = await this.request(requestOptions, initOverrides);
 
         return new runtime.JSONApiResponse(response, (jsonValue) => ApiResponseCreateAssetResponseFromJSON(jsonValue));
     }
 
     /**
+     * 기초자산 등록
      */
-    async create1(requestParameters: Create1Request, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ApiResponseCreateAssetResponse> {
-        const response = await this.create1Raw(requestParameters, initOverrides);
+    async createAsset(requestParameters: CreateAssetOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ApiResponseCreateAssetResponse> {
+        const response = await this.createAssetRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

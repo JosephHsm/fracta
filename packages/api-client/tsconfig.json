@@ -2,10 +2,11 @@
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "noEmit": true,
-    "types": [],
-    // 생성 코드는 손대지 않는다. openapi-generator의 FetchError가 Error.cause를 override
-    // 표시 없이 덮어써서 이 규칙에만 걸린다 — 규칙을 끄지, 생성물을 고치지 않는다.
-    "noImplicitOverride": false
+    "types": []
   },
-  "include": ["src/**/*.ts"]
+  // 생성물의 배럴 파일(generated/src/index.ts)은 models와 apis를 함께 재노출해
+  // PlaceOrderRequest처럼 이름이 겹치는 타입에서 TS2308을 낸다. 우리는 이 배럴을 쓰지
+  // 않고 models/apis를 직접 가리키므로 타입 검사에서 제외한다.
+  "include": ["src/**/*.ts"],
+  "exclude": ["src/generated/src/index.ts"]
 }

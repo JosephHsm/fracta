@@ -51,13 +51,14 @@ public class OpenApiMarketController {
                                        String brokerTicker, long splitRatio, int riskGrade) {
     }
 
-    public record OrderBookResponse(String tokenSymbol, List<Level> bids, List<Level> asks) {
-
-        public record Level(long price, long units) {
-        }
+    public record OpenApiOrderBookResponse(String tokenSymbol, List<OpenApiOrderBookLevel> bids,
+                                           List<OpenApiOrderBookLevel> asks) {
     }
 
-    public record ExecutionResponse(Long executionId, long price, long units,
+    public record OpenApiOrderBookLevel(long price, long units) {
+    }
+
+    public record OpenApiExecutionResponse(Long executionId, long price, long units,
                                     BigDecimal premiumRate, String executedAt) {
     }
 
@@ -83,24 +84,24 @@ public class OpenApiMarketController {
     @Operation(summary = "10호가", description = "매수·매도 각 10호가. 예: GET /open/v1/tokens/FR-ESRK-001/orderbook")
     @RequiredScope(ApiScope.MARKET_READ)
     @GetMapping({"/open/v1/tokens/{symbol}/orderbook", "/open/sandbox/v1/tokens/{symbol}/orderbook"})
-    public ApiResponse<OrderBookResponse> orderbook(@PathVariable("symbol") String symbol,
+    public ApiResponse<OpenApiOrderBookResponse> orderbook(@PathVariable("symbol") String symbol,
                                                     @RequestParam(value = "levels", defaultValue = "10")
                                                     int levels) {
         require(symbol);
-        return ApiResponse.of(new OrderBookResponse(symbol,
+        return ApiResponse.of(new OpenApiOrderBookResponse(symbol,
                 levels(symbol, OrderSide.BUY, levels), levels(symbol, OrderSide.SELL, levels)));
     }
 
     @Operation(summary = "체결 내역", description = "최신순 페이징. 예: GET /open/v1/tokens/FR-ESRK-001/executions?page=0&size=20")
     @RequiredScope(ApiScope.MARKET_READ)
     @GetMapping({"/open/v1/tokens/{symbol}/executions", "/open/sandbox/v1/tokens/{symbol}/executions"})
-    public ApiResponse<List<ExecutionResponse>> executions(
+    public ApiResponse<List<OpenApiExecutionResponse>> executions(
             @PathVariable("symbol") String symbol,
             @RequestParam(value = "page", defaultValue = "0") int page,
             @RequestParam(value = "size", defaultValue = "20") int size) {
         require(symbol);
         var list = trading.executions(symbol, PageRequest.of(page, size)).stream()
-                .map(e -> new ExecutionResponse(e.id(), e.price(), e.units(), e.premiumRate(),
+                .map(e -> new OpenApiExecutionResponse(e.id(), e.price(), e.units(), e.premiumRate(),
                         e.executedAt().toString()))
                 .toList();
         return ApiResponse.of(list);
@@ -148,9 +149,9 @@ public class OpenApiMarketController {
     }
 
     /** 도메인 오더북 타입을 공개 계약으로 옮긴다 — 내부 record가 파트너 스펙에 새지 않게. */
-    private List<OrderBookResponse.Level> levels(String symbol, OrderSide side, int depth) {
+    private List<OpenApiOrderBookLevel> levels(String symbol, OrderSide side, int depth) {
         return trading.depth(symbol, side, depth).stream()
-                .map(level -> new OrderBookResponse.Level(level.price(), level.units()))
+                .map(level -> new OpenApiOrderBookLevel(level.price(), level.units()))
                 .toList();
     }
 }

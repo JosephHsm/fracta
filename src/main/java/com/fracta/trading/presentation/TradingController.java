@@ -24,6 +24,7 @@ import com.fracta.trading.application.TradingService;
 import com.fracta.trading.domain.OrderSide;
 import com.fracta.trading.domain.OrderType;
 
+import io.swagger.v3.oas.annotations.Operation;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
@@ -49,10 +50,12 @@ public class TradingController {
     }
 
     /** 호가창 10호가 (TR-05). */
-    public record OrderBookResponse(String tokenSymbol, List<Level> bids, List<Level> asks) {
+    public record OrderBookResponse(String tokenSymbol, List<OrderBookLevel> bids,
+                                    List<OrderBookLevel> asks) {
+    }
 
-        public record Level(long price, long units) {
-        }
+    /** 한 호가 단계. 오픈 API의 동명 타입과 스키마 이름이 겹치지 않게 분리한다. */
+    public record OrderBookLevel(long price, long units) {
     }
 
     /** 체결 내역 한 건 (TR-06). */
@@ -79,12 +82,14 @@ public class TradingController {
                 request.orderType(), request.price(), request.units(), key));
     }
 
+    @Operation(operationId = "cancelMyOrder", summary = "주문 취소")
     @DeleteMapping("/api/v1/orders/{orderId}")
     public ApiResponse<TradingService.PlaceResult> cancel(@AuthenticationPrincipal Jwt jwt,
                                                           @PathVariable("orderId") long orderId) {
         return ApiResponse.of(tradingService.cancel(orderId, investorIdOf(jwt)));
     }
 
+    @Operation(operationId = "listMyOrders", summary = "내 주문 내역")
     @GetMapping("/api/v1/orders/me")
     public ApiResponse<List<MyOrderResponse>> myOrders(@AuthenticationPrincipal Jwt jwt) {
         var list = tradingService.ordersOf(investorIdOf(jwt)).stream()
@@ -106,6 +111,7 @@ public class TradingController {
     }
 
     /** 체결 내역 페이징 (TR-06). */
+    @Operation(operationId = "listExecutions", summary = "체결 내역")
     @GetMapping("/api/v1/tokens/{tokenSymbol}/executions")
     public ApiResponse<List<ExecutionResponse>> executions(
             @PathVariable("tokenSymbol") String tokenSymbol,
@@ -119,9 +125,9 @@ public class TradingController {
     }
 
     /** 오더북 도메인 타입을 응답 계약으로 옮긴다 — 도메인 record가 그대로 스펙에 새지 않게 한다. */
-    private List<OrderBookResponse.Level> levels(String tokenSymbol, OrderSide side, int depth) {
+    private List<OrderBookLevel> levels(String tokenSymbol, OrderSide side, int depth) {
         return tradingService.depth(tokenSymbol, side, depth).stream()
-                .map(level -> new OrderBookResponse.Level(level.price(), level.units()))
+                .map(level -> new OrderBookLevel(level.price(), level.units()))
                 .toList();
     }
 

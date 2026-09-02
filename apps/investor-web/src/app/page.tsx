@@ -1,295 +1,249 @@
 "use client";
 
+import type { IssuanceSummaryResponse } from "@fracta/api-client";
 import {
   Badge,
   BentoGrid,
   BentoItem,
-  Button,
   Card,
   CardBody,
-  CardHeader,
-  CardTitle,
-  CommandHint,
-  CommandPalette,
-  Dialog,
-  Field,
   Money,
-  PremiumBadge,
-  PriceText,
   ProgressBar,
+  Skeleton,
   StatTile,
-  Table,
-  TableContainer,
-  Tbody,
-  Td,
-  TextInput,
-  Th,
-  Thead,
-  ThemeToggle,
-  Tooltip,
-  TooltipProvider,
-  Tr,
   Units,
-  errorMessage,
   formatDDay,
-  useToast,
+  formatWon,
+  viewTransitionName,
 } from "@fracta/ui";
-import { Coins, LayoutDashboard, Wallet } from "lucide-react";
+import { Coins, TrendingUp, Wallet } from "lucide-react";
+import type { Route } from "next";
+import Link from "next/link";
 import * as React from "react";
 
-/** 미리보기용 고정 마감일. 실제 화면에서는 서버가 준 청약 종료 시각을 쓴다. */
-const SAMPLE_END_AT = new Date("2026-09-04T09:00:00+09:00");
+import { AppShell } from "@/components/app-shell";
+import { TokenPremium } from "@/components/token-premium";
+import { useIssuances, useMe } from "@/lib/queries";
+import { useRequireSession } from "@/lib/session";
 
-/**
- * 디자인 시스템 미리보기. Phase 10 구현 순서 4에서 홈(Bento)으로 교체된다.
- * 지금은 공용 컴포넌트가 라이트/다크 양쪽에서 규칙대로 렌더되는지 확인하는 용도다.
- */
-export default function Home() {
+export const RISK_LABEL: Record<number, string> = {
+  1: "안정형",
+  2: "안정추구형",
+  3: "위험중립형",
+  4: "적극투자형",
+  5: "공격투자형",
+};
+
+/** 홈 — 청약 중 / 상장 종목 (FSD §11.2). Bento로 지표와 목록을 함께 배치한다. */
+export default function HomePage() {
+  const session = useRequireSession();
+  const { data: me } = useMe();
+  const { data: issuances, isLoading } = useIssuances();
+
+  if (!session.ready || !session.token) return null;
+
+  const subscribing = (issuances ?? []).filter((item) => item.status === "SUBSCRIBING");
+  const listed = (issuances ?? []).filter(
+    (item) => item.status === "LISTED" || item.status === "SUSPENDED",
+  );
+
   return (
-    <TooltipProvider>
-      <Preview />
-    </TooltipProvider>
+    <AppShell>
+      <div className="flex flex-col gap-8">
+        <section>
+          <h1 className="mb-4 text-xl font-semibold tracking-tight">대시보드</h1>
+          <BentoGrid>
+            <BentoItem span={4}>
+              <StatTile
+                label="예수금"
+                value={<Money amount={me?.cashBalance as number | undefined} size="xl" />}
+                hint="청약·주문에 사용할 수 있는 금액입니다"
+                icon={<Wallet aria-hidden className="size-3.5" />}
+              />
+            </BentoItem>
+            <BentoItem span={4}>
+              <StatTile
+                label="투자성향"
+                value={
+                  <span className="text-2xl">
+                    {me?.riskGrade ? (RISK_LABEL[me.riskGrade] ?? "미진단") : "미진단"}
+                  </span>
+                }
+                hint={me?.riskGrade ? `${me.riskGrade}등급` : "진단 후 청약할 수 있습니다"}
+                icon={<TrendingUp aria-hidden className="size-3.5" />}
+              />
+            </BentoItem>
+            <BentoItem span={4}>
+              <StatTile
+                label="청약 중인 종목"
+                value={<span className="text-3xl">{subscribing.length}</span>}
+                hint={`상장 종목 ${listed.length}개`}
+                icon={<Coins aria-hidden className="size-3.5" />}
+              />
+            </BentoItem>
+          </BentoGrid>
+        </section>
+
+        <Section
+          title="청약 중"
+          description="마감 전까지 신청할 수 있습니다"
+          loading={isLoading}
+          empty="현재 청약 중인 종목이 없습니다"
+          items={subscribing}
+          render={(issuance) => <SubscriptionCard key={issuance.issuanceId} issuance={issuance} />}
+        />
+
+        <Section
+          title="상장 종목"
+          description="호가창에서 지정가·시장가로 거래할 수 있습니다"
+          loading={isLoading}
+          empty="상장된 종목이 없습니다"
+          items={listed}
+          render={(issuance) => <ListedCard key={issuance.issuanceId} issuance={issuance} />}
+        />
+      </div>
+    </AppShell>
   );
 }
 
-function Preview() {
-  const toast = useToast();
-  const [dialogOpen, setDialogOpen] = React.useState(false);
-  const [state, setState] = React.useState<"idle" | "pending" | "done">("idle");
+function Section({
+  title,
+  description,
+  items,
+  loading,
+  empty,
+  render,
+}: {
+  title: string;
+  description: string;
+  items: IssuanceSummaryResponse[];
+  loading: boolean;
+  empty: string;
+  render: (issuance: IssuanceSummaryResponse) => React.ReactNode;
+}) {
+  return (
+    <section>
+      <div className="mb-4 flex items-baseline gap-3">
+        <h2 className="text-lg font-semibold tracking-tight">{title}</h2>
+        <p className="text-fg-muted text-sm">{description}</p>
+      </div>
 
-  const apply = () => {
-    setState("pending");
-    window.setTimeout(() => setState("done"), 900);
-  };
+      {loading ? (
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {[0, 1, 2].map((index) => (
+            <Card key={index}>
+              <CardBody className="flex flex-col gap-3">
+                <Skeleton className="h-4 w-2/3" />
+                <Skeleton className="h-7 w-1/2" />
+                <Skeleton className="h-2 w-full" />
+              </CardBody>
+            </Card>
+          ))}
+        </div>
+      ) : items.length === 0 ? (
+        <Card>
+          <CardBody className="text-fg-muted py-10 text-center text-sm">{empty}</CardBody>
+        </Card>
+      ) : (
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">{items.map(render)}</div>
+      )}
+    </section>
+  );
+}
+
+/** 카드 내부 레이아웃은 뷰포트가 아니라 카드 폭(@container)에 반응한다 — §11.4 Container Query. */
+function CardShell({
+  href,
+  name,
+  symbol,
+  riskGrade,
+  transitionKey,
+  children,
+}: {
+  href: Route;
+  name: string;
+  symbol: string;
+  riskGrade: number;
+  transitionKey: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <Link
+      href={href}
+      className="group focus-visible:outline-accent block rounded-lg focus-visible:outline-2 focus-visible:outline-offset-2"
+    >
+      <Card className="hover:border-border-strong hover:shadow-md h-full transition-[border-color,box-shadow,transform] duration-(--fr-motion-hover) group-hover:-translate-y-0.5">
+        <CardBody className="flex h-full flex-col gap-3">
+          <div className="flex items-start justify-between gap-2">
+            <div className="flex flex-col gap-0.5">
+              <span
+                className="font-medium tracking-tight"
+                style={{ viewTransitionName: transitionKey }}
+              >
+                {name}
+              </span>
+              <span className="fr-numeric text-fg-subtle text-xs">{symbol}</span>
+            </div>
+            <Badge tone="neutral">{RISK_LABEL[riskGrade] ?? `${riskGrade}등급`}</Badge>
+          </div>
+          {children}
+        </CardBody>
+      </Card>
+    </Link>
+  );
+}
+
+function SubscriptionCard({ issuance }: { issuance: IssuanceSummaryResponse }) {
+  const total = issuance.totalUnits ?? 0;
+  const remaining = issuance.remainingUnits ?? 0;
+  // 수량 비율일 뿐 금액 계산이 아니다 — 진행률은 파생 지표라 표시 계산이 허용된다
+  const progress = total > 0 ? ((total - remaining) / total) * 100 : 0;
 
   return (
-    <div className="min-h-dvh">
-      <header className="fr-glass border-border sticky top-0 z-30 border-b">
-        <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-6 py-3">
-          <span className="font-semibold tracking-tight">FRACTA</span>
-          <div className="flex items-center gap-3">
-            <CommandHint />
-            <ThemeToggle />
-          </div>
-        </div>
-      </header>
+    <CardShell
+      href={`/issuances/${issuance.issuanceId}` as Route}
+      name={issuance.assetName ?? issuance.tokenSymbol ?? ""}
+      symbol={issuance.tokenSymbol ?? ""}
+      riskGrade={issuance.riskGrade ?? 3}
+      transitionKey={viewTransitionName("issuance", issuance.issuanceId ?? 0)}
+    >
+      <div className="flex items-baseline justify-between">
+        <span className="text-fg-muted text-xs">1조각</span>
+        <Money amount={issuance.unitPrice} size="lg" />
+      </div>
 
-      <main className="mx-auto flex max-w-6xl flex-col gap-6 p-6">
-        <BentoGrid>
-          <BentoItem span={4}>
-            <StatTile
-              label="총 평가금액"
-              value={<Money amount={24_520_000} size="xl" />}
-              hint={<PriceText change={318_000}>+318,000 (1.31%)</PriceText>}
-              icon={<Wallet aria-hidden className="size-3.5" />}
-            />
-          </BentoItem>
-          <BentoItem span={4}>
-            <StatTile
-              label="청약 가능 금액"
-              value={<Money amount={7_800_000} size="xl" />}
-              hint="예수금 기준"
-              icon={<Coins aria-hidden className="size-3.5" />}
-            />
-          </BentoItem>
-          <BentoItem span={4}>
-            <StatTile
-              label="보유 종목"
-              value={<Units units={1_240} />}
-              hint="3개 종목"
-              icon={<LayoutDashboard aria-hidden className="size-3.5" />}
-            />
-          </BentoItem>
+      <ProgressBar value={progress} label="청약 진행률" />
 
-          <BentoItem span={8}>
-            <Card>
-              <CardHeader>
-                <CardTitle>괴리율 배지 (TR-08)</CardTitle>
-              </CardHeader>
-              <CardBody className="flex flex-wrap gap-3">
-                <PremiumBadge premiumRate={2.31} />
-                <PremiumBadge premiumRate={-13.7} />
-                <PremiumBadge premiumRate={24.5} />
-                <PremiumBadge premiumRate={1.2} suspended />
-                <PremiumBadge premiumRate={null} />
-              </CardBody>
-            </Card>
-          </BentoItem>
+      <div className="mt-auto flex items-center justify-between pt-1">
+        <Badge tone="warning">{formatDDay(issuance.subscriptionEndAt)}</Badge>
+        <span className="text-fg-muted text-xs">
+          잔여 <Units units={remaining} />
+        </span>
+      </div>
+    </CardShell>
+  );
+}
 
-          <BentoItem span={4}>
-            <Card className="h-full">
-              <CardHeader>
-                <CardTitle>모집 진행률</CardTitle>
-              </CardHeader>
-              <CardBody className="flex flex-col gap-4">
-                <ProgressBar value={72} label="한남동 상업시설" />
-                <div className="flex items-center gap-2">
-                  <Badge tone="warning">{formatDDay(SAMPLE_END_AT)}</Badge>
-                  <Tooltip content="청약 마감까지 남은 일수입니다">
-                    <span className="text-fg-muted cursor-help text-xs underline decoration-dotted">
-                      D-Day란?
-                    </span>
-                  </Tooltip>
-                </div>
-              </CardBody>
-            </Card>
-          </BentoItem>
+function ListedCard({ issuance }: { issuance: IssuanceSummaryResponse }) {
+  return (
+    <CardShell
+      href={`/tokens/${issuance.tokenSymbol}` as Route}
+      name={issuance.assetName ?? issuance.tokenSymbol ?? ""}
+      symbol={issuance.tokenSymbol ?? ""}
+      riskGrade={issuance.riskGrade ?? 3}
+      transitionKey={viewTransitionName("token", issuance.tokenSymbol ?? "")}
+    >
+      <div className="flex items-baseline justify-between">
+        <span className="text-fg-muted text-xs">발행가</span>
+        <span className="fr-numeric text-sm">{formatWon(issuance.unitPrice)}</span>
+      </div>
 
-          <BentoItem span={12}>
-            <TableContainer>
-              <Table>
-                <Thead>
-                  <Tr>
-                    <Th>종목</Th>
-                    <Th>체결가</Th>
-                    <Th>수량</Th>
-                    <Th>등락</Th>
-                  </Tr>
-                </Thead>
-                <Tbody>
-                  <Tr entering>
-                    <Td>한남동 상업시설</Td>
-                    <Td>
-                      <Money amount={10_200} />
-                    </Td>
-                    <Td>
-                      <Units units={30} />
-                    </Td>
-                    <Td>
-                      <PriceText change={200}>+200 (2.00%)</PriceText>
-                    </Td>
-                  </Tr>
-                  <Tr>
-                    <Td>성수동 지식산업센터</Td>
-                    <Td>
-                      <Money amount={9_850} />
-                    </Td>
-                    <Td>
-                      <Units units={12} />
-                    </Td>
-                    <Td>
-                      <PriceText change={-150}>-150 (1.50%)</PriceText>
-                    </Td>
-                  </Tr>
-                </Tbody>
-              </Table>
-            </TableContainer>
-          </BentoItem>
-
-          <BentoItem span={6}>
-            <Card className="h-full">
-              <CardHeader>
-                <CardTitle>버튼 상태 전이</CardTitle>
-              </CardHeader>
-              <CardBody className="flex flex-col gap-3">
-                <Button state={state} onClick={apply} pendingLabel="처리 중..." doneLabel="청약 완료">
-                  청약하기
-                </Button>
-                <div className="flex flex-wrap gap-2">
-                  <Button variant="secondary" size="sm" onClick={() => setState("idle")}>
-                    되돌리기
-                  </Button>
-                  <Button variant="accent" size="sm" onClick={() => setDialogOpen(true)}>
-                    모달 열기
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() =>
-                      toast.show({
-                        title: "주문이 접수되었습니다",
-                        description: "체결되면 알림으로 안내해 드립니다.",
-                        tone: "success",
-                      })
-                    }
-                  >
-                    토스트
-                  </Button>
-                  <Button
-                    variant="danger"
-                    size="sm"
-                    onClick={() =>
-                      toast.show({
-                        title: "주문 실패",
-                        description: errorMessage("FUND_INSUFFICIENT_CASH"),
-                        tone: "danger",
-                      })
-                    }
-                  >
-                    에러 문구
-                  </Button>
-                </div>
-              </CardBody>
-            </Card>
-          </BentoItem>
-
-          <BentoItem span={6}>
-            <Card className="h-full">
-              <CardHeader>
-                <CardTitle>폼 필드</CardTitle>
-              </CardHeader>
-              <CardBody className="flex flex-col gap-4">
-                <Field label="청약 수량" description="1조각 단위로 신청할 수 있습니다" required>
-                  <TextInput type="number" defaultValue={10} min={1} />
-                </Field>
-                <Field label="이메일" error={errorMessage("VALID_DUPLICATE_EMAIL")}>
-                  <TextInput type="email" defaultValue="test@fracta.dev" />
-                </Field>
-              </CardBody>
-            </Card>
-          </BentoItem>
-        </BentoGrid>
-      </main>
-
-      <Dialog
-        open={dialogOpen}
-        onOpenChange={setDialogOpen}
-        title="청약 신청 확인"
-        description="확인 후에는 취소가 제한됩니다."
-        dismissible={false}
-        footer={
-          <>
-            <Button variant="secondary" onClick={() => setDialogOpen(false)}>
-              취소
-            </Button>
-            <Button onClick={() => setDialogOpen(false)}>확인</Button>
-          </>
-        }
-      >
-        <dl className="flex flex-col gap-2">
-          <div className="flex justify-between">
-            <dt className="text-fg-muted">신청 수량</dt>
-            <dd>
-              <Units units={10} />
-            </dd>
-          </div>
-          <div className="flex justify-between">
-            <dt className="text-fg-muted">증거금</dt>
-            <dd>
-              <Money amount={100_000} />
-            </dd>
-          </div>
-        </dl>
-      </Dialog>
-
-      <CommandPalette
-        items={[
-          {
-            id: "home",
-            label: "홈",
-            group: "이동",
-            hint: "대시보드",
-            onSelect: () => undefined,
-          },
-          {
-            id: "hannam",
-            label: "한남동 상업시설",
-            keywords: ["FR-T-001", "hannam"],
-            group: "종목",
-            onSelect: () => undefined,
-          },
-        ]}
-      />
-    </div>
+      <div className="mt-auto flex items-center justify-between gap-2 pt-1">
+        <TokenPremium
+          tokenSymbol={issuance.tokenSymbol ?? ""}
+          suspended={issuance.status === "SUSPENDED"}
+        />
+      </div>
+    </CardShell>
   );
 }

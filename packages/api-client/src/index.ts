@@ -23,6 +23,11 @@ import { Configuration, type Middleware } from "./generated/src/runtime";
 import { toFractaApiError } from "./errors";
 
 export * from "./generated/src/models/index";
+/**
+ * 쿼리 파라미터 enum은 models가 아니라 apis 쪽에 생성된다. `export *`로 통째로 내보내면
+ * 요청 파라미터 인터페이스가 모델과 이름이 겹치므로(PlaceOrderRequest 등) 필요한 것만 짚어 내보낸다.
+ */
+export { ListIssuancesStatusEnum } from "./generated/src/apis/IssuanceControllerApi";
 export * from "./errors";
 export { Configuration } from "./generated/src/runtime";
 

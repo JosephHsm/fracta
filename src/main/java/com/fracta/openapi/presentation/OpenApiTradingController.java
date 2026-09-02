@@ -34,7 +34,7 @@ import jakarta.validation.constraints.Positive;
 @Tag(name = "거래", description = "주문·청약 (Idempotency-Key 필수)")
 public class OpenApiTradingController {
 
-    public record PlaceOrderRequest(@NotBlank String tokenSymbol,
+    public record OpenApiPlaceOrderRequest(@NotBlank String tokenSymbol,
                                     @NotNull OrderSide side,
                                     @NotNull OrderType orderType,
                                     Long price,
@@ -76,7 +76,7 @@ public class OpenApiTradingController {
     @ResponseStatus(HttpStatus.CREATED)
     public ApiResponse<PlaceOrderResponse> placeOrder(
             @RequestHeader("Idempotency-Key") String idempotencyKey,
-            @Valid @RequestBody PlaceOrderRequest request) {
+            @Valid @RequestBody OpenApiPlaceOrderRequest request) {
         InvestorId investor = InvestorId.of(OpenApiContext.current().ownerInvestorId());
         var result = trading.place(request.tokenSymbol(), investor, request.side(),
                 request.orderType(), request.price(), request.units(), idempotencyKey);
