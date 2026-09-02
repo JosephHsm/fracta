@@ -33,13 +33,14 @@
   --fr-text-subtle: oklch(0.655 0.008 75);
   --fr-text-inverse: oklch(0.985 0.002 85);
 
-  /* ── 주 액션 = 무채색 잉크 ────────────────────────────
+  /* ── 주 액션 = 거의 무채색인 짙은 잉크 ─────────────────
    * 데이터가 주인공인 화면에서 CTA까지 채도를 가지면 눈이 갈 곳을 잃는다.
-   * 대비만으로 충분히 강하다. */
-  --fr-primary: oklch(0.238 0.010 75);
-  --fr-primary-hover: oklch(0.182 0.010 75);
-  --fr-primary-soft: oklch(0.945 0.005 75);
-  --fr-primary-foreground: oklch(0.985 0.002 85);
+   * 다만 순흑(L 0.24 이하)은 밝은 바탕과 대비가 너무 세서 오래 보면 눈이 아프다.
+   * L을 한 단계 올리고 액센트 색기운을 아주 옅게 섞어 가장자리를 눅인다. */
+  --fr-primary: oklch(0.332 0.022 288);
+  --fr-primary-hover: oklch(0.278 0.026 288);
+  --fr-primary-soft: oklch(0.948 0.006 288);
+  --fr-primary-foreground: oklch(0.978 0.003 288);
 
   /* ── 액센트 — 포커스·선택·링크·차트 1차 계열 전용 ──── */
   --fr-accent: oklch(0.545 0.182 290);
@@ -132,11 +133,12 @@
   --fr-text-subtle: oklch(0.578 0.008 80);
   --fr-text-inverse: oklch(0.168 0.004 75);
 
-  /* 주 액션은 다크에서 밝은 잉크로 뒤집힌다 — 여전히 무채색이다 */
-  --fr-primary: oklch(0.952 0.002 85);
-  --fr-primary-hover: oklch(0.882 0.003 85);
-  --fr-primary-soft: oklch(0.278 0.006 75);
-  --fr-primary-foreground: oklch(0.168 0.004 75);
+  /* 주 액션은 다크에서 밝은 잉크로 뒤집힌다. 순백은 어두운 화면에서 눈부시므로
+   * L을 0.88대로 낮추고, 라벨도 순흑 대신 배경보다 살짝 밝은 톤을 쓴다. */
+  --fr-primary: oklch(0.884 0.010 288);
+  --fr-primary-hover: oklch(0.932 0.008 288);
+  --fr-primary-soft: oklch(0.288 0.020 288);
+  --fr-primary-foreground: oklch(0.192 0.014 288);
 
   --fr-accent: oklch(0.702 0.162 290);
   --fr-accent-hover: oklch(0.762 0.148 290);
