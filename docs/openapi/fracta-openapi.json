@@ -1455,11 +1455,20 @@
         },
         "type" : "object"
       }
+    },
+    "securitySchemes" : {
+      "bearerAuth" : {
+        "bearerFormat" : "JWT",
+        "description" : "Authorization: Bearer {token}",
+        "scheme" : "bearer",
+        "type" : "http"
+      }
     }
   },
   "info" : {
-    "title" : "OpenAPI definition",
-    "version" : "v0"
+    "description" : "토큰증권 기반 조각투자 발행·유통 플랫폼 API.\n\n- `/api/v1/**` : 투자자 웹앱용. 로그인으로 받은 JWT를 사용한다.\n- `/open/**`   : 파트너 오픈 API. client_credentials로 받은 토큰을 사용한다.\n",
+    "title" : "FRACTA API",
+    "version" : "v1"
   },
   "openapi" : "3.0.1",
   "paths" : {
@@ -3145,9 +3154,12 @@
       }
     }
   },
+  "security" : [ {
+    "bearerAuth" : [ ]
+  } ],
   "servers" : [ {
     "description" : "Generated server url",
-    "url" : "http://localhost:55032"
+    "url" : "http://localhost:52903"
   } ],
   "tags" : [ {
     "description" : "잔고·주문 내역 조회",

@@ -76,6 +76,23 @@ class OpenApiSpecExportTest extends IntegrationTestBase {
                         .matches("^/(api/v1|open)/.*"));
     }
 
+    @Test
+    @DisplayName("보안 스킴이 스펙에 실린다 — 없으면 생성 클라이언트가 Authorization 헤더를 안 붙인다")
+    void declaresBearerSecurityScheme() throws Exception {
+        JsonNode spec = objectMapper.readTree(
+                rest.getForEntity("/v3/api-docs", String.class).getBody());
+
+        // openapi-generator는 이 선언을 보고 헤더 주입 코드를 만든다. 선언이 없으면
+        // 서버가 멀쩡해도 프론트의 모든 인증 요청이 401로 떨어진다 — 실제로 그 사고를 냈다.
+        JsonNode scheme = spec.path("components").path("securitySchemes").path("bearerAuth");
+        assertThat(scheme.isMissingNode()).as("bearerAuth 스킴 선언").isFalse();
+        assertThat(scheme.path("type").asText()).isEqualTo("http");
+        assertThat(scheme.path("scheme").asText()).isEqualTo("bearer");
+
+        assertThat(spec.path("security").isArray()).as("전역 security 요구사항").isTrue();
+        assertThat(spec.path("security").toString()).contains("bearerAuth");
+    }
+
     /**
      * 스펙은 테스트 컨텍스트에서 뽑기 때문에 {@code com.fracta.support}의 테스트 전용 컨트롤러가
      * 함께 잡힌다. 그대로 두면 생성 클라이언트에 실제로 없는 엔드포인트가 생긴다.

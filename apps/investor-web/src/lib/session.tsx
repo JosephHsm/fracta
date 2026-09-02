@@ -1,6 +1,6 @@
 "use client";
 
-import { FractaApiError, createFractaClient, type FractaClient } from "@fracta/api-client";
+import { createFractaClient, type FractaClient } from "@fracta/api-client";
 import { useRouter } from "next/navigation";
 import * as React from "react";
 
@@ -33,7 +33,6 @@ const client = createFractaClient({
 });
 
 export function SessionProvider({ children }: { children: React.ReactNode }) {
-  const router = useRouter();
   const state = React.useSyncExternalStore(
     sessionStore.subscribe,
     sessionStore.getSnapshot,
@@ -56,19 +55,11 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     [state],
   );
 
-  // 401은 한 곳에서만 처리한다
-  React.useEffect(() => {
-    const onRejection = (event: PromiseRejectionEvent) => {
-      const error = event.reason;
-      if (error instanceof FractaApiError && error.status === 401) {
-        sessionStore.signOut();
-        router.push("/login");
-      }
-    };
-    window.addEventListener("unhandledrejection", onRejection);
-    return () => window.removeEventListener("unhandledrejection", onRejection);
-  }, [router]);
-
+  /**
+   * 401 처리는 QueryCache의 onError(providers.tsx)가 맡는다.
+   * TanStack Query는 에러를 잡아 상태로 바꾸므로 `unhandledrejection`으로는 잡히지 않는다 —
+   * 그렇게 두었다가 모든 요청이 401인데도 화면에는 빈 목록만 보인 적이 있다.
+   */
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;
 }
 
