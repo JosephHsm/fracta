@@ -49,10 +49,25 @@ export default function LogsPage() {
           <Field label="종료일"><TextInput type="date" value={form.to} onChange={set("to")} /></Field>
           <Button type="submit"><Search aria-hidden className="size-4" />검색</Button>
         </form></CardBody></Card>
-        <TableContainer><Table><Thead><Tr><Th>호출 시각</Th><Th>메서드</Th><Th>엔드포인트</Th><Th align="right">상태</Th><Th align="right">지연</Th><Th>멱등성 키</Th></Tr></Thead><Tbody>{(query.data ?? []).map((log) => <Tr key={log.id}><Td className="text-fg-muted whitespace-nowrap">{formatDateTime(log.calledAt)}</Td><Td><Badge>{log.method}</Badge></Td><Td><code className="text-xs">{log.endpoint}</code></Td><Td align="right"><HttpStatusBadge code={log.statusCode ?? 0} /></Td><Td align="right" className="fr-numeric">{log.latencyMs}ms</Td><Td className="text-fg-muted max-w-48 truncate font-mono text-xs">{log.idempotencyKey ?? "—"}</Td></Tr>)}</Tbody></Table>{(query.data ?? []).length === 0 && <TableEmpty>조건에 맞는 호출 로그가 없습니다.</TableEmpty>}</TableContainer>
+        <TableContainer><Table><Thead><Tr><Th>호출 시각</Th><Th>메서드</Th><Th>엔드포인트</Th><Th align="right">상태</Th><Th align="right">지연</Th><Th>멱등성 키</Th></Tr></Thead><Tbody>{(query.data ?? []).map((log) => <Tr key={log.id}><Td className="text-fg-muted whitespace-nowrap">{formatDateTime(log.calledAt)}</Td><Td><Badge>{log.method}</Badge></Td><Td><code className="text-xs">{log.endpoint}</code></Td><Td align="right"><HttpStatusBadge code={log.statusCode ?? 0} /></Td><Td align="right" className="fr-numeric">{log.latencyMs}ms</Td><Td className="text-fg-muted max-w-48 truncate font-mono text-xs">{log.idempotencyKey ?? "—"}</Td></Tr>)}</Tbody></Table>{(query.data ?? []).length === 0 && <TableEmpty>{emptyMessage(filters, initialDate())}</TableEmpty>}</TableContainer>
       </div>}
     </PortalShell>
   );
+}
+
+/**
+ * 빈 표의 이유를 구분해서 알려준다.
+ *
+ * <p>"조건에 맞는 호출 로그가 없습니다" 하나로는 <b>앱을 잘못 골랐는지</b> 필터가 좁은지
+ * 알 수 없다. 앱 선택은 저장된 값이 없으면 목록 첫 번째로 떨어지므로, 방금 호출한 앱이
+ * 아닐 때가 많다 — 실제로 시연 중에 빈 표가 떠서 막혔다.
+ */
+function emptyMessage(applied: Filters, defaults: Filters) {
+  const filtered = applied.endpoint || applied.statusCode
+    || applied.from !== defaults.from || applied.to !== defaults.to;
+  return filtered
+    ? "조건에 맞는 호출 로그가 없습니다. 기간이나 엔드포인트를 넓혀 보세요."
+    : "이 앱으로 들어온 호출이 아직 없습니다. 우측 상단에서 앱을 바꾸거나 샌드박스에서 호출해 보세요.";
 }
 
 function HttpStatusBadge({ code }: { code: number }) {

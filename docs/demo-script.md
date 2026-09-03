@@ -25,10 +25,6 @@
 ```powershell
 # 1) 완전히 깨끗한 상태에서 시작한다
 docker compose down -v
-
-# PowerShell에는 `VAR=x 명령` 문법이 없다. $env: 로 먼저 넣는다.
-$env:BATCH_SCHEDULING_ENABLED = "true"
-$env:BATCH_RECONCILIATION_CRON = "0/20 * * * * *"
 docker compose up -d
 
 # 2) 백엔드가 뜰 때까지 기다린다 (healthcheck 통과 후 프론트가 시작된다)
@@ -44,17 +40,18 @@ node scripts/seed/demo-data.mjs
 
 ```bash
 docker compose down -v
-BATCH_SCHEDULING_ENABLED=true BATCH_RECONCILIATION_CRON="0/20 * * * * *" docker compose up -d
+docker compose up -d
 until curl -sf http://localhost:8080/actuator/health > /dev/null; do sleep 3; done
 node scripts/seed/demo-data.mjs
 ```
 
 </details>
 
-> **촬영이 끝나면 환경변수를 되돌린다.** `$env:` 로 넣은 값은 그 터미널 세션에 남는다.
-> 새 터미널을 열거나 `Remove-Item Env:BATCH_SCHEDULING_ENABLED, Env:BATCH_RECONCILIATION_CRON`.
 
-**배치 주기를 20초로 줄여 띄우는 이유** — 대사 배치는 원래 매일 23시다. 영상에서 기다릴 수 없다.
+
+**배치 환경변수는 이제 필요 없다.** 컷 7의 대사는 관리자 API로 즉시 실행한다.
+예전에는 크론을 20초로 줄여 재기동했는데, 환경변수를 잊으면 조용히 원복되고
+일일 대사는 같은 날 두 번째 실행이 거부돼 "기다렸는데 아무 일도 안 일어남"이 됐다.
 
 **확인할 것**
 - 시드 출력 마지막에 상장 3종목 + 청약 1종목이 찍힌다. **토큰 심볼은 매 실행마다 바뀐다** — 대본의 `FR-XXXX-001`은 그때 값으로 읽는다
@@ -196,6 +193,10 @@ node scripts/demo/quota-burst.mjs 25
 
 4. 포털 **로그** 화면으로 돌아가 방금 호출이 쌓인 것을 보여준다 (선택)
 
+> **우측 상단 앱 선택기를 방금 호출한 앱으로 바꿔야 한다.** 선택 이력이 없으면 목록
+> 첫 번째 앱으로 떨어지는데, 그 앱에는 호출이 없어 빈 표가 뜬다. 표가 비면
+> "이 앱으로 들어온 호출이 아직 없습니다"라고 이유를 알려준다.
+
 ---
 
 ## 컷 7 · ★ 원장 훼손 → 대사 배치 검출 (5:30 ~ 6:30)
@@ -217,7 +218,8 @@ node scripts/demo/tamper-and-detect.mjs
 > 중요한 건 **자동 복구를 하지 않는다**는 겁니다. 자동으로 맞추면 훼손을 덮어쓰는 거니까요.
 > 검출 → 거래 중단 → 수동 조사가 원칙입니다."
 
-훼손된 상태이므로 **여기서 촬영을 끝내거나**, 이어서 찍으려면 다시 `down -v` → 시드부터 한다.
+대사는 관리자 API로 즉시 실행되므로 **기다리는 구간이 없다.** 몇 번이든 다시 찍어도 된다.
+다만 원장이 훼손된 상태이므로, 앞 컷을 다시 찍으려면 `down -v` → 시드부터 한다.
 
 ---
 

@@ -74,7 +74,14 @@ export function Button({
     >
       {state === "pending" && <Loader2 aria-hidden className="size-4 animate-spin" />}
       {state === "done" && <Check aria-hidden className="size-4" />}
-      <span>{state === "pending" ? pendingLabel : state === "done" ? doneLabel : children}</span>
+      {/*
+        아이콘과 글자를 한 줄에 고정한다. 예전에는 그냥 <span>이라, 버튼이 넓게 늘어나면
+        이 span이 min-content로 줄어 아이콘 아래로 글자가 떨어졌다(개발자 포털 '검색' 버튼).
+        children으로 아이콘을 넘기는 사용처가 많아 컴포넌트에서 막는다.
+      */}
+      <span className="inline-flex shrink-0 items-center gap-2">
+        {state === "pending" ? pendingLabel : state === "done" ? doneLabel : children}
+      </span>
     </button>
   );
 }
