@@ -276,9 +276,9 @@ sequenceDiagram
     participant C as 클라이언트
     participant T as TradingService
     participant DB as PostgreSQL
-    participant OB as 오더북(심볼별 파티션 스레드)
+    participant OB as 오더북 · 심볼별 파티션 스레드
     participant SE as SettlementService
-    participant LG as 원장(해시체인)
+    participant LG as 원장 · 해시체인
 
     C->>T: place(심볼, 가격, 수량, Idempotency-Key)
     T->>DB: 같은 키의 주문이 있는가?
@@ -543,6 +543,17 @@ bge-m3로 실측하니 관련 질문 0.527~0.654 / 무관 질문 0.350~0.429 분
 `docker compose up -d`는 이미지를 재빌드하지 않습니다. ai-service가 pgvector 수정 이전
 코드로 돌아 3번 문제가 그대로 재현됐습니다. Python을 고쳤으면 `--build`가 필요합니다.
 → **"고쳤는데 왜 안 되지"의 절반은 실행 중인 것이 내가 고친 것이 아니어서다.**
+
+### 9. 스택 표를 "어디에 쓰는가"로 고쳐 쓰다가 화면 요소 누락을 찾았다
+
+README 기술 스택이 나열형이라 각 항목에 실제 사용처를 적는 표로 바꿨습니다. 그러자
+`lightweight-charts`에 적을 게 없었습니다. 설치돼 있는데 임포트하는 파일이 하나도
+없었습니다. 따라가 보니 **FSD가 종목 상세 필수 요소로 적어둔 기초자산 시세 차트가
+통째로 빠져 있었고**, 캔들을 내려주는 API조차 없었습니다. Phase 10 완료 체크는
+되어 있었습니다 — 체크리스트를 "화면이 뜨는가"로 읽었기 때문입니다.
+같은 방식으로 `@tanstack/react-table`과 QueryDSL도 사용처 0으로 드러났습니다.
+→ **선언과 사용을 대조하는 건 몇 분이면 되는데, 완료 체크리스트가 놓치는 걸 잡아낸다.**
+"쓴다고 적어둔 것"과 "실제로 쓰는 것"이 다르면 그건 문서 문제가 아니라 구현 누락 신호입니다.
 
 ---
 
