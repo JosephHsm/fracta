@@ -75,7 +75,9 @@ docker compose ps
 > "인프라, AI 서비스, 백엔드, 웹앱 두 개까지 `docker compose up` 한 번으로 뜹니다.
 > 백엔드 헬스체크가 통과한 뒤에야 프론트가 시작되도록 묶어서, 첫 화면에서 빈 데이터를 보지 않습니다."
 
-7개 컨테이너가 `healthy`인 것을 보여주고 넘어간다.
+7개 컨테이너가 떠 있는 것을 보여주고 넘어간다.
+`healthy`는 healthcheck를 붙인 5개(postgres·redis·minio·ai-service·app)에만 표시된다.
+두 웹앱은 `Up`으로만 나온다 — 정상이다.
 
 ---
 
