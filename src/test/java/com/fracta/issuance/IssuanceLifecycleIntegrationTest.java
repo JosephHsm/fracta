@@ -19,8 +19,10 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fracta.common.money.Units;
 import com.fracta.issuance.application.AssetService;
 import com.fracta.issuance.application.IssuanceService;
+import com.fracta.issuance.application.SubscriptionOpenScheduler;
 import com.fracta.issuance.domain.IssuanceStatus;
 import com.fracta.issuance.domain.UnderlyingAsset;
+import com.fracta.issuance.infrastructure.IssuanceRepository;
 import com.fracta.ledger.api.LedgerPort;
 import com.fracta.ledger.api.OwnerId;
 import com.fracta.support.AuthTestSupport;
@@ -49,6 +51,9 @@ class IssuanceLifecycleIntegrationTest extends IntegrationTestBase {
 
     @Autowired
     JdbcTemplate jdbc;
+
+    @Autowired
+    IssuanceRepository issuanceRepository;
 
     @Test
     @DisplayName("DRAFT→…→LISTED 전 과정 + 청약 개시 스케줄러 + 상장 시 원장 전량 발행 + 승인 감사 로그")
@@ -83,17 +88,13 @@ class IssuanceLifecycleIntegrationTest extends IntegrationTestBase {
         assertThat((String) audit.get("before_state")).contains(String.valueOf(id));
         assertThat((String) audit.get("after_state")).contains("PENDING_APPROVAL").contains("APPROVED");
 
-        // IS-06: 스케줄러가 start_at 도달 건을 SUBSCRIBING으로 전환 (test 프로필 500ms 주기)
-        IssuanceStatus status = null;
-        long deadline = System.currentTimeMillis() + 10_000;
-        while (System.currentTimeMillis() < deadline) {
-            status = issuanceService.get(id).status();
-            if (status == IssuanceStatus.SUBSCRIBING) {
-                break;
-            }
-            Thread.sleep(200);
-        }
-        assertThat(status).isEqualTo(IssuanceStatus.SUBSCRIBING);
+        // IS-06: start_at 도달 건을 SUBSCRIBING으로 전환한다.
+        //
+        // 스케줄러를 직접 호출한다 — 자동 실행은 테스트 프로필에서 꺼져 있다. 스캔이 전역이라
+        // 켜두면 다른 테스트의 Issuance 행 버전을 올려 낙관적 락 충돌을 일으킨다.
+        // 직접 호출이 폴링보다 결정적이기도 하다(기존에는 최대 10초를 기다렸다).
+        new SubscriptionOpenScheduler(issuanceRepository, issuanceService).openDueSubscriptions();
+        assertThat(issuanceService.get(id).status()).isEqualTo(IssuanceStatus.SUBSCRIBING);
 
         assertThat(postAdmin("/api/v1/admin/issuances/" + id + "/start-allotment", adminToken).getStatusCode())
                 .isEqualTo(HttpStatus.OK);

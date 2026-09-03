@@ -16,7 +16,12 @@ subscription:
     lease-seconds: 30
 
 issuance:
-  subscription-open-scan-delay: 500   # IS-06 스케줄러 검증을 빠르게
+  # IS-06 스케줄러는 테스트에서 끈다. 스캔이 전역이라 조건에 맞는 모든 Issuance의 버전을
+  # 올리고, 그 행을 쓰던 다른 테스트가 낙관적 락 충돌로 깨진다(전체 스위트에서만 재현됐다).
+  # 스캔 로직은 IssuanceLifecycleIntegrationTest가 메서드를 직접 호출해 검증한다.
+  subscription-open-scan:
+    enabled: false
+  subscription-open-scan-delay: 500
 
 security:
   bcrypt-strength: 4   # 테스트 속도 — 다수 계정 생성 시 인코딩 비용 절감
