@@ -77,7 +77,7 @@
 - [ ] 데모 영상 녹화 및 링크 — 대본 `docs/demo-script.md` 작성·검증 완료(각 컷의 명령을 실제로 실행해 확인). **녹화만 남음**
 - [ ] 폐쇄망 모드 시연 캡처
 - [x] `docker compose up` **한 번**으로 전체 기동 — 인프라·AI·백엔드·웹앱 2종까지. 컨테이너 프론트에서 로그인·발행 조회 실동작 확인
-- [x] `./gradlew test` 전체 통과 — 281건
+- [x] `./gradlew test` 전체 통과 — Java 309건 (+ ai-service pytest 144건)
 - [x] 미구현·한계 목록이 정직하게 기재됨 — README '알려진 한계' 10건
 - [x] Mock ↔ namuh PLUG 프로파일 전환 → 동일 `MarketDataPort` 사용 시연 — `MarketDataPortSwapTest`(기본) + `PlugAdapterIntegrationTest`(plug) 양방향 검증
 - [x] 리포지토리에 시크릿·API 키가 커밋되지 않았는지 최종 확인 — 전체 이력 스캔, `.env` 미커밋

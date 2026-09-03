@@ -27,6 +27,7 @@ docker compose up -d          # PG / Redis / MinIO 기동
 
 Java 21 · Spring Boot 3.3 · JPA · Spring Batch 5
 PostgreSQL 16 + pgvector · Redis 7 · MinIO
+증권사 연동: namuh PLUG **시세 조회 전용** (실전 도메인) + 종목마스터 `m_new_stock.mst`
 테스트: JUnit5 + **Testcontainers** (H2 금지) + WireMock + k6
 프론트(Phase 10): Next.js 16 App Router · TypeScript · Tailwind v4 · shadcn/ui(**Base UI** 프리미티브) · TanStack Query · lightweight-charts(종목 상세 캔들) + Recharts(포털 대시보드) · Lucide
 
@@ -50,7 +51,7 @@ PostgreSQL 16 + pgvector · Redis 7 · MinIO
 3. 매도 주문 시 수량 잠금 누락 → 이중 매도 발생
 4. 오더북 인메모리 상태 재시작 복원 누락 → `@PostConstruct`로 DB에서 복원
 5. 해시체인 동시 INSERT → `pg_advisory_xact_lock` 필수
-6. 증권사 도메인과 계좌구분을 잘못 짝지음(모의 도메인 + 계좌구분 `01` 등) → 전부 실패. 토큰 발급은 실전 도메인, 조회는 모의 도메인이라는 점도 주의
+6. **안전을 도메인으로 보장한다고 착각** → 모의 도메인에 주문을 보내도 주문은 나간다. 위험을 정하는 건 서버가 아니라 **경로**다. 참고로 시세는 실전 도메인에서 받는다 — 모의가 REST 시세를 막았다(`IGW40023`, 2026-09-03). 토큰 발급은 원래부터 실전 전용이다
 7. AI 가드레일을 프롬프트에만 의존 → 반드시 코드 후처리 검증
 8. audit_log에 민감정보 평문 저장 → 마스킹 필터
 9. DvP 락 획득 순서 미고정 → 데드락. 항상 `owner_id` 오름차순
@@ -72,8 +73,9 @@ PostgreSQL 16 + pgvector · Redis 7 · MinIO
 
 - 성능을 이유로 advisory lock 제거
 - `ledger_transaction` 테이블에 UPDATE/DELETE
-- 실전 증권사 연동 코드 작성. `BROKER_ACCOUNT_PRODUCT_CODE`는 `03`(모의), 도메인은 `moapi.nhplug.com` 고정
-- `BrokerSafetyValidator`(실전 계좌 차단) 우회·비활성화
-- 증권사 API로 **주문** 전송 (시세 조회 전용이다. 매매는 자체 오더북에서 체결)
+- **증권사에 주문 보내기.** 시세 조회 전용이다. 주문 경로는 소스에 나타나기만 해도 `NoBrokerOrderPathTest`가 빌드를 깬다
+- `PlugPathPolicy` 화이트리스트 우회. 조회 경로(`/krstock/quote/`)만 부를 수 있다
+- `BROKER_ACCOUNT_PRODUCT_CODE`를 `03`(모의) 외의 값으로 바꾸기
+- `BrokerSafetyValidator`(실주문 차단) 우회·비활성화
 - 사양에 없는 라이브러리 추가 (필요하면 먼저 제안하고 승인받을 것)
 - 테스트를 건너뛰거나 `@Disabled` 처리

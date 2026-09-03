@@ -67,7 +67,7 @@
 - 실제 자금 이체 (예치금은 시뮬레이션 원장)
 - 실제 KYC 심사 (Mock 처리)
 - 증권사 API를 통한 주문 (시세 조회 전용. FRACTA 매매는 자체 오더북에서 체결)
-- 실전투자 계좌 연동 (모의 도메인 + 계좌구분 `03`만 사용)
+- 실전투자 **계좌** 연동 (계좌구분 `03`만 사용). 시세 조회는 실전 도메인을 쓰지만 계좌를 특정하지 않는다
 - 다국어, 모바일 네이티브 앱
 
 ---
@@ -104,7 +104,8 @@
 │  [상류] namuh PLUG Open API (NH투자증권)                   │
 │   · 국내주식 현재가 / 기간별시세 (REST)                     │
 │   · 실시간 체결·호가 (WebSocket)                           │
-│   · 모의 도메인 moapi.nhplug.com (시세 조회 전용)          │
+│   · 시세 조회 전용 — 주문은 보내지 않는다                  │
+│   · 종목마스터 m_new_stock.mst (검색용, 인증 불필요)       │
 └───────────────────────┬──────────────────────────────────┘
                         │ MarketDataPort (소비)
                         ▼
@@ -840,12 +841,12 @@ KIS는 v1.1에서 교체된 과거 후보이며 추가 구현 대상이 아니�
 | 항목 | 처리 방법 |
 |---|---|
 | **접근토큰 24시간 만료** | 발급 시각 저장. 만료 30분 전 선제 갱신 스케줄러. 갱신 중 요청은 대기 |
-| **초당 호출 제한** | 모의 도메인 실측 실효 한도 약 1건/초. 기본값 `1`; SDK 문서값 4~5와 다른 근거는 `docs/benchmarks/broker-quota.md` |
+| **초당 호출 제한** | 실측 실효 한도 약 1건/초. 기본값 `1`; SDK 문서값 4~5와 다른 근거는 `docs/benchmarks/broker-quota.md` |
 | **제한 방식 불확실** | 공식 문서에 수치 미공개. 토큰버킷으로 시작 → `IGW42901~42903` 발생 시 슬라이딩 윈도우로 전환. **두 구현 모두 유지하고 설정으로 스위치** |
-| **토큰 발급 도메인 상이** | 토큰 발급은 **실전 도메인에서만** 가능. 데이터 조회는 모의 도메인. 두 클라이언트를 분리 구성 |
+| **토큰 발급 도메인 상이** | 토큰 발급은 **실전 도메인에서만** 가능(모의 미제공). 발급된 토큰은 양쪽에서 쓸 수 있다 |
 | **엔드포인트 매핑** | 비밀이 아닌 경로는 `application.yml`의 `broker.endpoints`에 설정. 시크릿은 환경변수로만 주입. 하드코딩 금지 |
-| **도메인 분리** | 모의 `moapi.nhplug.com:8443` (계좌구분 `03`), 실전 `api.nhplug.com:8443` (계좌구분 `01`/`02`). 도메인-계좌구분 쌍이 어긋나면 전부 실패 |
-| **모의투자 미지원 API** | 호출 전 지원 여부 체크. 미지원 시 Mock으로 폴백 + WARN 로그 |
+| **모의 도메인 REST 시세 차단** | 2026-09-03부터 모의 도메인이 시세 REST를 전부 막는다(`IGW40023`). 8월 31일에는 됐다. **그래서 시세는 실전 도메인에서 받는다** — 실측표 `docs/reference/plug-support-matrix.md`. WebSocket(모의 17070)은 여전히 연결된다 |
+| **모의투자 미지원 API** | 호출 전 지원 여부 체크. 미지원 시 Mock으로 폴백 + WARN 로그. 판별 코드는 `IGW40401`과 `IGW40023` **둘 다**다 |
 | **WebSocket 재연결** | 지수 백오프(1s→2s→4s→...→60s). 재연결 시 구독 목록 자동 복원 |
 | **장 시간 외** | 09:00~15:30 외에는 폴링 중단, 마지막 종가 캐시 사용 |
 
@@ -1288,15 +1289,16 @@ MINIO_ENDPOINT=http://localhost:9000
 
 # Broker (NH투자증권 namuh PLUG)
 BROKER_ENV=mock                               # mock 고정
-BROKER_BASE_URL=https://moapi.nhplug.com:8443 # 데이터 조회 (모의)
+BROKER_BASE_URL=https://api.nhplug.com:8443   # 시세 조회. 모의는 REST 시세를 막았다(IGW40023)
 BROKER_AUTH_URL=https://api.nhplug.com:8443   # 토큰 발급은 실전 도메인에서만 가능
 BROKER_APP_KEY=
 BROKER_APP_SECRET=
 BROKER_ACCOUNT_NO=
 BROKER_ACCOUNT_PRODUCT_CODE=03                # 03=모의. 01/02(실전)는 부팅 시 거부
-BROKER_RATE_LIMIT_PER_SEC=1                   # 모의 도메인 실측값
+BROKER_RATE_LIMIT_PER_SEC=1                   # 실측값
 BROKER_RATE_LIMIT_STRATEGY=sliding            # bucket | sliding
-BROKER_ALLOW_LIVE=false                       # 실전 연동 안전장치. true 로 바꾸지 않는다
+BROKER_ALLOW_LIVE=false                       # 실주문 안전장치. true 로 바꾸지 않는다
+BROKER_INSTRUMENTS_URL=https://www.nhplug.com/instruments/m_new_stock.mst  # 종목마스터(인증 불필요)
 
 # AI
 AI_SERVICE_URL=http://localhost:8000
@@ -1323,7 +1325,7 @@ LEDGER_ADAPTER=hashchain         # hashchain | (future: blockchain)
 3. **매도 주문 시 수량 잠금을 빠뜨림** → 이중 매도 발생
 4. **오더북 인메모리 상태를 재시작 시 복원 안 함** → 미체결 주문 유실
 5. **해시체인 동시 INSERT** → advisory lock 필수
-6. **증권사 도메인과 계좌구분을 잘못 짝지음** (모의 도메인 + 계좌구분 `01` 등) → 전부 실패
+6. **안전을 도메인으로만 보장한다고 착각** → 모의 도메인에 주문을 보내도 주문은 나간다. 위험을 정하는 건 서버가 아니라 **경로**다 (`PlugPathPolicy` + `NoBrokerOrderPathTest`)
 7. **AI 가드레일을 프롬프트에만 의존** → 반드시 코드 후처리 검증
 8. **audit_log에 민감정보 그대로 저장** → 마스킹 필터
 9. **DvP에서 락 획득 순서 미고정** → 데드락

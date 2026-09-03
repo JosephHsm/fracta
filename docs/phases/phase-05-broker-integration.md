@@ -46,7 +46,7 @@ KIS는 v1.1에서 교체한 과거 후보이며 다시 추가하지 않는다. �
 | 개발자 포털 | `https://www.nhplug.com` (API가이드 `/apiservice`, 테스트베드 `/testbed-console`) | 확인 |
 | 공식 GitHub | `https://github.com/PLUG-OpenAPI` (Python SDK `nhplug-sdk`, MCP 샘플 `nhplug-mcp`, MIT) | 확인 |
 | 실전 도메인 | `https://api.nhplug.com:8443` | 확인 |
-| **모의 도메인** | `https://moapi.nhplug.com:8443` | 확인 |
+| **모의 도메인** | `https://moapi.nhplug.com:8443` | 확인 — **2026-09-03부터 REST 시세 차단** (아래 참조) |
 | 인증 | AppKey + AppSecret → OAuth 토큰 | 확인 |
 | **토큰 유효기간** | **24시간** | 확인 |
 | 토큰 발급 엔드포인트 | **실전 도메인에서만 발급.** 모의 도메인은 토큰 발급을 제공하지 않음 | 확인 — **설계에 반영 필수** |
@@ -91,6 +91,35 @@ KIS는 v1.1에서 교체한 과거 후보이며 다시 추가하지 않는다. �
 > **중요**: FSD §1.4에 "모의투자 주문"이 포함되어 있으나, 자체 오더북을 갖는 구조에서 외부 주문은 불필요하고 위험만 늘린다. **시세 조회 전용으로 축소**한다. 이 결정을 FSD에 반영했다.
 
 ---
+
+## 2-1. 전제가 뒤집힌 건 (2026-09-03 추가)
+
+이 Phase는 "시세는 모의 도메인에서 받는다"를 전제로 설계했다. **그 전제가 깨졌다.**
+
+```
+moapi  REST 시세 11종 + 해외(gbstock)   →  IGW40023 "모의투자에서는 제공하지 않는 API입니다"
+moapi  /n2/acctinfo (대조군)            →  정상
+moapi  WebSocket 17070                 →  연결됨
+api    REST 시세                        →  정상
+```
+
+8월 31일에는 모의에서 됐다(`scripts/plug/captured/` 캡처와 유량 실측이 증거).
+공식 SDK README에도 이 제약은 없다. 전수 실측표는
+[`docs/reference/plug-support-matrix.md`](../reference/plug-support-matrix.md).
+
+**대응** — 시세를 실전 도메인에서 받되, **안전 근거를 도메인에서 경로로 옮겼다.**
+위험을 정하는 건 어느 서버냐가 아니라 무엇을 부르냐다. 모의 도메인에 주문을 보내도
+주문은 나간다. 지금 규칙이 더 정확하다.
+
+| 층 | 무엇을 막나 |
+|---|---|
+| 시세 요청 본문에 계좌번호가 없다 | `{iem_cd, market_cd}`뿐 — 계좌를 특정할 방법이 없다 |
+| `PlugPathPolicy` | 런타임 화이트리스트. `/krstock/quote/` 외 거부 |
+| `NoBrokerOrderPathTest` | **주문 경로가 소스에 나타나기만 해도 빌드 실패** |
+| `BrokerSafetyValidator` | 설정된 엔드포인트가 전부 조회인지 부팅 시 검증 |
+
+이 과정에서 버그도 하나 잡았다 — 폴백 판정이 `IGW40401`만 보고 있어서
+**준비해 둔 Mock 폴백이 발동하지 않았다.** 실제로 오는 코드는 `IGW40023`이다.
 
 ## 3. 핵심 사양
 
