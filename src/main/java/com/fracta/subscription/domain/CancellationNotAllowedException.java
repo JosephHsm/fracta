@@ -10,7 +10,7 @@ public class CancellationNotAllowedException extends DomainException {
 
     public CancellationNotAllowedException(long orderId, String reason) {
         super(ErrorCode.STATE_NOT_SUBSCRIBING,
-                "청약을 취소할 수 없다: " + reason,
+                "청약을 취소할 수 없습니다: " + reason,
                 Map.of("orderId", orderId, "reason", reason));
     }
 }

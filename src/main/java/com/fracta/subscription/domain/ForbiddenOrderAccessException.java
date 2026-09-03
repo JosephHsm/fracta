@@ -9,6 +9,6 @@ import com.fracta.common.error.ErrorCode;
 public class ForbiddenOrderAccessException extends DomainException {
 
     public ForbiddenOrderAccessException(long orderId) {
-        super(ErrorCode.AUTH_FORBIDDEN, "본인의 청약만 처리할 수 있다", Map.of("orderId", orderId));
+        super(ErrorCode.AUTH_FORBIDDEN, "본인의 청약만 처리할 수 있습니다.", Map.of("orderId", orderId));
     }
 }

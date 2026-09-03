@@ -10,7 +10,7 @@ public class NotSubscribingException extends DomainException {
 
     public NotSubscribingException(long issuanceId, String currentStatus) {
         super(ErrorCode.STATE_NOT_SUBSCRIBING,
-                "청약 가능한 상태가 아니다. 현재 상태: " + currentStatus,
+                "청약 가능한 상태가 아닙니다. 현재 상태: " + currentStatus,
                 Map.of("issuanceId", issuanceId, "status", currentStatus));
     }
 }

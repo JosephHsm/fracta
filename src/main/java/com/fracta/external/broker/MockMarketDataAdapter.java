@@ -39,15 +39,39 @@ public class MockMarketDataAdapter implements MarketDataPort {
         return new Quote(ticker, Money.of(price), Instant.now());
     }
 
+    /**
+     * 일봉 시뮬레이션. <b>마지막 봉의 종가는 현재가와 일치시킨다.</b>
+     *
+     * <p>예전에는 기준가에서 앞으로 걸었는데, 그러면 현재가(getCurrentPrice)와 무관한
+     * 별개의 랜덤워크가 나온다. 화면에서 차트 오른쪽 끝과 괴리율 배지가 서로 다른 값을
+     * 가리켜 "차트는 11,361원인데 괴리율은 +2.69%?"가 된다. 실제 시세 피드는 그렇지 않다.
+     * 그래서 현재가를 기점으로 <b>과거 방향으로</b> 걸어 시계열을 만든다.
+     */
     @Override
     public List<Candle> getDailyCandles(String ticker, LocalDate from, LocalDate to) {
+        if (from.isAfter(to)) {
+            return List.of();
+        }
+        // 현재가를 오른쪽 끝에 고정한다. 아직 조회된 적이 없으면 기준가가 곧 현재가다.
+        long anchor = lastPrices.getOrDefault(ticker, basePriceOf(ticker));
+
+        List<Long> closes = new ArrayList<>();
+        long price = anchor;
+        for (LocalDate d = to; !d.isBefore(from); d = d.minusDays(1)) {
+            closes.add(price);
+            price = Math.max(1, price - Math.round(price * ThreadLocalRandom.current().nextDouble(-0.02, 0.02)));
+        }
+        java.util.Collections.reverse(closes);
+
         List<Candle> candles = new ArrayList<>();
-        long price = basePriceOf(ticker);
-        for (LocalDate d = from; !d.isAfter(to); d = d.plusDays(1)) {
-            long close = Math.max(1, price + Math.round(price * ThreadLocalRandom.current().nextDouble(-0.02, 0.02)));
-            candles.add(new Candle(d, Money.of(price), Money.of(Math.max(price, close)),
-                    Money.of(Math.min(price, close)), Money.of(close), ThreadLocalRandom.current().nextLong(1_000, 100_000)));
-            price = close;
+        LocalDate day = from;
+        long open = closes.get(0);
+        for (long close : closes) {
+            candles.add(new Candle(day, Money.of(open), Money.of(Math.max(open, close)),
+                    Money.of(Math.min(open, close)), Money.of(close),
+                    ThreadLocalRandom.current().nextLong(1_000, 100_000)));
+            open = close;
+            day = day.plusDays(1);
         }
         return candles;
     }

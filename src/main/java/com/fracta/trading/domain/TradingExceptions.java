@@ -15,7 +15,7 @@ public final class TradingExceptions {
     public static class NotTradableException extends DomainException {
         public NotTradableException(String tokenSymbol, String status) {
             super(ErrorCode.STATE_NOT_TRADABLE,
-                    "거래 가능한 종목이 아니다. 현재 상태: " + status,
+                    "거래 가능한 종목이 아닙니다. 현재 상태: " + status,
                     Map.of("tokenSymbol", tokenSymbol, "status", status));
         }
     }
@@ -24,7 +24,7 @@ public final class TradingExceptions {
     public static class OrderNotCancellableException extends DomainException {
         public OrderNotCancellableException(long orderId, OrderStatus status) {
             super(ErrorCode.STATE_INVALID_TRANSITION,
-                    "취소할 수 없는 주문이다. 현재 상태: " + status,
+                    "취소할 수 없는 주문입니다. 현재 상태: " + status,
                     Map.of("orderId", orderId, "status", status.name()));
         }
     }
@@ -32,7 +32,7 @@ public final class TradingExceptions {
     /** 본인 주문이 아님. */
     public static class ForbiddenOrderAccessException extends DomainException {
         public ForbiddenOrderAccessException(long orderId) {
-            super(ErrorCode.AUTH_FORBIDDEN, "본인의 주문만 처리할 수 있다",
+            super(ErrorCode.AUTH_FORBIDDEN, "본인의 주문만 처리할 수 있습니다.",
                     Map.of("orderId", orderId));
         }
     }

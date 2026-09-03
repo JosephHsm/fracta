@@ -10,7 +10,7 @@ public class AmountOverflowException extends DomainException {
 
     public AmountOverflowException(String operation, ArithmeticException cause) {
         super(ErrorCode.VALID_AMOUNT_OVERFLOW,
-                "연산 중 표현 가능한 범위를 초과했다: " + operation,
+                "연산 중 표현 가능한 범위를 초과했습니다: " + operation,
                 Map.of("operation", operation),
                 cause);
     }

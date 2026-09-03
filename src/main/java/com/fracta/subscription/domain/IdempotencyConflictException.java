@@ -10,7 +10,7 @@ public class IdempotencyConflictException extends DomainException {
 
     public IdempotencyConflictException(String idempotencyKey) {
         super(ErrorCode.IDEM_KEY_CONFLICT,
-                "동일 Idempotency-Key가 다른 요청에 이미 사용됐다",
+                "동일 Idempotency-Key가 다른 요청에 이미 사용됐습니다.",
                 Map.of("idempotencyKey", idempotencyKey));
     }
 }

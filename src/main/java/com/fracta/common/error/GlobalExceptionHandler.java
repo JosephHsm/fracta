@@ -70,7 +70,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(NoResourceFoundException.class)
     public ResponseEntity<ErrorResponse> handleNotFound(NoResourceFoundException e) {
         return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                .body(ErrorResponse.of("NOT_FOUND", "요청한 리소스가 없다", Map.of("path", e.getResourcePath())));
+                .body(ErrorResponse.of("NOT_FOUND", "요청한 리소스가 없습니다.", Map.of("path", e.getResourcePath())));
     }
 
     /**
@@ -90,6 +90,6 @@ public class GlobalExceptionHandler {
         // 내부 오류 상세는 응답에 노출하지 않는다 — 로그로만 남긴다
         log.error("unexpected exception", e);
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(ErrorResponse.of("INTERNAL_ERROR", "서버 내부 오류가 발생했다", Map.of()));
+                .body(ErrorResponse.of("INTERNAL_ERROR", "서버 내부 오류가 발생했습니다.", Map.of()));
     }
 }

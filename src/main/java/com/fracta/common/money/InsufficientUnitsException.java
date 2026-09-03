@@ -10,7 +10,7 @@ public class InsufficientUnitsException extends DomainException {
 
     public InsufficientUnitsException(long available, long requested) {
         super(ErrorCode.FUND_INSUFFICIENT_UNITS,
-                "보유 수량이 부족하다. 보유=%d, 요청=%d".formatted(available, requested),
+                "보유 수량이 부족합니다. 보유=%d, 요청=%d".formatted(available, requested),
                 Map.of("available", available, "requested", requested));
     }
 }

@@ -30,7 +30,7 @@ public class AuthService {
 
     public static class DuplicateEmailException extends DomainException {
         public DuplicateEmailException(String email) {
-            super(ErrorCode.VALID_DUPLICATE_EMAIL, "이미 등록된 이메일이다", Map.of("email", email));
+            super(ErrorCode.VALID_DUPLICATE_EMAIL, "이미 등록된 이메일입니다.", Map.of("email", email));
         }
     }
 

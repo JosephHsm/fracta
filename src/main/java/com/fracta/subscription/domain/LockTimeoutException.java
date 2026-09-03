@@ -9,6 +9,6 @@ import com.fracta.common.error.ErrorCode;
 public class LockTimeoutException extends DomainException {
 
     public LockTimeoutException(String lockKey) {
-        super(ErrorCode.STATE_LOCK_TIMEOUT, "분산락 획득 실패: " + lockKey, Map.of("lockKey", lockKey));
+        super(ErrorCode.STATE_LOCK_TIMEOUT, "분산락을 획득하지 못했습니다: " + lockKey, Map.of("lockKey", lockKey));
     }
 }

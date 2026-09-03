@@ -177,7 +177,7 @@ public class DeveloperPortalService {
         Instant safeTo = to == null ? Instant.now() : to;
         Instant safeFrom = from == null ? safeTo.minus(30, ChronoUnit.DAYS) : from;
         if (safeFrom.isAfter(safeTo)) {
-            throw new PortalValidationException("시작 시각은 종료 시각보다 늦을 수 없다");
+            throw new PortalValidationException("시작 시각은 종료 시각보다 늦을 수 없습니다.");
         }
         String normalizedEndpoint = endpoint == null || endpoint.isBlank() ? "" : endpoint.trim();
         int normalizedStatus = statusCode == null ? -1 : statusCode;

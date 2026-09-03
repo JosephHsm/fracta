@@ -10,7 +10,7 @@ public class RiskProfileRequiredException extends DomainException {
 
     public RiskProfileRequiredException(InvestorId investorId) {
         super(ErrorCode.SUIT_PROFILE_REQUIRED,
-                "유효한 투자성향 진단이 없다. 진단(재진단) 후 다시 시도하라.",
+                "유효한 투자성향 진단이 없습니다. 진단 후 다시 시도해 주세요.",
                 Map.of("investorId", investorId.value()));
     }
 }

@@ -107,7 +107,7 @@ public class OpenApiGatewayFilter extends OncePerRequestFilter {
         } catch (Exception e) {
             log.error("오픈 API 처리 중 예상 밖 오류", e);
             status = HttpServletResponse.SC_INTERNAL_SERVER_ERROR;
-            writeError(response, ErrorCode.BROKER_CALL_FAILED.name(), "서버 내부 오류가 발생했다",
+            writeError(response, ErrorCode.BROKER_CALL_FAILED.name(), "서버 내부 오류가 발생했습니다.",
                     HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
         } finally {
             OpenApiContext.clear();

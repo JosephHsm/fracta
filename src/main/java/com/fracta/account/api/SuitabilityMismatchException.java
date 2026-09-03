@@ -10,7 +10,7 @@ public class SuitabilityMismatchException extends DomainException {
 
     public SuitabilityMismatchException(RiskGrade productGrade, RiskGrade investorGrade) {
         super(ErrorCode.SUIT_PROFILE_MISMATCH,
-                "상품 위험등급(%s)이 투자자 성향등급(%s)보다 높다. 부적합 확인 서명 시 진행 가능하다."
+                "상품 위험등급(%s)이 투자자 성향등급(%s)보다 높습니다. 부적합 확인 서명 후 진행할 수 있습니다."
                         .formatted(productGrade.koreanName(), investorGrade.koreanName()),
                 Map.of("productGrade", productGrade.level(), "investorGrade", investorGrade.level()));
     }

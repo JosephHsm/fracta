@@ -10,7 +10,7 @@ public class InsufficientCashException extends DomainException {
 
     public InsufficientCashException(long requested) {
         super(ErrorCode.FUND_INSUFFICIENT_CASH,
-                "예치금이 부족하다. 요청 금액=%d".formatted(requested),
+                "예치금이 부족합니다. 요청 금액=%d".formatted(requested),
                 Map.of("requested", requested));
     }
 }
