@@ -41,8 +41,17 @@ public final class TradingExceptions {
     public static class NoLiquidityException extends DomainException {
         public NoLiquidityException(String tokenSymbol) {
             super(ErrorCode.STATE_NO_LIQUIDITY,
-                    "반대편 호가가 없어 시장가 주문을 체결할 수 없다",
+                    "반대편 호가가 없어 시장가 주문을 체결할 수 없습니다.",
                     Map.of("tokenSymbol", tokenSymbol));
+        }
+    }
+
+    /** 차트 조회 구간이 허용 범위를 벗어났다. */
+    public static class InvalidCandleRangeException extends DomainException {
+        public InvalidCandleRangeException(int days, int min, int max) {
+            super(ErrorCode.VALID_INVALID_INPUT,
+                    "조회 기간은 %d일 이상 %d일 이하여야 합니다.".formatted(min, max),
+                    Map.of("days", days, "min", min, "max", max));
         }
     }
 }

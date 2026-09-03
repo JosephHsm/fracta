@@ -11,6 +11,8 @@
  */
 import type {
   BalanceResponse,
+  CandleResponse,
+  CandlesResponse,
   CashTransactionResponse,
   ExecutionResponse,
   IssuanceDetailResponse,
@@ -62,6 +64,13 @@ export type RiskProfileContract = Requires<
   "score" | "grade" | "gradeName" | "expiresAt"
 >;
 
+// 기초자산 시세 차트 — 값은 서버가 조각 참조가로 환산해 준다(화면 재계산 금지)
+export type CandlesContract = Requires<CandlesResponse, "tokenSymbol" | "splitRatio" | "candles">;
+export type CandleContract = Requires<
+  CandleResponse,
+  "date" | "open" | "high" | "low" | "close"
+>;
+
 /**
  * 금액·수량은 반드시 number(원 단위 정수)로 와야 한다. 서버가 실수로 문자열이나
  * 부동소수 표현으로 바꾸면 여기서 잡힌다 — 금액 규칙(FSD §0.2)의 프론트 쪽 방어선이다.
@@ -75,4 +84,7 @@ export type NumericGuards = [
   AssertNumeric<IssuanceDetailResponse["totalUnits"]>,
   AssertNumeric<MySubscriptionResponse["depositAmount"]>,
   AssertNumeric<MyOrderResponse["units"]>,
+  // 봉 값이 문자열로 바뀌면 차트가 조용히 빈 화면이 된다 — 런타임 전에 잡는다
+  AssertNumeric<CandleResponse["close"]>,
+  AssertNumeric<CandlesResponse["splitRatio"]>,
 ];

@@ -165,14 +165,14 @@ export interface CancelOrder1Request {
 
 export interface DashboardRequest {
     /**
-     *
+     * 
      */
     clientId: string;
 }
 
 export interface DeliveriesRequest {
     /**
-     *
+     * 
      */
     webhookId: number;
 }
@@ -209,23 +209,23 @@ export interface Executions1Request {
 
 export interface LogsRequest {
     /**
-     *
+     * 
      */
     clientId: string;
     /**
-     *
+     * 
      */
     endpoint?: string;
     /**
-     *
+     * 
      */
     statusCode?: number;
     /**
-     *
+     * 
      */
     from?: Date;
     /**
-     *
+     * 
      */
     to?: Date;
 }
@@ -290,7 +290,7 @@ export interface Premium1Request {
 
 export interface RedeliverRequest {
     /**
-     *
+     * 
      */
     deliveryId: number;
 }
@@ -311,21 +311,21 @@ export interface Register1Request {
 
 export interface RegisterClientRequest {
     /**
-     *
+     * 
      */
     developerCreateClientRequest: DeveloperCreateClientRequest;
 }
 
 export interface RegisterDeveloperWebhookRequest {
     /**
-     *
+     * 
      */
     developerCreateWebhookRequest: DeveloperCreateWebhookRequest;
 }
 
 export interface RotateSecretRequest {
     /**
-     *
+     * 
      */
     clientId: string;
 }
@@ -398,18 +398,18 @@ export interface Token3Request {
 
 export interface UpdateScopesRequest {
     /**
-     *
+     * 
      */
     clientId: string;
     /**
-     *
+     * 
      */
     developerUpdateScopesRequest: DeveloperUpdateScopesRequest;
 }
 
 export interface WebhooksRequest {
     /**
-     *
+     * 
      */
     clientId: string;
 }

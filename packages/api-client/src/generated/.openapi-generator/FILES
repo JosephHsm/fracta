@@ -1,5 +1,6 @@
 .gitignore
 .npmignore
+.openapi-generator-ignore
 README.md
 docs/AdminAiControllerApi.md
 docs/AdminIssuanceControllerApi.md
@@ -8,6 +9,7 @@ docs/AiControllerApi.md
 docs/ApiResponseApplyResult.md
 docs/ApiResponseBalanceResponse.md
 docs/ApiResponseCancelOrderResponse.md
+docs/ApiResponseCandlesResponse.md
 docs/ApiResponseClientView.md
 docs/ApiResponseCreateAssetResponse.md
 docs/ApiResponseCreateResult.md
@@ -59,6 +61,8 @@ docs/AuthControllerApi.md
 docs/BalanceResponse.md
 docs/CallLogView.md
 docs/CancelOrderResponse.md
+docs/CandleResponse.md
+docs/CandlesResponse.md
 docs/CashControllerApi.md
 docs/CashRequest.md
 docs/CashTransactionResponse.md
@@ -142,6 +146,7 @@ src/index.ts
 src/models/ApiResponseApplyResult.ts
 src/models/ApiResponseBalanceResponse.ts
 src/models/ApiResponseCancelOrderResponse.ts
+src/models/ApiResponseCandlesResponse.ts
 src/models/ApiResponseClientView.ts
 src/models/ApiResponseCreateAssetResponse.ts
 src/models/ApiResponseCreateResult.ts
@@ -191,6 +196,8 @@ src/models/AskRequest.ts
 src/models/BalanceResponse.ts
 src/models/CallLogView.ts
 src/models/CancelOrderResponse.ts
+src/models/CandleResponse.ts
+src/models/CandlesResponse.ts
 src/models/CashRequest.ts
 src/models/CashTransactionResponse.ts
 src/models/ClientView.ts

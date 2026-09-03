@@ -1,6 +1,7 @@
 "use client";
 
 import type {
+  CandlesResponse,
   ExecutionResponse,
   IssuanceSummaryResponse,
   ListIssuancesStatusEnum,
@@ -76,6 +77,26 @@ export function useExecutions(tokenSymbol: string, size = 20) {
     staleTime: 0,
     queryFn: async () =>
       (await client.trading.listExecutions({ tokenSymbol, page: 0, size })).data ?? [],
+  });
+}
+
+/**
+ * 기초자산 시세 차트용 일봉. 값은 서버가 이미 조각 참조가로 환산해서 준다 —
+ * 여기서 분할비율로 나누지 않는다(금액 재계산 금지).
+ *
+ * <p>호가처럼 자주 바뀌지 않으므로 폴링하지 않는다. 일봉은 하루 단위다.
+ */
+export function useCandles(tokenSymbol: string, days = 90) {
+  const { client, token } = useSession();
+  return useQuery<CandlesResponse>({
+    queryKey: ["candles", tokenSymbol, days],
+    enabled: Boolean(token) && Boolean(tokenSymbol),
+    staleTime: 5 * 60 * 1000,
+    queryFn: async () =>
+      (await client.trading.listCandles({ tokenSymbol, days })).data ?? {
+        tokenSymbol,
+        candles: [],
+      },
   });
 }
 

@@ -22,7 +22,6 @@ repositories {
 // 탐지하지 못한다 — 컨텍스트 인식이 들어간 버전으로 오버라이드
 extra["testcontainers.version"] = "1.21.3"
 
-val querydslVersion = "5.1.0"
 
 dependencies {
     implementation("org.springframework.boot:spring-boot-starter-web")
@@ -45,10 +44,6 @@ dependencies {
     implementation("org.flywaydb:flyway-core")
     implementation("org.flywaydb:flyway-database-postgresql")
 
-    implementation("com.querydsl:querydsl-jpa:$querydslVersion:jakarta")
-    annotationProcessor("com.querydsl:querydsl-apt:$querydslVersion:jakarta")
-    annotationProcessor("jakarta.annotation:jakarta.annotation-api")
-    annotationProcessor("jakarta.persistence:jakarta.persistence-api")
 
     implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:2.6.0")
     implementation("net.logstash.logback:logstash-logback-encoder:8.0")

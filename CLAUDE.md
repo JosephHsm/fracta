@@ -25,10 +25,10 @@ docker compose up -d          # PG / Redis / MinIO 기동
 
 ## 기술 스택 (변경 금지)
 
-Java 21 · Spring Boot 3.3 · JPA + QueryDSL · Spring Batch 5
+Java 21 · Spring Boot 3.3 · JPA · Spring Batch 5
 PostgreSQL 16 + pgvector · Redis 7 · MinIO
 테스트: JUnit5 + **Testcontainers** (H2 금지) + WireMock + k6
-프론트(Phase 10): Next.js 16 App Router · TypeScript · Tailwind v4 · shadcn/ui(**Base UI** 프리미티브) · TanStack Query/Table · lightweight-charts + Recharts · Lucide
+프론트(Phase 10): Next.js 16 App Router · TypeScript · Tailwind v4 · shadcn/ui(**Base UI** 프리미티브) · TanStack Query · lightweight-charts(종목 상세 캔들) + Recharts(포털 대시보드) · Lucide
 
 ## 코딩 규칙
 

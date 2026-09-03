@@ -3,6 +3,7 @@
 export * from './ApiResponseApplyResult';
 export * from './ApiResponseBalanceResponse';
 export * from './ApiResponseCancelOrderResponse';
+export * from './ApiResponseCandlesResponse';
 export * from './ApiResponseClientView';
 export * from './ApiResponseCreateAssetResponse';
 export * from './ApiResponseCreateResult';
@@ -52,6 +53,8 @@ export * from './AskRequest';
 export * from './BalanceResponse';
 export * from './CallLogView';
 export * from './CancelOrderResponse';
+export * from './CandleResponse';
+export * from './CandlesResponse';
 export * from './CashRequest';
 export * from './CashTransactionResponse';
 export * from './ClientView';

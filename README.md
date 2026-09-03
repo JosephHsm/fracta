@@ -235,6 +235,98 @@ flowchart TB
 
 ---
 
+## 동작 청사진
+
+구조도가 *무엇이 있는가*라면, 이 절은 *실제로 어떤 순서로 도는가*입니다.
+
+### 1. 조각 하나의 일생
+
+발행인이 자산을 올리고 → 투자자가 청약하고 → 배정받아 상장되고 → 거래되고 → 매일 검증됩니다.
+**상태 전이 규칙은 `IssuanceStatus` enum 하나가 단일 진실**입니다. 서비스 코드에 if로 흩어 두지 않습니다.
+
+```mermaid
+flowchart LR
+    D[DRAFT] --> P[PENDING_APPROVAL]
+    P --> A[APPROVED]
+    P --> R[REJECTED]
+    A -->|"IS-06 스케줄러<br/>start_at 도달"| S[SUBSCRIBING]
+    S --> AL[ALLOTTING]
+    AL -->|"원장에 전량 ISSUE"| L[LISTED]
+    L <-->|"괴리율 ±20% 초과<br/>또는 대사 위반"| SU[SUSPENDED]
+    L --> DL[DELISTED]
+    SU --> DL
+```
+
+| 단계 | 담당 모듈 | 이때 지켜지는 것 |
+|---|---|---|
+| 청약 접수 | `subscription` | 잔여 수량 원자적 감소. 3방식(비관적 락 / Redis 분산락 / DB 원자 감소)을 구현하고 [실측 비교](docs/benchmarks/subscription-concurrency.md)했습니다 |
+| 적합성 확인 | `account` | 투자성향보다 위험한 상품은 `SUIT_PROFILE_MISMATCH`로 거부. 부적합 확인이 있어야 통과합니다 |
+| 배정 | `subscription` | 초과 청약이면 비례배분 후 **잔여 분배까지** 수행. `Σ배정 == min(발행량, Σ신청)` (INV-5) |
+| 상장 | `issuance` + `ledger` | 발행 총량을 원장에 ISSUE. 이후 `Σledger_balance == 발행량`(INV-1)이 영구 불변식이 됩니다 |
+| 거래 | `trading` + `settlement` | 아래 2번 |
+| 검증 | `batch` | 매일 23:00 불변식 6종 대사. 위반 시 **자동 복구하지 않고** 거래를 중단합니다 |
+
+### 2. 주문 한 건이 지나가는 길
+
+가장 복잡한 경로입니다. **조각만 넘어가고 대금이 안 넘어간 순간이 단 한 번도 없어야** 합니다.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant C as 클라이언트
+    participant T as TradingService
+    participant DB as PostgreSQL
+    participant OB as 오더북(심볼별 파티션 스레드)
+    participant SE as SettlementService
+    participant LG as 원장(해시체인)
+
+    C->>T: place(심볼, 가격, 수량, Idempotency-Key)
+    T->>DB: 같은 키의 주문이 있는가?
+    Note over T,DB: 있으면 최초 결과를 그대로 돌려준다.<br/>재시도가 중복 주문이 되지 않는다
+    T->>DB: acceptOrder (트랜잭션)
+    Note over T,DB: 매도면 여기서 수량을 잠근다.<br/>잠금이 실패하면 주문 레코드 자체가 생기지 않는다 = 이중 매도 차단
+    T->>OB: submit(주문)
+    loop 체결될 때마다
+        OB->>T: match(가격, 수량)
+        T->>T: 괴리율 계산 (증권사 시세 대비)
+        T->>SE: settleAndRecord (REQUIRES_NEW)
+        SE->>LG: DvP — 조각과 대금을 한 트랜잭션에서 맞바꾼다
+        Note over SE,LG: 락은 항상 owner_id 오름차순 (데드락 방지).<br/>실패하면 롤백으로 조각·대금·잠금이 전부 원복된다
+        SE-->>T: executionId
+    end
+    T->>T: 괴리율 판정 — 파티션 스레드 밖에서
+    Note over T: 거래 중단은 같은 파티션을 다시 잡아야 한다.<br/>안에서 부르면 스레드가 자기를 기다려 교착한다
+    alt ±20% 초과
+        T->>DB: 종목 SUSPENDED + 미체결 주문 전량 취소·잠금 해제
+        Note over T,DB: 잠금을 풀지 않으면 수량이 영구히 묶인다
+    end
+    T-->>C: 주문 상태 · 체결 목록
+```
+
+### 3. 오픈 API 요청 한 건이 지나가는 길
+
+파트너 서버가 부르는 경로는 웹앱과 **입구가 다릅니다**. `OpenApiGatewayFilter` 하나가 앞단을 전부 처리합니다.
+
+```
+요청 → OAuth2 토큰 검증 → Scope 확인 → 환경 일치(SANDBOX/LIVE) → Rate Limit
+     → 멱등성 키 처리 → 컨트롤러 → 호출 로그 기록 → 응답 (X-RateLimit-* 헤더 부착)
+```
+
+웹앱 JWT와 오픈 API JWT는 **서명 시크릿이 다릅니다**(`openapi.jwt.secret`). 같은 값이면 권한 경계가 무너집니다.
+
+### 4. 검증은 언제 도는가
+
+| 배치 | 주기 | 하는 일 |
+|---|---|---|
+| 일일 대사 | 매일 23:00 | 불변식 6종 검사. 위반 → 해당 종목(전역 위반이면 전 종목) `SUSPENDED` |
+| 체인 검증 | 매일 23:30 | `prev_hash` 연결과 SHA-256 재계산 (INV-4) |
+| 정산 리포트 | 매일 18:00 | 일별 체결·수수료 집계 |
+| 증권사 토큰 갱신 | 30분마다 | 만료 30분 전 선제 갱신 |
+
+불변식 정의와 훼손 시연 결과는 [`docs/invariants.md`](docs/invariants.md)에 있습니다. 여기서 반복하지 않습니다.
+
+---
+
 ## 기술 선택 근거
 
 "무엇을 썼는가"보다 **"무엇을 왜 안 썼는가"** 가 설명하기 어렵습니다.
@@ -253,12 +345,34 @@ flowchart TB
 
 ## 기술 스택
 
-**Backend** Java 21 · Spring Boot 3.3 · JPA + QueryDSL · Spring Batch 5
-**Infra** PostgreSQL 16 (pgvector) · Redis 7 · MinIO · Docker Compose
-**Frontend** Next.js 16 (App Router) · TypeScript · Tailwind v4 · shadcn/ui(Base UI) · TanStack Query/Table · Pretendard
-**AI** Python FastAPI · bge-m3 임베딩 · Claude API ↔ Ollama 어댑터 스위치
-**외부 연동** NH투자증권 namuh PLUG Open API (모의 도메인, 시세 조회 전용)
-**테스트** JUnit5 · Testcontainers · WireMock · k6 · pytest
+*"쓴다고 적어두고 실제로는 안 쓰는 것"이 없도록, 각 항목에 실제 사용처를 적었습니다.*
+
+| 영역 | 기술 | 어디에 쓰이는가 |
+|---|---|---|
+| **언어·런타임** | Java 21 | 백엔드 단일 프로세스 전체 |
+| | Spring Boot 3.3 | 모듈러 모놀리스의 뼈대. 이벤트도 `ApplicationEventPublisher`로 처리합니다 |
+| **영속화** | JPA (Hibernate) | 모든 도메인 엔티티. 원장 해시체인만 JDBC로 직접 씁니다 |
+| | Flyway | 스키마 마이그레이션 (`ddl-auto: none`) |
+| **배치** | Spring Batch 5 | 일일 대사·체인 검증·정산 리포트·API 로그 아카이브 |
+| **저장소** | PostgreSQL 16 | 원장(append-only 해시체인), 도메인 테이블, `pg_advisory_xact_lock` |
+| | pgvector | 투자설명서 청크 임베딩 검색 (ai-service) |
+| | Redis 7 | 청약 분산락 · 오픈 API 쿼터/멱등성 · 증권사 토큰 캐시 · 웹훅 Stream · 배치 잡 락 |
+| | MinIO | 투자설명서 PDF 원본 |
+| **프론트** | Next.js 16 (App Router) | investor-web 7개 화면 · dev-portal 6개 화면 |
+| | Tailwind v4 + Base UI | `packages/ui` 디자인 시스템 (OKLCH 토큰) |
+| | TanStack Query | 서버 상태 전체. 401 처리도 `QueryCache.onError` 한 곳에서 합니다 |
+| | lightweight-charts | 종목 상세의 기초자산 시세 캔들 차트 |
+| | Recharts | 개발자 포털 대시보드의 호출량 추이 |
+| | cmdk | Ctrl+K 커맨드 팔레트 |
+| | Pretendard (자체 호스팅) | 전 화면 본문. 폐쇄망에서도 떠야 해서 CDN을 쓰지 않습니다 |
+| **AI** | Python FastAPI | ai-service — 인덱싱·검색·질의 |
+| | bge-m3 | 임베딩. `AI_PROVIDER`와 무관하게 항상 로컬에서 돕니다 |
+| | Claude API ↔ Ollama | 작문. `LlmPort` 뒤에서 한 줄로 바뀝니다 |
+| **외부 연동** | NH namuh PLUG | 시세 조회 **전용**. 주문은 보내지 않습니다 |
+| **테스트** | JUnit5 + Testcontainers | 통합 테스트 283건. H2를 쓰지 않습니다 |
+| | WireMock | 증권사 API 대역 (`src/test/resources/wiremock/plug`) |
+| | k6 | 청약 동시성 3방식 부하 측정 (`scripts/bench/subscription-load.js`) |
+| | pytest | ai-service — DB·임베딩 모델·LLM 없이 전 경로 검증 |
 
 ---
 

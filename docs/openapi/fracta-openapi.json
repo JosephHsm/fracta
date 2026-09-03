@@ -34,6 +34,17 @@
         },
         "type" : "object"
       },
+      "ApiResponseCandlesResponse" : {
+        "properties" : {
+          "data" : {
+            "$ref" : "#/components/schemas/CandlesResponse"
+          },
+          "meta" : {
+            "$ref" : "#/components/schemas/ResponseMeta"
+          }
+        },
+        "type" : "object"
+      },
       "ApiResponseClientView" : {
         "properties" : {
           "data" : {
@@ -646,6 +657,55 @@
             "type" : "string"
           },
           "status" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "CandleResponse" : {
+        "properties" : {
+          "close" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "date" : {
+            "type" : "string"
+          },
+          "high" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "low" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "open" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "volume" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        },
+        "type" : "object"
+      },
+      "CandlesResponse" : {
+        "properties" : {
+          "brokerTicker" : {
+            "type" : "string"
+          },
+          "candles" : {
+            "items" : {
+              "$ref" : "#/components/schemas/CandleResponse"
+            },
+            "type" : "array"
+          },
+          "splitRatio" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "tokenSymbol" : {
             "type" : "string"
           }
         },
@@ -3047,6 +3107,42 @@
         },
         "summary" : "청약 취소",
         "tags" : [ "subscription-controller" ]
+      }
+    },
+    "/api/v1/tokens/{tokenSymbol}/candles" : {
+      "get" : {
+        "operationId" : "listCandles",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "tokenSymbol",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "days",
+          "required" : false,
+          "schema" : {
+            "default" : 90,
+            "format" : "int32",
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseCandlesResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "summary" : "기초자산 일봉 (조각 참조가 환산)",
+        "tags" : [ "trading-controller" ]
       }
     },
     "/api/v1/tokens/{tokenSymbol}/executions" : {

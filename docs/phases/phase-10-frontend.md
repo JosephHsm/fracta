@@ -35,7 +35,7 @@ packages/
 
 - Next.js 16 (App Router) + TypeScript
 - Tailwind CSS v4 + shadcn/ui — 프리미티브는 **Base UI** (shadcn이 2026-07부터 신규 프로젝트 기본을 Radix → Base UI로 전환). 아이콘 Lucide
-- 서버 상태는 TanStack Query, 표는 TanStack Table
+- 서버 상태는 TanStack Query. 표는 목록 규모가 작아 기본 마크업으로 충분했다(TanStack Table 미사용·제거)
 - 차트는 기초자산 시세/캔들 = lightweight-charts, 대시보드 지표 = Recharts
 - `packages/api-client`는 Phase 7이 생성한 OpenAPI 스펙에서 **자동 생성**. 수동 작성 금지
 - `packages/ui`가 디자인 토큰(OKLCH)·모션 스케일·다크 모드의 **단일 소유자**. 앱에서 색상 리터럴 사용 금지
@@ -163,6 +163,21 @@ panel  200~300ms     page   250~400ms
 | 로그인 성공 후에도 "로그인이 만료되었습니다" 배너가 남음 | 로그인 전 401이 오류 스토어에 남아 성공 후에도 지워지지 않음 | `QueryCache.onSuccess`에서 지운다 — 성공한 요청이 들어오면 지난 오류는 유효하지 않다 |
 | 모바일에서 금액이 줄바꿈되어 "원"만 다음 줄로 떨어짐 | Bento가 최소 화면에서도 2열이라 카드 폭이 180px | 최소 화면 1열 + `Money`에 `whitespace-nowrap` |
 | dev-portal 차트 X축이 `ug 29 2026 00:00:00 GMT+0900` | Recharts가 축 값을 Date로 변환해 `String(v).slice(5)`가 깨짐 | `type="category"` + 두 형태를 모두 받는 포맷터 |
+
+### Phase 11에서 뒤늦게 발견한 누락 (2026-09-03)
+
+완료 체크가 끝난 뒤, README의 기술 스택을 "어디에 쓰이는가"로 다시 쓰다가
+**선언만 하고 실제로는 안 쓰는 의존성**이 드러났다. 그 실마리를 따라가니 화면 요소 하나가 통째로 빠져 있었다.
+
+| 발견 | 실태 | 조치 |
+|---|---|---|
+| **종목 상세의 기초자산 시세 차트 없음** | 위 §화면 표가 필수 요소로 적어둔 항목인데 구현되지 않았고, 캔들을 내려주는 API도 없었다 | `GET /api/v1/tokens/{symbol}/candles` 신설 + `UnderlyingChart` 구현. 값은 **서버가 조각 참조가로 환산**해 내려준다(프론트 금액 재계산 금지) |
+| `lightweight-charts` 사용처 0 | 위 차트가 없어서 설치만 되어 있었다 | 차트 구현으로 실사용 |
+| `@tanstack/react-table` 사용처 0 | 목록 규모가 작아 기본 마크업으로 충분했다 | 두 앱에서 제거. FSD·CLAUDE.md 스택 문장도 정정 |
+| QueryDSL 사용처 0 (백엔드) | 복잡 조회도 JPA로 해결됐다 | `build.gradle.kts`에서 제거 |
+
+**배운 것** — 완료 조건 체크리스트를 "화면이 떴는가"로 읽으면 요소 하나가 빠져도 통과한다.
+스택 표에 *실제 사용처*를 적게 하니 곧바로 드러났다. 선언과 사용을 대조하는 게 값싼 검증이다.
 
 ★ 인용 클릭 → PDF 페이지 이동을 실제 브라우저에서 확인했다 —
 `p.3` 클릭 시 뷰어가 3쪽으로 이동하고 헤더 배지도 "3쪽 보는 중"으로 바뀐다.

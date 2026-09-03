@@ -220,7 +220,7 @@ com.fracta
 |---|---|---|---|
 | 언어 | Java | 21 (LTS) | Virtual Thread, Record, Pattern Matching |
 | 프레임워크 | Spring Boot | 3.3.x | |
-| ORM | Spring Data JPA + QueryDSL | | 복잡 조회는 QueryDSL |
+| ORM | Spring Data JPA | | 복잡 조회도 JPA로 충분했습니다. QueryDSL은 도입했다가 실사용처가 없어 제거했습니다 |
 | 배치 | Spring Batch | 5.x | 대사·정산 |
 | DB | PostgreSQL | 16 | + pgvector 확장 |
 | 캐시/락 | Redis | 7.x | 분산락, 쿼터, 호가 캐시 |
@@ -229,7 +229,7 @@ com.fracta
 | API 문서 | springdoc-openapi | 2.x | Swagger UI |
 | 프론트 | Next.js (App Router) + TypeScript | 16.x | 모노레포 2앱. View Transitions 내장(플래그 불필요) |
 | UI | Tailwind CSS v4 + shadcn/ui | | 프리미티브는 **Base UI** (shadcn 2026-07 기본 전환). 아이콘 Lucide |
-| 프론트 상태/데이터 | TanStack Query + TanStack Table | v5 | 서버 상태 캐싱·재검증, 로그/거래내역 테이블 |
+| 프론트 상태/데이터 | TanStack Query | v5 | 서버 상태 캐싱·재검증. 표는 목록 규모가 작아 기본 마크업으로 충분했고, TanStack Table은 실사용처가 없어 제거했습니다 |
 | 차트 | lightweight-charts + Recharts | | 기초자산 시세/캔들은 lightweight-charts, 대시보드 지표는 Recharts |
 | AI 서비스 | Python + FastAPI | 3.11 | |
 | 임베딩 | `BAAI/bge-m3` 또는 유사 다국어 모델 | | 한국어 성능 |
@@ -1148,7 +1148,7 @@ Retry: 없음 (재실행은 수동)
 - 비밀번호: BCrypt (cost 12)
 - `client_secret`: SHA-256 해시 저장, 평문은 발급 시 1회만
 - 웹훅 서명: HMAC-SHA256 + 타임스탬프 (리플레이 방지)
-- SQL Injection: JPA/QueryDSL 사용, 네이티브 쿼리는 바인딩 파라미터만
+- SQL Injection: JPA 사용, 네이티브 쿼리는 바인딩 파라미터만
 - 민감 정보 로깅 금지: 토큰, 시크릿, 주민번호는 마스킹 필터 적용
 - CORS: 화이트리스트 방식
 

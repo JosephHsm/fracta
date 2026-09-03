@@ -33,7 +33,8 @@ import * as React from "react";
 import { AppShell } from "@/components/app-shell";
 import { OrderBook } from "@/components/order-book";
 import { OrderForm } from "@/components/order-form";
-import { useExecutions, useIssuances } from "@/lib/queries";
+import { UnderlyingChart } from "@/components/underlying-chart";
+import { useCandles, useExecutions, useIssuances } from "@/lib/queries";
 
 /**
  * 종목 상세 — 이 프로젝트의 얼굴 화면 (FSD §11.2).
@@ -45,6 +46,7 @@ export default function TokenDetailPage() {
 
   const { data: issuances } = useIssuances();
   const { data: executions, isLoading: executionsLoading } = useExecutions(symbol, 20);
+  const { data: candles, isLoading: candlesLoading } = useCandles(symbol);
 
   // 사용자가 직접 입력하기 전에는 null — 그동안은 최근 체결가(없으면 발행가)를 보여준다.
   // effect에서 setState로 초기값을 넣으면 렌더가 한 번 더 돌고 값이 늦게 채워진다.
@@ -98,6 +100,27 @@ export default function TokenDetailPage() {
             )}
           </div>
         </header>
+
+        <Card className="mb-4">
+          <CardHeader className="flex-row items-baseline justify-between">
+            <CardTitle>기초자산 시세</CardTitle>
+            <span className="text-fg-subtle text-xs">조각 참조가 환산 · 최근 90일</span>
+          </CardHeader>
+          <CardBody className="pt-3">
+            {candlesLoading ? (
+              <Skeleton className="h-64 w-full" />
+            ) : (
+              <UnderlyingChart
+                candles={candles?.candles ?? []}
+                emptyLabel={
+                  candles?.brokerTicker
+                    ? "시세를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요."
+                    : "이 종목은 연동된 기초자산 시세가 없습니다."
+                }
+              />
+            )}
+          </CardBody>
+        </Card>
 
         <div className="grid gap-4 lg:grid-cols-12">
           <div className="lg:col-span-4">

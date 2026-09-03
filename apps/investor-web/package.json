@@ -13,13 +13,11 @@
     "@fracta/api-client": "workspace:*",
     "@fracta/ui": "workspace:*",
     "@tanstack/react-query": "5.102.8",
-    "@tanstack/react-table": "9.2.4",
     "lightweight-charts": "5.2.1",
     "lucide-react": "1.38.0",
     "next": "16.3.4",
     "react": "19.2.8",
-    "react-dom": "19.2.8",
-    "recharts": "3.10.1"
+    "react-dom": "19.2.8"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "4.3.3",

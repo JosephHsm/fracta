@@ -14,6 +14,11 @@
 
 import * as runtime from '../runtime';
 import {
+    type ApiResponseCandlesResponse,
+    ApiResponseCandlesResponseFromJSON,
+    ApiResponseCandlesResponseToJSON,
+} from '../models/ApiResponseCandlesResponse';
+import {
     type ApiResponseListExecutionResponse,
     ApiResponseListExecutionResponseFromJSON,
     ApiResponseListExecutionResponseToJSON,
@@ -44,6 +49,17 @@ export interface CancelMyOrderRequest {
      * 
      */
     orderId: number;
+}
+
+export interface ListCandlesRequest {
+    /**
+     * 
+     */
+    tokenSymbol: string;
+    /**
+     * 
+     */
+    days?: number;
 }
 
 export interface ListExecutionsRequest {
@@ -142,6 +158,63 @@ export class TradingControllerApi extends runtime.BaseAPI {
      */
     async cancelMyOrder(requestParameters: CancelMyOrderRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ApiResponsePlaceResult> {
         const response = await this.cancelMyOrderRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for listCandles without sending the request
+     */
+    async listCandlesRequestOpts(requestParameters: ListCandlesRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['tokenSymbol'] == null) {
+            throw new runtime.RequiredError(
+                'tokenSymbol',
+                'Required parameter "tokenSymbol" was null or undefined when calling listCandles().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        if (requestParameters['days'] != null) {
+            queryParameters['days'] = requestParameters['days'];
+        }
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            const token = this.configuration.accessToken;
+            const tokenString = await token("bearerAuth", []);
+
+            if (tokenString) {
+                headerParameters["Authorization"] = `Bearer ${tokenString}`;
+            }
+        }
+
+        let urlPath = `/api/v1/tokens/{tokenSymbol}/candles`;
+        urlPath = urlPath.replace('{tokenSymbol}', encodeURIComponent(String(requestParameters['tokenSymbol'])));
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * 기초자산 일봉 (조각 참조가 환산)
+     */
+    async listCandlesRaw(requestParameters: ListCandlesRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ApiResponseCandlesResponse>> {
+        const requestOptions = await this.listCandlesRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => ApiResponseCandlesResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * 기초자산 일봉 (조각 참조가 환산)
+     */
+    async listCandles(requestParameters: ListCandlesRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ApiResponseCandlesResponse> {
+        const response = await this.listCandlesRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

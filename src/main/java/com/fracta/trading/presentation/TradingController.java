@@ -20,10 +20,12 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.fracta.account.api.InvestorId;
 import com.fracta.common.response.ApiResponse;
+import com.fracta.trading.application.MarketChartService;
 import com.fracta.trading.application.TradingService;
 import com.fracta.trading.domain.OrderSide;
 import com.fracta.trading.domain.OrderStatus;
 import com.fracta.trading.domain.OrderType;
+import com.fracta.trading.domain.TradingExceptions;
 
 import io.swagger.v3.oas.annotations.Operation;
 import jakarta.validation.Valid;
@@ -51,6 +53,23 @@ public class TradingController {
                                   OrderStatus status) {
     }
 
+    /** 차트 조회 범위. 무제한으로 열면 증권사 쿼터를 그대로 소모한다. */
+    private static final int MIN_CANDLE_DAYS = 1;
+    private static final int MAX_CANDLE_DAYS = 365;
+
+    /**
+     * 기초자산 일봉. 금액은 전부 <b>조각 참조가</b>(원)다 — 화면이 다시 계산하지 않는다.
+     * 증권사 티커가 없거나 시세 조회가 실패하면 {@code candles}가 빈 목록이다. 오류가 아니다.
+     */
+    public record CandlesResponse(String tokenSymbol, String brokerTicker, long splitRatio,
+                                  List<CandleResponse> candles) {
+    }
+
+    /** 하루치 봉. {@code date}는 ISO-8601 문자열(yyyy-MM-dd)이다. */
+    public record CandleResponse(String date, long open, long high, long low, long close,
+                                 long volume) {
+    }
+
     /** 호가창 10호가 (TR-05). */
     public record OrderBookResponse(String tokenSymbol, List<OrderBookLevel> bids,
                                     List<OrderBookLevel> asks) {
@@ -66,9 +85,11 @@ public class TradingController {
     }
 
     private final TradingService tradingService;
+    private final MarketChartService marketChart;
 
-    public TradingController(TradingService tradingService) {
+    public TradingController(TradingService tradingService, MarketChartService marketChart) {
         this.tradingService = tradingService;
+        this.marketChart = marketChart;
     }
 
     @PostMapping("/api/v1/tokens/{tokenSymbol}/orders")
@@ -123,6 +144,30 @@ public class TradingController {
                         e.sellFee(), e.premiumRate(), e.executedAt().toString()))
                 .toList();
         return ApiResponse.of(list);
+    }
+
+    /**
+     * 기초자산 시세 차트용 일봉 (FSD §11 종목 상세 필수 요소).
+     *
+     * <p>값은 <b>조각 참조가로 환산해서</b> 내려간다. 원자산 가격을 그대로 주면 화면이
+     * 분할비율로 나눠야 하는데, 프론트의 금액 재계산은 금지다(FSD §11.4).
+     */
+    @Operation(operationId = "listCandles", summary = "기초자산 일봉 (조각 참조가 환산)")
+    @GetMapping("/api/v1/tokens/{tokenSymbol}/candles")
+    public ApiResponse<CandlesResponse> candles(
+            @PathVariable("tokenSymbol") String tokenSymbol,
+            @RequestParam(value = "days", defaultValue = "90") int days) {
+        if (days < MIN_CANDLE_DAYS || days > MAX_CANDLE_DAYS) {
+            throw new TradingExceptions.InvalidCandleRangeException(
+                    days, MIN_CANDLE_DAYS, MAX_CANDLE_DAYS);
+        }
+        var chart = marketChart.dailyChart(tokenSymbol, days);
+        return ApiResponse.of(new CandlesResponse(chart.tokenSymbol(), chart.brokerTicker(),
+                chart.splitRatio(),
+                chart.candles().stream()
+                        .map(c -> new CandleResponse(c.date().toString(), c.open(), c.high(),
+                                c.low(), c.close(), c.volume()))
+                        .toList()));
     }
 
     /** 오더북 도메인 타입을 응답 계약으로 옮긴다 — 도메인 record가 그대로 스펙에 새지 않게 한다. */
