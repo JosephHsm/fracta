@@ -26,6 +26,7 @@
 | [`docs/ai/guardrail-design.md`](docs/ai/guardrail-design.md) | 금소법 대응 매핑, 3단계 가드레일, **실제 우회 사례** |
 | [`docs/ai/provider-comparison.md`](docs/ai/provider-comparison.md) | Claude ↔ 폐쇄망 비교 — 측정 방법과 현재 상태 |
 | [`docs/ai/similarity-threshold.md`](docs/ai/similarity-threshold.md) | RAG 유사도 임계값 실측 — **0.6 → 0.48** 조정 근거 |
+| [`docs/demo-script.md`](docs/demo-script.md) | 데모 영상 촬영 대본 — 컷별 화면·대사·검증된 명령 |
 | [`docs/invariants.md`](docs/invariants.md) | INV-1~6 정의·자동 검증·위반 대응·의도적 훼손 시연 |
 | [`docs/appendix/guardrail-attack-prompts.md`](docs/appendix/guardrail-attack-prompts.md) | 공격 프롬프트 20종과 차단 결과표 (자동 생성) |
 | [`ai-service/README.md`](ai-service/README.md) | AI 서비스 구조와 실행 |

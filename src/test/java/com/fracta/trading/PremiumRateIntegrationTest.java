@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.math.BigDecimal;
+import java.util.concurrent.atomic.AtomicLong;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -43,6 +44,21 @@ class PremiumRateIntegrationTest extends IntegrationTestBase {
     @Autowired
     JdbcTemplate jdbc;
 
+    private static final AtomicLong TICKER_SEQ = new AtomicLong();
+
+    /**
+     * 매번 다른 티커를 준다. 기준가는 첫 숫자 그룹(100000)이라 그대로 100,000원이고,
+     * Mock 어댑터의 lastPrices 키만 갈라진다.
+     *
+     * <p>Mock은 호출마다 <b>직전 값에서</b> ±1% 움직인다. 티커를 공유하면 드리프트가
+     * 테스트 사이에 누적돼 참조가가 기준가에서 얼마든지 멀어진다 — 실제로 이 클래스가
+     * 그렇게 깨졌다(참조가가 2.44% 밀려 "0 근처" 단언 실패). 격리하면 드리프트는
+     * 한 테스트 안의 호출 수(발행 시 1 + 체결 시 1)로 묶인다.
+     */
+    private String freshTicker() {
+        return "MOCK-100000-" + TICKER_SEQ.incrementAndGet();
+    }
+
     /** 체결 1건을 만든다. 체결가는 sellPrice. */
     private TradingTestSupport.Market executeOnce(String ticker, long splitRatio, long price) {
         var market = support.listedMarket(ticker, splitRatio);
@@ -73,18 +89,22 @@ class PremiumRateIntegrationTest extends IntegrationTestBase {
     @Test
     @DisplayName("괴리율 저장 — 참조가와 체결가가 같으면 0 근처")
     void storesNearZeroPremium() {
-        // MOCK-100000 → 기준가 100,000(±1%), 분할비율 100 → 참조가 ≈ 1,000
-        var market = executeOnce("MOCK-100000", 100, 1_000);
+        // 기준가 100,000(±1%), 분할비율 100 → 참조가 ≈ 1,000
+        var market = executeOnce(freshTicker(), 100, 1_000);
         BigDecimal premium = storedPremium(market.tokenSymbol());
         assertThat(premium).isNotNull();
-        assertThat(premium.abs()).isLessThan(new BigDecimal("2"));
+        // 허용치 3%인 이유 — 시세를 두 번 읽고(발행 검증 1 + 체결 1) 각각 최대 -1%씩
+        // 밀리므로 참조가는 최저 0.99^2 = 0.9801배, 즉 괴리율 +2.03%까지 나올 수 있다.
+        // 2%로 두면 이 상한 바로 위에서 간헐적으로 깨진다(실제로 깨졌다).
+        // 경고 임계치 10%보다는 한참 아래라 "정상 구간"이라는 단언의 뜻은 그대로다.
+        assertThat(premium.abs()).isLessThan(new BigDecimal("3"));
     }
 
     @Test
     @DisplayName("괴리율 10% 초과 → 경고만, 거래는 계속된다 (종목 유지)")
     void warnsAboveTenPercent() {
         // 참조가 ≈ 1,000 인데 1,150 에 체결 → 약 +15%
-        var market = executeOnce("MOCK-100000", 100, 1_150);
+        var market = executeOnce(freshTicker(), 100, 1_150);
 
         BigDecimal premium = storedPremium(market.tokenSymbol());
         assertThat(premium).isGreaterThan(new BigDecimal("10"));
@@ -98,7 +118,7 @@ class PremiumRateIntegrationTest extends IntegrationTestBase {
     @Test
     @DisplayName("괴리율 20% 초과 → 자동 SUSPENDED + 신규 주문 거부 + 미체결 주문 취소·잠금 해제")
     void suspendsAboveTwentyPercent() {
-        var market = support.listedMarket("MOCK-100000", 100);
+        var market = support.listedMarket(freshTicker(), 100);
         long seller = support.investor(0);
         long buyer = support.investor(100_000_000);
         support.giveUnits(market, seller, 200);

@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 import java.util.Map;
 
 import org.junit.jupiter.api.DisplayName;
@@ -57,6 +58,7 @@ class OpenApiSpecExportTest extends IntegrationTestBase {
         @SuppressWarnings("unchecked")
         Map<String, Object> tree = objectMapper.readValue(response.getBody(), Map.class);
         stripTestOnlyPaths(tree);
+        pinServerUrl(tree);
 
         String json = objectMapper.copy()
                 .enable(SerializationFeature.ORDER_MAP_ENTRIES_BY_KEYS)
@@ -99,6 +101,17 @@ class OpenApiSpecExportTest extends IntegrationTestBase {
      * 스펙은 테스트 컨텍스트에서 뽑기 때문에 {@code com.fracta.support}의 테스트 전용 컨트롤러가
      * 함께 잡힌다. 그대로 두면 생성 클라이언트에 실제로 없는 엔드포인트가 생긴다.
      */
+    /**
+     * 서버 URL을 고정한다. springdoc은 실제 바인딩 포트를 넣는데, 테스트는 랜덤 포트로 뜬다
+     * — 그대로 두면 스펙이 매 실행마다 바뀌어 git이 늘 더럽고, 공개 스펙에 무의미한
+     * `localhost:52888` 같은 값이 박힌다. 키 정렬과 같은 취지다.
+     */
+    private static void pinServerUrl(Map<String, Object> spec) {
+        spec.put("servers", List.of(Map.of(
+                "url", "http://localhost:8080",
+                "description", "로컬 기동 (docker compose up)")));
+    }
+
     private static void stripTestOnlyPaths(Map<String, Object> spec) {
         @SuppressWarnings("unchecked")
         Map<String, Object> paths = (Map<String, Object>) spec.get("paths");

@@ -91,7 +91,11 @@ ai:
   service-url: ${AI_SERVICE_URL:http://localhost:8000}
   # AI가 느려도 본 서비스가 같이 느려지면 안 된다. 인덱싱은 이보다 오래 걸릴 수 있어
   # 전용 실행기에서 비동기로 돈다(AiExecutorConfig)
-  timeout-millis: ${AI_TIMEOUT_MILLIS:20000}
+  #
+  # 45초인 이유 — 20초로 뒀더니 가드레일 차단 경로가 타임아웃으로 떨어졌다.
+  # 차단은 "LLM 호출 → 출력 검사 → 차단"이라 정상 답변보다 오래 걸린다(실측 25.6초).
+  # 타임아웃이 짧으면 차단이 AI_UNAVAILABLE로 둔갑해 원인 파악이 어려워진다.
+  timeout-millis: ${AI_TIMEOUT_MILLIS:45000}
   circuit-breaker:
     failure-threshold: ${AI_CB_FAILURE_THRESHOLD:3}
     open-millis: ${AI_CB_OPEN_MILLIS:30000}

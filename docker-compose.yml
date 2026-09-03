@@ -102,10 +102,17 @@ services:
       SPRING_DATA_REDIS_HOST: redis
       MINIO_ENDPOINT: http://minio:9000
       AI_SERVICE_URL: http://ai-service:8000
+      # 가드레일 차단 경로가 정상 답변보다 오래 걸린다(실측 25.6초) — 여유를 둔다
+      AI_TIMEOUT_MILLIS: ${AI_TIMEOUT_MILLIS:-45000}
       JWT_SECRET: ${JWT_SECRET:-fracta-local-dev-jwt-secret-key-0123456789}
       # 배치 스케줄러는 compose 기동에서 끈다 — 데모 중에 대사 배치가 끼어들면 산만하다.
       # 시연할 때는 BATCH_SCHEDULING_ENABLED=true 로 올린다.
       BATCH_SCHEDULING_ENABLED: ${BATCH_SCHEDULING_ENABLED:-false}
+      # 대사·체인 검증은 기본이 심야 1회다. 데모에서는 주기를 줄여 즉시 보여준다
+      # (예: BATCH_RECONCILIATION_CRON="0/20 * * * * *").
+      BATCH_RECONCILIATION_CRON: ${BATCH_RECONCILIATION_CRON:-0 0 23 * * *}
+      BATCH_CHAIN_CRON: ${BATCH_CHAIN_CRON:-0 30 23 * * *}
+      BATCH_SETTLEMENT_CRON: ${BATCH_SETTLEMENT_CRON:-0 0 18 * * *}
     ports:
       - "8080:8080"
     healthcheck:

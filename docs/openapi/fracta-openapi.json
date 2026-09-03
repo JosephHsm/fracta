@@ -3927,8 +3927,8 @@
     "bearerAuth" : [ ]
   } ],
   "servers" : [ {
-    "description" : "Generated server url",
-    "url" : "http://localhost:52888"
+    "description" : "로컬 기동 (docker compose up)",
+    "url" : "http://localhost:8080"
   } ],
   "tags" : [ {
     "description" : "앱, 호출 통계, 로그, 웹훅 관리",
