@@ -16,7 +16,12 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.data.domain.Pageable;
 
+import java.math.BigDecimal;
+
+import com.fracta.common.money.Money;
+import com.fracta.external.broker.EtfReferencePort;
 import com.fracta.external.broker.MarketDataPort;
+import com.fracta.external.broker.Quote;
 
 /**
  * 검색 폴백 정책.
@@ -29,8 +34,9 @@ class InstrumentSearchServiceTest {
     private final InstrumentMasterRepository repository = mock(InstrumentMasterRepository.class);
     private final MarketDataPort marketData = mock(MarketDataPort.class);
     private final InstrumentSemanticPort semantic = mock(InstrumentSemanticPort.class);
+    private final EtfReferencePort etfReference = mock(EtfReferencePort.class);
     private final InstrumentSearchService service =
-            new InstrumentSearchService(repository, marketData, semantic);
+            new InstrumentSearchService(repository, marketData, semantic, etfReference);
 
     private static InstrumentMaster master(String code, String name, AssetKind kind) {
         return new InstrumentMaster(
@@ -85,6 +91,39 @@ class InstrumentSearchServiceTest {
         when(semantic.search(anyString(), anyInt())).thenReturn(List.of());
 
         assertThat(service.search("코덱스", null, 10)).isEmpty();
+    }
+
+    @Test
+    @DisplayName("ETF는 증권사 NAV·괴리율을 함께 준다 — 이중 괴리율의 근거")
+    void etfDetailCarriesBrokerReference() {
+        when(repository.findById("069500"))
+                .thenReturn(Optional.of(master("069500", "KODEX 200", AssetKind.ETF)));
+        when(marketData.getCurrentPrice("069500"))
+                .thenReturn(new Quote("069500", Money.of(105_235L), java.time.Instant.now()));
+        when(etfReference.reference("069500")).thenReturn(Optional.of(
+                new EtfReferencePort.EtfReference("069500", 105_235L,
+                        new BigDecimal("105291.01"), new BigDecimal("0.2"),
+                        new BigDecimal("0.38"), 41_855L, 61_931L)));
+
+        var detail = service.detail("069500", 1000).orElseThrow();
+
+        // 서버가 환산한다 — 화면에서 나누면 반올림이 갈려 호가창 기준선과 어긋난다
+        assertThat(detail.referencePrice()).isEqualTo(105L);
+        assertThat(detail.etf()).isNotNull();
+        assertThat(detail.etf().premiumRate()).isEqualByComparingTo("0.2");
+        assertThat(detail.etf().lpBidUnits()).isEqualTo(61_931L);
+    }
+
+    @Test
+    @DisplayName("ETF가 아니면 증권사 지표를 조회하지 않는다")
+    void nonEtfSkipsReferenceLookup() {
+        when(repository.findById("365550"))
+                .thenReturn(Optional.of(master("365550", "ESR켄달스퀘어리츠", AssetKind.REIT)));
+        when(marketData.getCurrentPrice("365550"))
+                .thenReturn(new Quote("365550", Money.of(3_100L), java.time.Instant.now()));
+
+        assertThat(service.detail("365550", 10).orElseThrow().etf()).isNull();
+        verify(etfReference, never()).reference(anyString());
     }
 
     @Test

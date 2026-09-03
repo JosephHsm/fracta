@@ -9,7 +9,10 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.fracta.external.broker.MarketDataPort;
 import com.fracta.external.broker.PriceConverter;
+import java.math.BigDecimal;
+
 import com.fracta.common.money.Money;
+import com.fracta.external.broker.EtfReferencePort;
 
 /**
  * 기초자산 탐색 — 이름·코드로 상장 종목을 찾고, 조각으로 나눴을 때의 참조가를 함께 준다.
@@ -38,9 +41,20 @@ public class InstrumentSearchService {
         SEMANTIC
     }
 
-    /** 종목 하나의 상세. 시세는 이때만 조회한다. */
+    /**
+     * 종목 하나의 상세. 시세는 이때만 조회한다.
+     *
+     * <p>{@code etf}가 있으면 <b>이중 괴리율</b>을 보여줄 수 있다 —
+     * 증권사가 계산한 ETF 괴리율(LP가 좁혀준 결과)과 우리 조각 괴리율을 나란히.
+     * 유동성공급자가 있는 시장과 없는 시장의 차이가 숫자로 드러난다.
+     */
     public record Detail(String code, String name, AssetKind kind, long underlyingPrice,
-                         long splitRatio, long referencePrice) {
+                         long splitRatio, long referencePrice, EtfReference etf) {
+    }
+
+    /** 증권사가 내려준 ETF 기준 지표. ETF가 아니거나 조회 실패면 null이다. */
+    public record EtfReference(BigDecimal nav, BigDecimal premiumRate, BigDecimal trackingError,
+                               long lpAskUnits, long lpBidUnits) {
     }
 
     private static final int MAX_HITS = 30;
@@ -48,13 +62,16 @@ public class InstrumentSearchService {
     private final InstrumentMasterRepository repository;
     private final MarketDataPort marketData;
     private final InstrumentSemanticPort semantic;
+    private final EtfReferencePort etfReference;
 
     public InstrumentSearchService(InstrumentMasterRepository repository,
                                    MarketDataPort marketData,
-                                   InstrumentSemanticPort semantic) {
+                                   InstrumentSemanticPort semantic,
+                                   EtfReferencePort etfReference) {
         this.repository = repository;
         this.marketData = marketData;
         this.semantic = semantic;
+        this.etfReference = etfReference;
     }
 
     @Transactional(readOnly = true)
@@ -94,8 +111,14 @@ public class InstrumentSearchService {
         return repository.findById(code).map(master -> {
             Money underlying = marketData.getCurrentPrice(code).price();
             Money reference = PriceConverter.referencePrice(underlying, splitRatio);
+            EtfReference etf = master.assetKind() == AssetKind.ETF
+                    ? etfReference.reference(code)
+                            .map(r -> new EtfReference(r.nav(), r.premiumRate(), r.trackingError(),
+                                    r.lpAskUnits(), r.lpBidUnits()))
+                            .orElse(null)
+                    : null;
             return new Detail(master.code(), master.korName(), master.assetKind(),
-                    underlying.amount(), splitRatio, reference.amount());
+                    underlying.amount(), splitRatio, reference.amount(), etf);
         });
     }
 }
