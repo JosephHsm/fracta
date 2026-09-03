@@ -113,6 +113,20 @@ services:
       BATCH_RECONCILIATION_CRON: ${BATCH_RECONCILIATION_CRON:-0 0 23 * * *}
       BATCH_CHAIN_CRON: ${BATCH_CHAIN_CRON:-0 30 23 * * *}
       BATCH_SETTLEMENT_CRON: ${BATCH_SETTLEMENT_CRON:-0 0 18 * * *}
+      # ── 증권사 시세 연동 (조회 전용) ────────────────────────
+      #
+      # plug 프로파일을 켜면 NamuhPlugMarketDataAdapter가 @Primary로 주입돼
+      # 실제 시세가 들어온다. 자격증명이 없으면 프로파일을 빼면 되고,
+      # 그때는 MockMarketDataAdapter로 돌아간다.
+      #
+      # ★ 여기서 나가는 것은 시세 조회뿐이다. 주문은 나갈 수 없다.
+      #   - 시세 요청 본문에 계좌번호가 없다. 계좌를 특정할 방법 자체가 없다
+      #   - PlugPathPolicy가 /krstock/quote/ 외 경로를 런타임에 거부한다
+      #   - 주문 경로는 소스에 존재하기만 해도 NoBrokerOrderPathTest가 빌드를 깬다
+      #   - BROKER_ALLOW_LIVE=false, 계좌구분 03은 그대로다
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-plug}
+      BROKER_APP_KEY: ${BROKER_APP_KEY:-}
+      BROKER_APP_SECRET: ${BROKER_APP_SECRET:-}
     ports:
       - "8080:8080"
     healthcheck:

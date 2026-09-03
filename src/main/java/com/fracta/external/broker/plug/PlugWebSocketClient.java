@@ -156,8 +156,13 @@ public class PlugWebSocketClient {
 
     String webSocketUrl() {
         // 모의투자는 17070(국내·해외 공통), 운영 국내 시세는 7070. 경로 /websocket 필수.
+        //
+        // 포트는 broker.env가 아니라 **호스트**를 따라간다. 시세 REST를 실전 도메인으로
+        // 옮기면서 env=mock 인데 host=api 인 조합이 생겼고, 그때 env로 고르면
+        // api.nhplug.com:17070 이라는 존재하지 않는 조합이 된다. 포트는 서버의 성질이지
+        // 우리 설정의 성질이 아니다.
         String host = URI.create(properties.baseUrl()).getHost();
-        int port = "mock".equals(properties.env()) ? 17070 : 7070;
+        int port = host != null && host.startsWith("moapi.") ? 17070 : 7070;
         return "wss://%s:%d/websocket".formatted(host, port);
     }
 

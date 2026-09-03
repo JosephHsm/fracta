@@ -18,11 +18,23 @@ public class PlugWebSocketHealthIndicator implements HealthIndicator {
         this.marketHours = marketHours;
     }
 
+    /**
+     * 구독이 있는데 끊겼을 때만 DOWN이다.
+     *
+     * <p>예전에는 "장중인데 미연결"이면 DOWN이었다. 그런데 이 클라이언트는 자동 연결하지 않는다 —
+     * 구독이 생길 때 붙는다. 시세를 REST로만 쓰는 구성에서는 미연결이 <b>정상</b>인데도
+     * 앱 전체 health가 DOWN이 되어 컨테이너가 unhealthy로 떨어졌다(실제로 그랬다).
+     *
+     * <p>구독이 없다는 건 "이 기능을 안 쓰는 중"이지 고장이 아니다.
+     */
     @Override
     public Health health() {
         boolean connected = client.isConnected();
-        Health.Builder builder = connected || !marketHours.isOpen() ? Health.up() : Health.down();
+        boolean inUse = !client.subscribedTickers().isEmpty();
+        boolean faulty = inUse && !connected && marketHours.isOpen();
+        Health.Builder builder = faulty ? Health.down() : Health.up();
         return builder
+                .withDetail("inUse", inUse)
                 .withDetail("connected", connected)
                 .withDetail("marketOpen", marketHours.isOpen())
                 .withDetail("subscriptions", client.subscribedTickers().size())
