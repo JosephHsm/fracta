@@ -9,7 +9,13 @@
  *
  * <p><b>촬영 전 준비</b> — 대사 배치는 기본 스케줄이 매일 23시다. 데모에서는 주기를 줄인다:
  * <pre>
+ *   # PowerShell
  *   docker compose stop app
+ *   $env:BATCH_SCHEDULING_ENABLED = "true"
+ *   $env:BATCH_RECONCILIATION_CRON = "0/20 * * * * *"
+ *   docker compose up -d app
+ *
+ *   # bash
  *   BATCH_SCHEDULING_ENABLED=true BATCH_RECONCILIATION_CRON="0/20 * * * * *" docker compose up -d app
  * </pre>
  *

@@ -20,17 +20,39 @@
 
 ## 촬영 전 준비 (5분)
 
-```bash
+**PowerShell** (Windows 기본 · 이 프로젝트의 개발 환경)
+
+```powershell
 # 1) 완전히 깨끗한 상태에서 시작한다
 docker compose down -v
-BATCH_SCHEDULING_ENABLED=true BATCH_RECONCILIATION_CRON="0/20 * * * * *" docker compose up -d
+
+# PowerShell에는 `VAR=x 명령` 문법이 없다. $env: 로 먼저 넣는다.
+$env:BATCH_SCHEDULING_ENABLED = "true"
+$env:BATCH_RECONCILIATION_CRON = "0/20 * * * * *"
+docker compose up -d
 
 # 2) 백엔드가 뜰 때까지 기다린다 (healthcheck 통과 후 프론트가 시작된다)
-curl --retry 60 --retry-delay 3 --retry-connrefused -s http://localhost:8080/actuator/health
+do { Start-Sleep 3 } until (
+  (try { (Invoke-RestMethod http://localhost:8080/actuator/health).status } catch { $null }) -eq "UP")
+"백엔드 준비 완료"
 
 # 3) 데모 데이터 (약 1분)
 node scripts/seed/demo-data.mjs
 ```
+
+<details><summary>bash / zsh 를 쓴다면</summary>
+
+```bash
+docker compose down -v
+BATCH_SCHEDULING_ENABLED=true BATCH_RECONCILIATION_CRON="0/20 * * * * *" docker compose up -d
+until curl -sf http://localhost:8080/actuator/health > /dev/null; do sleep 3; done
+node scripts/seed/demo-data.mjs
+```
+
+</details>
+
+> **촬영이 끝나면 환경변수를 되돌린다.** `$env:` 로 넣은 값은 그 터미널 세션에 남는다.
+> 새 터미널을 열거나 `Remove-Item Env:BATCH_SCHEDULING_ENABLED, Env:BATCH_RECONCILIATION_CRON`.
 
 **배치 주기를 20초로 줄여 띄우는 이유** — 대사 배치는 원래 매일 23시다. 영상에서 기다릴 수 없다.
 

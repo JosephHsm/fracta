@@ -436,25 +436,31 @@ admin@fracta.demo        / demo-password-1!
 
 ```bash
 docker compose up -d postgres redis minio ai-service   # 인프라만
-./gradlew bootRun                                      # 백엔드 (핫리로드)
+./gradlew bootRun                                      # 백엔드 (핫리로드, PowerShell은 .\gradlew.bat)
 pnpm dev:investor                                      # 프론트 :3000
 ```
 
 ### 테스트
 
 ```bash
-./gradlew test                                          # Java 281건 (Testcontainers)
+./gradlew test                                          # Java 291건 (Testcontainers)
 cd ai-service && .venv/Scripts/python.exe -m pytest -q  # Python 140건
 pnpm -r typecheck && pnpm -r lint                       # 프론트 4개 패키지
 pnpm design:contrast                                    # 디자인 토큰 대비비 (WCAG AA)
 ```
+
+> **PowerShell에서는** `./gradlew` 대신 `.\gradlew.bat` 을 씁니다. 확장자 없는 `gradlew`는
+> 유닉스 셸 스크립트라 PowerShell이 실행하지 못합니다. `docker`·`node`·`pnpm` 명령은 그대로입니다.
 
 ### 폐쇄망 모드 (선택)
 
 ```bash
 docker compose --profile offline up -d ollama
 docker compose --profile offline exec ollama ollama pull qwen3:14b
-# AI_PROVIDER=ollama 로 재기동하면 LLM만 로컬로 바뀝니다 (임베딩은 원래부터 로컬)
+
+# LLM만 로컬로 바꿔 재기동합니다 (임베딩은 원래부터 로컬)
+#   PowerShell : $env:AI_PROVIDER = "ollama"; docker compose up -d --build ai-service
+#   bash       : AI_PROVIDER=ollama docker compose up -d --build ai-service
 ```
 
 **사전 요구사항**: Docker Desktop (전체 기동은 이것만) · 개발 모드 추가로 JDK 21 · Node.js 22+ · Python 3.11

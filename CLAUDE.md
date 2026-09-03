@@ -60,6 +60,7 @@ PostgreSQL 16 + pgvector · Redis 7 · MinIO
 13. Gradle·pnpm 래퍼를 죽여도 Java·Node 자식이 포트를 잡고 있다 → `EADDRINUSE`가 나면 포트 점유 프로세스를 직접 확인하고 정리
 14. 일괄 편집 스크립트의 조용한 실패 → 앵커가 안 맞아도 컴파일은 통과한다. 치환 후 반드시 `grep`으로 결과를 확인할 것
 15. OpenAPI 스펙에 보안 스킴이 없으면 생성 클라이언트가 `Authorization` 헤더를 안 붙인다 → 서버는 멀쩡한데 프론트가 전부 401. 회귀 테스트 있음(`OpenApiSpecExportTest`)
+16. 이 개발 환경은 **PowerShell**이다. `VAR=x 명령` 문법이 없고(`$env:VAR = "x"` 로 먼저 넣는다), `./gradlew`도 안 돈다(`.\gradlew.bat`). 문서에 셸 명령을 적을 때 bash 기준으로 쓰면 그대로 실행하다 막힌다 — 실제로 데모 대본이 그랬다
 
 ## 검증
 
