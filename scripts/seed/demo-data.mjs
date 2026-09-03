@@ -23,6 +23,7 @@ import { execFileSync } from "node:child_process";
 import { DEMO_PROSPECTUS_PAGES, buildPdf } from "./prospectus.mjs";
 
 const BASE = process.env.FRACTA_API ?? "http://localhost:8080";
+const AI_URL = process.env.AI_SERVICE_URL ?? "http://localhost:8000";
 const PASSWORD = "demo-password-1!";
 
 /** 재실행해도 이메일이 겹치지 않게 접미사를 붙인다. 같은 분에 두 번 돌려도 안 겹치게 초·난수까지 넣는다. */
@@ -124,6 +125,59 @@ function promoteToAdmin(email) {
       `ADMIN 승격 실패 — fracta-postgres 컨테이너가 떠 있어야 합니다.\n${error.message}`,
     );
   }
+}
+
+// ── 모의 자산 대량 생성 ──────────────────────────────────
+
+/**
+ * 실물 기반 조각 상품을 여러 건 만든다.
+ *
+ * <p>왜 필요한가 — 상장 종목이 서너 개뿐이면 목록도 검색도 비어 보인다. 실제 조각투자
+ * 플랫폼은 수십 개 상품을 동시에 운영한다.
+ *
+ * <p><b>티커를 붙이지 않는다.</b> 실물 부동산·미술품은 상장 종목이 아니라 참조가가 없다.
+ * 가짜 티커를 붙이면 "실물 건물인데 실시간 시세가 있다"는 성립하지 않는 화면이 된다.
+ * 참조가가 없는 자산이 화면에서 어떻게 보이는지가 이 종목들의 존재 이유다.
+ *
+ * <p>청약 중 상태까지만 만든다. 상장까지 태우면 종목당 호출이 배로 늘고,
+ * 목록·검색을 채운다는 목적에는 청약 중으로 충분하다.
+ */
+const BULK_REGIONS = [
+  "강남", "판교", "송도", "해운대", "동탄", "마곡", "청라", "세종", "광교", "위례",
+  "천안", "대구 수성", "전주", "김해", "원주",
+];
+const BULK_KINDS = [
+  { suffix: "물류센터", unitPrice: 12_000 },
+  { suffix: "지식산업센터", unitPrice: 10_000 },
+  { suffix: "상업시설", unitPrice: 15_000 },
+  { suffix: "데이터센터", unitPrice: 20_000 },
+];
+
+async function seedBulkAssets(issuer, admin, crowd) {
+  let created = 0;
+  for (const region of BULK_REGIONS) {
+    for (const kind of BULK_KINDS) {
+      const name = `${region} ${kind.suffix}`;
+      try {
+        const issuance = await createIssuance(issuer, {
+          assetName: name,
+          assetType: "REAL_ESTATE",
+          brokerTicker: null,
+          splitRatio: 100,
+          totalUnits: 20_000 + created * 1_000,
+          unitPrice: kind.unitPrice,
+          subscriptionDays: 5 + (created % 20),
+        });
+        await approveAndOpen(admin, issuance.issuanceId);
+        // 청약이 하나도 없으면 진행률 0%라 화면이 죽어 보인다. 한 건만 넣는다.
+        await subscribe(crowd[created % crowd.length], issuance.issuanceId, 50 + created);
+        created += 1;
+      } catch (error) {
+        log(`${name} 생성 실패 — 건너뛴다: ${error.message}`);
+      }
+    }
+  }
+  log(`모의 자산 ${created}건 생성 (전부 티커 없음 — 참조가·괴리율 없는 자산)`);
 }
 
 // ── 발행 ────────────────────────────────────────────────
@@ -318,27 +372,87 @@ async function main() {
   const sellers = crowd.slice(0, 5);
   const buyers = [demo, ...crowd.slice(5)];
 
-  // 기초자산 기준가 = 티커 숫자 / splitRatio.
-  // MOCK-1000000 + splitRatio 100 → 조각당 기준가 10,000원.
-  const markets = [
-    {
-      label: "한남동 상업시설",
-      config: { assetName: "한남동 상업시설", assetType: "REAL_ESTATE", brokerTicker: "MOCK-1000000", splitRatio: 100, totalUnits: 100_000, unitPrice: 10_000, subscriptionDays: 7 },
-      market: { askLevels: [[10_200, 200, 0], [10_300, 300, 1], [10_400, 400, 2], [10_500, 500, 3]], bidLevels: [[10_000, 500], [9_900, 800], [9_800, 1_200], [9_700, 900]], takePrice: 10_200, takeUnits: [120, 60] },
-    },
-    {
-      label: "성수동 지식산업센터",
-      config: { assetName: "성수동 지식산업센터", assetType: "REAL_ESTATE", brokerTicker: "MOCK-1000000", splitRatio: 100, totalUnits: 60_000, unitPrice: 10_000, subscriptionDays: 5 },
-      // 체결가 11,500 → 기준가 10,000 대비 +15% → 괴리율 경고(주황)
-      market: { askLevels: [[11_500, 250, 0], [11_700, 350, 1], [11_900, 450, 2]], bidLevels: [[11_000, 700], [10_800, 1_000], [10_600, 800]], takePrice: 11_500, takeUnits: [150, 90] },
-    },
-    {
-      label: "제주 리조트 지분",
-      config: { assetName: "제주 리조트 지분", assetType: "REAL_ESTATE", brokerTicker: "MOCK-1000000", splitRatio: 100, totalUnits: 40_000, unitPrice: 10_000, subscriptionDays: 3 },
-      // 체결가 12,600 → +26% → TR-08 자동 거래중단(빨강). 미체결 주문도 함께 정리된다
-      market: { askLevels: [[12_600, 250, 0], [12_800, 350, 1]], bidLevels: [[12_000, 600], [11_800, 900]], takePrice: 12_600, takeUnits: [150] },
-    },
+  section("종목마스터 적재");
+  // 마스터가 없으면 /api/v1/instruments 조회가 전부 빈다 → 실연동 자산이 통째로 건너뛰어진다.
+  // 시드 실행 순서를 사람이 외우게 하지 않는다. 여기서 챙긴다.
+  try {
+    const master = await api("/api/v1/admin/instruments/refresh", { method: "POST", token: admin.token });
+    log(`전체 ${master.total.toLocaleString()}종목 (ETF ${master.etf} · 리츠 ${master.reit})`);
+  } catch (error) {
+    log(`마스터 적재 실패 — 실연동 자산을 건너뛴다: ${error.message}`);
+  }
+
+  // 종목명 의미 검색 인덱스. LLM이 아니라 로컬 임베딩이라 비용이 없다.
+  // 실패해도 문자 검색은 동작하므로 진행을 막지 않는다.
+  try {
+    const indexed = await fetch(`${AI_URL}/ai/instruments/index`, { method: "POST" })
+      .then((r) => (r.ok ? r.json() : null));
+    log(indexed ? `의미 검색 인덱스 ${indexed.indexed.toLocaleString()}건` : "의미 검색 인덱싱 건너뜀 (AI 서비스 미기동)");
+  } catch {
+    log("의미 검색 인덱싱 건너뜀 (AI 서비스 미기동)");
+  }
+
+  // ── 3층 구조 ────────────────────────────────────────
+  //
+  // ① 실연동 ETF  — 증권사가 NAV·괴리율(dprt)까지 준다. 괴리율 엔진의 정답지다
+  // ② 실연동 리츠 — 참조가가 매일 갱신되는 부동산 자산
+  // ③ 실물 자산   — 티커가 없다. 참조가도 괴리율도 없는 화면을 보여준다
+  //
+  // 주문 가격은 **참조가에서 파생**시킨다. 실시세가 매일 바뀌므로 고정 가격을 쓰면
+  // 괴리율 상태(정상/경고/중단)가 재현되지 않는다.
+  const REAL_ASSETS = [
+    { label: "KODEX 200",           code: "069500", type: "ETF",  splitRatio: 100, premium: 1.02, totalUnits: 100_000, days: 7 },
+    { label: "TIGER 미국나스닥100",  code: "133690", type: "ETF",  splitRatio: 100, premium: 1.16, totalUnits: 60_000,  days: 5 },
+    { label: "ESR켄달스퀘어리츠",     code: "365550", type: "REIT", splitRatio: 10,  premium: 1.27, totalUnits: 40_000,  days: 3 },
+    { label: "신한알파리츠",          code: "293940", type: "REIT", splitRatio: 10,  premium: 1.01, totalUnits: 50_000,  days: 6 },
   ];
+
+  const markets = [];
+  for (const asset of REAL_ASSETS) {
+    const detail = await api(
+      `/api/v1/instruments/${asset.code}?splitRatio=${asset.splitRatio}`,
+      { token: demo.token },
+    ).catch(() => null);
+
+    if (!detail?.referencePrice) {
+      log(`${asset.label} 시세 조회 실패 — 건너뛴다 (장 마감이거나 plug 프로파일이 꺼져 있다)`);
+      continue;
+    }
+
+    // 발행가는 참조가에 맞춘다. 체결가를 premium 배수로 띄워 괴리율 상태를 만든다.
+    const unitPrice = Math.max(100, Math.round(detail.referencePrice));
+    const take = Math.round(unitPrice * asset.premium);
+    const tick = Math.max(1, Math.round(unitPrice * 0.01));
+
+    markets.push({
+      label: `${asset.label} 조각`,
+      config: {
+        assetName: `${asset.label} 조각`,
+        assetType: asset.type,
+        brokerTicker: asset.code,
+        splitRatio: asset.splitRatio,
+        totalUnits: asset.totalUnits,
+        unitPrice,
+        subscriptionDays: asset.days,
+      },
+      market: {
+        askLevels: [[take, 250, 0], [take + tick, 350, 1], [take + tick * 2, 450, 2]],
+        bidLevels: [[unitPrice, 700], [unitPrice - tick, 1_000], [unitPrice - tick * 2, 800]],
+        takePrice: take,
+        // 괴리율 20%를 넘기는 종목은 **첫 체결에서 바로 거래가 중단된다**(TR-08).
+        // 두 번째 체결을 시도하면 STATE_NOT_TRADABLE로 실패한다 — 시스템이 맞고 시드가 틀린다.
+        takeUnits: asset.premium >= 1.2 ? [150] : [150, 90],
+      },
+    });
+    log(`${asset.label}  참조가 ${detail.referencePrice.toLocaleString()}원 → 발행가 ${unitPrice.toLocaleString()}원 · 체결가 ${take.toLocaleString()}원`);
+  }
+
+  // ③ 참조가가 없는 자산. 괴리율도 차트도 없는 화면이 이 종목의 존재 이유다.
+  markets.push({
+    label: "한남동 상업시설",
+    config: { assetName: "한남동 상업시설", assetType: "REAL_ESTATE", brokerTicker: null, splitRatio: 100, totalUnits: 100_000, unitPrice: 10_000, subscriptionDays: 7 },
+    market: { askLevels: [[10_200, 200, 0], [10_300, 300, 1], [10_400, 400, 2]], bidLevels: [[10_000, 500], [9_900, 800], [9_800, 1_200]], takePrice: 10_200, takeUnits: [120, 60] },
+  });
 
   const listed = [];
   for (const entry of markets) {
@@ -378,7 +492,8 @@ async function main() {
   const subscribing = await createIssuance(issuer, {
     assetName: "여의도 오피스 타워",
     assetType: "REAL_ESTATE",
-    brokerTicker: "MOCK-1000000",
+    // 실물 부동산은 상장 티커가 없다. 참조가가 없으니 괴리율도 차트도 없다 — 그게 맞다.
+    brokerTicker: null,
     splitRatio: 100,
     totalUnits: 80_000,
     unitPrice: 10_000,
@@ -390,6 +505,9 @@ async function main() {
     await subscribe(user, subscribing.issuanceId, 150 + index * 50);
   }
   log(`${subscribing.tokenSymbol} 청약 중 — ${crowd.length}건 접수`);
+
+  section("모의 자산 대량 생성 (검색·목록용)");
+  await seedBulkAssets(issuer, admin, crowd);
 
   section("적합성 차단 확인");
   try {
