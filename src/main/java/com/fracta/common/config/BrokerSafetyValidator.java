@@ -4,11 +4,20 @@ import java.net.URI;
 
 import org.springframework.stereotype.Component;
 
+import com.fracta.external.broker.plug.PlugPathPolicy;
+
 import jakarta.annotation.PostConstruct;
 
 /**
- * 실전 계좌 차단 안전장치. 모의 환경(계좌구분 03, moapi.* 도메인)이 아니면 부팅을 실패시킨다.
+ * 실주문 차단 안전장치. 조건을 어기면 부팅을 실패시킨다.
  * 이 검증을 우회·비활성화하는 코드를 작성하지 않는다 (CLAUDE.md).
+ *
+ * <p><b>2026-09-03 규칙 변경</b> — 모의 도메인이 시세를 전면 차단해(IGW40023) 시세 조회를
+ * 실전 도메인으로 옮겼다. 그러면서 안전 근거를 <b>도메인에서 경로로</b> 옮겼다.
+ * 위험을 결정하는 건 어느 서버냐가 아니라 무엇을 부르냐다 — 모의 도메인에 주문을 보내도
+ * 주문은 나간다. 지금 규칙이 더 정확하다.
+ *
+ * <p>남아 있는 보증: 계좌구분 03 · allow-live 금지 · <b>조회 전용 경로만 허용</b>.
  */
 @Component
 public class BrokerSafetyValidator {
@@ -36,9 +45,21 @@ public class BrokerSafetyValidator {
                             + properties.accountProductCode());
         }
         String host = properties.baseUrl() == null ? null : URI.create(properties.baseUrl()).getHost();
-        if (host == null || !(host.startsWith("moapi.") || isLoopback(host))) {
+        if (host == null || !(host.endsWith(".nhplug.com") || isLoopback(host))) {
             throw new IllegalStateException(
-                    "broker.base-url 은 moapi.* (모의) 도메인이어야 한다. 현재 값: " + properties.baseUrl());
+                    "broker.base-url 은 nhplug.com 도메인이어야 한다. 현재 값: " + properties.baseUrl());
+        }
+
+        // 안전의 근거는 도메인이 아니라 경로다. 설정된 엔드포인트가 전부 조회인지 확인한다.
+        // 모의 도메인이라도 주문 경로를 부르면 모의 주문이 나가고,
+        // 실전 도메인이라도 시세 경로만 부르면 아무것도 체결되지 않는다.
+        if (properties.endpoints() != null) {
+            properties.endpoints().forEach((name, path) -> {
+                if (!PlugPathPolicy.isAllowed(path)) {
+                    throw new IllegalStateException(
+                            "broker.endpoints.%s 가 조회 전용 경로가 아니다: %s".formatted(name, path));
+                }
+            });
         }
     }
 

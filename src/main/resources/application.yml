@@ -60,8 +60,16 @@ subscription:
 
 broker:
   env: ${BROKER_ENV:mock}
-  # 데이터 조회는 모의 도메인. 토큰 발급은 실전 도메인에서만 가능하다 (PLUG 고유 제약)
-  base-url: ${BROKER_BASE_URL:https://moapi.nhplug.com:8443}
+  # 시세 조회 도메인.
+  #
+  # 2026-09-03부터 모의 도메인(moapi)이 시세 API를 전면 차단한다 — IGW40023
+  # "모의투자에서는 제공하지 않는 API입니다". 8월 31일에는 정상이었다.
+  # 실측표: docs/reference/plug-support-matrix.md
+  #
+  # 그래서 시세는 실전 도메인에서 받는다. 여기서 나가는 건 **조회뿐이다** —
+  # 안전은 도메인이 아니라 경로가 보장한다. PlugPathPolicy가 조회 경로만 허용하고,
+  # 주문 경로는 소스에 존재하는 것조차 NoBrokerOrderPathTest가 빌드에서 막는다.
+  base-url: ${BROKER_BASE_URL:https://api.nhplug.com:8443}
   auth-url: ${BROKER_AUTH_URL:https://api.nhplug.com:8443}
   account-product-code: ${BROKER_ACCOUNT_PRODUCT_CODE:03}
   allow-live: ${BROKER_ALLOW_LIVE:false}
@@ -86,6 +94,11 @@ broker:
     period: /krstock/quote/v1/period
   # 모의 도메인 미지원 엔드포인트 → Mock 폴백 (실측으로 채운다)
   unsupported-on-mock: ${BROKER_UNSUPPORTED_ON_MOCK:}
+  # 종목마스터. PLUG에 이름 검색 API가 없어 코드↔이름 목록을 로컬에 둔다.
+  # 인증 없이 공개 배포된다 — 토큰도 x-client-* 헤더도 필요 없다.
+  instruments:
+    master-url: ${BROKER_INSTRUMENTS_URL:https://www.nhplug.com/instruments/m_new_stock.mst}
+    timeout-millis: ${BROKER_INSTRUMENTS_TIMEOUT:20000}
 
 ai:
   service-url: ${AI_SERVICE_URL:http://localhost:8000}

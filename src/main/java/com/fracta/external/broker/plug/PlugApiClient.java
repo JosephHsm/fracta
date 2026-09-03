@@ -43,6 +43,8 @@ public class PlugApiClient {
 
     /** 데이터 조회는 항상 모의 도메인(baseUrl)으로 나간다. 토큰만 실전 도메인에서 받는다. */
     public Map<String, Object> call(String path, Map<String, Object> input) {
+        // 조회 전용 정책. 설정을 통과해도 코드가 임의 경로를 만들 수 있으므로 여기서 다시 막는다.
+        PlugPathPolicy.assertReadOnly(path);
         rateLimiters.active().acquire(path);
 
         Map<String, Object> response = post(path, input, tokenManager.accessToken());
