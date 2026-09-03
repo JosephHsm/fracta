@@ -39,10 +39,14 @@ class PlugErrorCodesTest {
     }
 
     @Test
-    @DisplayName("미지원 URI는 Mock 폴백 신호")
+    @DisplayName("모의 도메인 미지원은 두 코드 모두 Mock 폴백 신호 — IGW40401과 IGW40023")
     void unsupportedUri() {
         assertThat(PlugErrorCodes.isUnsupportedUri("IGW40401")).isTrue();
+        // 2026-09-03 모의 도메인이 시세 4종을 막으면서 실제로 온 코드.
+        // 40401만 보고 있었기 때문에 폴백이 발동하지 않고 예외로 떨어졌다.
+        assertThat(PlugErrorCodes.isUnsupportedUri("IGW40023")).isTrue();
         assertThat(PlugErrorCodes.isUnsupportedUri("IGW40301")).isFalse();
+        assertThat(PlugErrorCodes.isUnsupportedUri(null)).isFalse();
     }
 
     @Test

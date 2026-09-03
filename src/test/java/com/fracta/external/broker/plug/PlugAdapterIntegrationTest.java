@@ -145,6 +145,19 @@ class PlugAdapterIntegrationTest extends PlugIntegrationTestBase {
     }
 
     @Test
+    @DisplayName("IGW40023(모의 도메인 미지원) → Mock 폴백. 2026-09-03 실제로 온 응답이다")
+    void mockDomainUnsupportedFallsBackToMock() {
+        stubToken();
+        // 8월 31일에는 정상 응답하던 엔드포인트가 이 코드로 막혔다.
+        // 40401만 폴백 대상으로 보고 있어서, 조회가 예외로 떨어지고 있었다.
+        stubData("/krstock/quote/v1/currentPrice", "error-IGW40023.json");
+
+        var quote = marketData.getCurrentPrice("MOCK-10000");
+
+        assertThat(quote.price().amount()).isBetween(9_800L, 10_200L);
+    }
+
+    @Test
     @DisplayName("포트 교체 실증 — plug 프로파일에서 MarketDataPort가 PLUG 어댑터로 주입된다")
     void marketDataPortSwapsToPlugAdapter() {
         // 호출부 코드는 그대로인데 주입되는 구현만 바뀐다는 것이 포트-어댑터의 요점이다.

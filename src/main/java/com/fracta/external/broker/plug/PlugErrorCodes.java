@@ -19,8 +19,21 @@ public final class PlugErrorCodes {
     /** 유량 초과 — 재시도·재발급 모두 금지. 간격을 늘린다. */
     private static final Set<String> RATE_LIMITED = Set.of("IGW42901", "IGW42902", "IGW42903");
 
-    /** 미지원 URI — 모의 도메인 미지원 API 판별 신호. Mock 폴백 대상. */
-    private static final String UNSUPPORTED_URI = "IGW40401";
+    /**
+     * 모의 도메인이 제공하지 않는 API — Mock 폴백 대상.
+     *
+     * <p>두 코드가 같은 상황을 서로 다르게 말한다.
+     * <ul>
+     *   <li>{@code IGW40401} "제공하지 않는 API URI 입니다"</li>
+     *   <li>{@code IGW40023} "모의투자에서는 제공하지 않는 API입니다. 실전투자 환경을 이용해주세요."</li>
+     * </ul>
+     *
+     * <p>처음에는 40401만 넣었다. 2026-09-03에 모의 도메인이 시세 4종
+     * (currentPrice·currentDaily·period·etfCurrent)을 전부 막으면서 <b>40023</b>으로
+     * 응답하기 시작했고, 폴백이 발동하지 않아 조회가 예외로 떨어졌다.
+     * 8월 31일 실측 때는 같은 엔드포인트가 정상 응답했다(scripts/plug/captured/ 참조).
+     */
+    private static final Set<String> UNSUPPORTED_ON_MOCK = Set.of("IGW40401", "IGW40023");
 
     /** 일시적 서버 오류 — 백오프 후 재시도 가능. */
     private static final Set<String> TRANSIENT = Set.of(
@@ -42,7 +55,7 @@ public final class PlugErrorCodes {
     }
 
     public static boolean isUnsupportedUri(String code) {
-        return UNSUPPORTED_URI.equals(code);
+        return code != null && UNSUPPORTED_ON_MOCK.contains(code);
     }
 
     public static boolean isTransient(String code) {
