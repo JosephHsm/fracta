@@ -19,6 +19,7 @@ from app.conversation import ConversationLog
 from app.devportal import DevPortalAskService, SpecLoader
 from app.indexing.service import IndexingService
 from app.metrics import METRICS, GuardrailMetrics
+from app.instruments import InstrumentSemanticIndex
 from app.ports.embedding import EmbeddingPort
 from app.ports.llm import LlmPort, LlmUnavailableError
 from app.retrieval.search import SearchService
@@ -108,6 +109,22 @@ class IndexResponse(BaseModel):
     pages: int
     chunks: int
     embedding_model: str
+
+
+class InstrumentSearchRequest(BaseModel):
+    query: str = Field(min_length=1, max_length=100)
+    limit: int = Field(default=10, ge=1, le=30)
+
+
+class InstrumentHitModel(BaseModel):
+    code: str
+    name: str
+    kind: str
+    similarity: float
+
+
+class InstrumentSearchResponse(BaseModel):
+    hits: list[InstrumentHitModel]
 
 
 class ProspectusAskRequest(BaseModel):
@@ -207,6 +224,30 @@ def create_app(context: AppContext | None = None) -> FastAPI:
         except LlmUnavailableError as exc:
             raise HTTPException(status_code=503, detail=str(exc))
         return DevPortalAskResponse(**vars(result))
+
+    @app.post("/ai/instruments/index")
+    def index_instruments(ctx: AppContext = Depends(get_context)) -> dict:
+        """종목명 임베딩 재생성. ETF·리츠만 넣는다 — 조각 기초자산이 될 수 있는 것들이다."""
+        index = InstrumentSemanticIndex(db.connection, ctx.embedder)
+        return {"indexed": index.reindex()}
+
+    @app.post("/ai/instruments/search", response_model=InstrumentSearchResponse)
+    def search_instruments(
+        request: InstrumentSearchRequest, ctx: AppContext = Depends(get_context)
+    ) -> InstrumentSearchResponse:
+        """의미 검색. 문자 검색이 0건일 때만 호출되는 폴백이다.
+
+        LLM을 부르지 않는다 — 로컬 임베딩으로 마스터 안에서 고르므로
+        존재하지 않는 종목코드가 나올 수 없다.
+        """
+        index = InstrumentSemanticIndex(db.connection, ctx.embedder)
+        hits = index.search(request.query, request.limit)
+        return InstrumentSearchResponse(
+            hits=[
+                InstrumentHitModel(code=h.code, name=h.name, kind=h.kind, similarity=h.similarity)
+                for h in hits
+            ]
+        )
 
     @app.get("/ai/health")
     def health(ctx: AppContext = Depends(get_context)) -> dict:
