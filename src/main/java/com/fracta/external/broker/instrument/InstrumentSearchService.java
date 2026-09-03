@@ -29,7 +29,7 @@ public class InstrumentSearchService {
      * <p>{@code matchedBy}는 문자 검색인지 의미 검색인지 알려준다. 사용자가 친 글자가
      * 결과에 안 보이면("코덱스" → "KODEX 200") 왜 나왔는지 화면이 설명할 수 있어야 한다.
      */
-    public record Hit(String code, String name, String market, AssetKind kind, Long prevClose,
+    public record InstrumentHit(String code, String name, String market, AssetKind kind, Long prevClose,
                       MatchType matchedBy) {
     }
 
@@ -48,12 +48,12 @@ public class InstrumentSearchService {
      * 증권사가 계산한 ETF 괴리율(LP가 좁혀준 결과)과 우리 조각 괴리율을 나란히.
      * 유동성공급자가 있는 시장과 없는 시장의 차이가 숫자로 드러난다.
      */
-    public record Detail(String code, String name, AssetKind kind, long underlyingPrice,
-                         long splitRatio, long referencePrice, EtfReference etf) {
+    public record InstrumentDetail(String code, String name, AssetKind kind, long underlyingPrice,
+                         long splitRatio, long referencePrice, InstrumentEtfReference etf) {
     }
 
     /** 증권사가 내려준 ETF 기준 지표. ETF가 아니거나 조회 실패면 null이다. */
-    public record EtfReference(BigDecimal nav, BigDecimal premiumRate, BigDecimal trackingError,
+    public record InstrumentEtfReference(BigDecimal nav, BigDecimal premiumRate, BigDecimal trackingError,
                                long lpAskUnits, long lpBidUnits) {
     }
 
@@ -75,15 +75,15 @@ public class InstrumentSearchService {
     }
 
     @Transactional(readOnly = true)
-    public List<Hit> search(String query, AssetKind kind, int limit) {
+    public List<InstrumentHit> search(String query, AssetKind kind, int limit) {
         if (query == null || query.strip().length() < 1) {
             return List.of();
         }
         int size = Math.clamp(limit, 1, MAX_HITS);
         String text = query.strip();
 
-        List<Hit> byText = repository.search(text, kind, PageRequest.of(0, size)).stream()
-                .map(m -> new Hit(m.code(), m.korName(), m.market(), m.assetKind(), m.prevClose(),
+        List<InstrumentHit> byText = repository.search(text, kind, PageRequest.of(0, size)).stream()
+                .map(m -> new InstrumentHit(m.code(), m.korName(), m.market(), m.assetKind(), m.prevClose(),
                         MatchType.TEXT))
                 .toList();
         if (!byText.isEmpty()) {
@@ -96,7 +96,7 @@ public class InstrumentSearchService {
                 .map(hit -> repository.findById(hit.code()).orElse(null))
                 .filter(java.util.Objects::nonNull)
                 .filter(m -> kind == null || m.assetKind() == kind)
-                .map(m -> new Hit(m.code(), m.korName(), m.market(), m.assetKind(), m.prevClose(),
+                .map(m -> new InstrumentHit(m.code(), m.korName(), m.market(), m.assetKind(), m.prevClose(),
                         MatchType.SEMANTIC))
                 .toList();
     }
@@ -107,17 +107,17 @@ public class InstrumentSearchService {
      * <p>환산은 서버가 한다 — 화면에서 분할비율로 나누면 반올림이 갈려 기준선이 어긋난다.
      */
     @Transactional(readOnly = true)
-    public Optional<Detail> detail(String code, long splitRatio) {
+    public Optional<InstrumentDetail> detail(String code, long splitRatio) {
         return repository.findById(code).map(master -> {
             Money underlying = marketData.getCurrentPrice(code).price();
             Money reference = PriceConverter.referencePrice(underlying, splitRatio);
-            EtfReference etf = master.assetKind() == AssetKind.ETF
+            InstrumentEtfReference etf = master.assetKind() == AssetKind.ETF
                     ? etfReference.reference(code)
-                            .map(r -> new EtfReference(r.nav(), r.premiumRate(), r.trackingError(),
+                            .map(r -> new InstrumentEtfReference(r.nav(), r.premiumRate(), r.trackingError(),
                                     r.lpAskUnits(), r.lpBidUnits()))
                             .orElse(null)
                     : null;
-            return new Detail(master.code(), master.korName(), master.assetKind(),
+            return new InstrumentDetail(master.code(), master.korName(), master.assetKind(),
                     underlying.amount(), splitRatio, reference.amount(), etf);
         });
     }

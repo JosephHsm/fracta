@@ -34,7 +34,7 @@ public class InstrumentController {
 
     @Operation(operationId = "searchInstruments", summary = "기초자산 검색 (이름·코드)")
     @GetMapping("/api/v1/instruments")
-    public ApiResponse<List<InstrumentSearchService.Hit>> search(
+    public ApiResponse<List<InstrumentSearchService.InstrumentHit>> search(
             @RequestParam("q") String query,
             @RequestParam(value = "kind", required = false) AssetKind kind,
             @RequestParam(value = "limit", defaultValue = "20") int limit) {
@@ -48,7 +48,7 @@ public class InstrumentController {
      */
     @Operation(operationId = "getInstrument", summary = "기초자산 상세 + 조각 참조가")
     @GetMapping("/api/v1/instruments/{code}")
-    public ApiResponse<InstrumentSearchService.Detail> detail(
+    public ApiResponse<InstrumentSearchService.InstrumentDetail> detail(
             @PathVariable("code") String code,
             @RequestParam(value = "splitRatio", defaultValue = "1000") long splitRatio) {
         return ApiResponse.of(search.detail(code, splitRatio).orElse(null));

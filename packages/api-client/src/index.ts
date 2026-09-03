@@ -14,6 +14,7 @@ import {
   AuthControllerApi,
   CashControllerApi,
   DefaultApi,
+  InstrumentControllerApi,
   InvestorControllerApi,
   IssuanceControllerApi,
   SubscriptionControllerApi,
@@ -68,6 +69,8 @@ export function createFractaClient(options: FractaClientOptions = {}) {
     asset: new AssetControllerApi(configuration),
     subscription: new SubscriptionControllerApi(configuration),
     trading: new TradingControllerApi(configuration),
+    /** 기초자산 탐색 — 이름·코드 검색과 조각 참조가. 시세는 상세 조회에서만 부른다 */
+    instrument: new InstrumentControllerApi(configuration),
     ai: new AiControllerApi(configuration),
     adminIssuance: new AdminIssuanceControllerApi(configuration),
     adminSubscription: new AdminSubscriptionControllerApi(configuration),

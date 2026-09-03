@@ -3,6 +3,7 @@
 .openapi-generator-ignore
 README.md
 docs/AdminAiControllerApi.md
+docs/AdminBatchControllerApi.md
 docs/AdminIssuanceControllerApi.md
 docs/AdminSubscriptionControllerApi.md
 docs/AiControllerApi.md
@@ -17,6 +18,7 @@ docs/ApiResponseDashboardView.md
 docs/ApiResponseDevPortalAskResponse.md
 docs/ApiResponseFinalizeResult.md
 docs/ApiResponseIndexResult.md
+docs/ApiResponseInstrumentDetail.md
 docs/ApiResponseIssuanceDetailResponse.md
 docs/ApiResponseIssuedClientView.md
 docs/ApiResponseIssuedWebhookView.md
@@ -24,6 +26,7 @@ docs/ApiResponseListCallLogView.md
 docs/ApiResponseListCashTransactionResponse.md
 docs/ApiResponseListClientView.md
 docs/ApiResponseListExecutionResponse.md
+docs/ApiResponseListInstrumentHit.md
 docs/ApiResponseListIssuanceSummaryResponse.md
 docs/ApiResponseListMyOrderResponse.md
 docs/ApiResponseListMySubscriptionResponse.md
@@ -32,6 +35,7 @@ docs/ApiResponseListOrderResponse.md
 docs/ApiResponseListTokenSummaryResponse.md
 docs/ApiResponseListWebhookDeliveryView.md
 docs/ApiResponseListWebhookView.md
+docs/ApiResponseLoadResult.md
 docs/ApiResponseMapStringObject.md
 docs/ApiResponseMeResponse.md
 docs/ApiResponseOpenApiBalanceResponse.md
@@ -44,6 +48,7 @@ docs/ApiResponseProspectusAskResponse.md
 docs/ApiResponseProspectusUploadResponse.md
 docs/ApiResponseRegisterWebhookResponse.md
 docs/ApiResponseRiskProfileResponse.md
+docs/ApiResponseRunResult.md
 docs/ApiResponseSignupResponse.md
 docs/ApiResponseSubscribeResponse.md
 docs/ApiResponseSuitabilityAckResponse.md
@@ -83,12 +88,17 @@ docs/ExecutionSummary.md
 docs/FinalizeResult.md
 docs/Holding.md
 docs/IndexResult.md
+docs/InstrumentControllerApi.md
+docs/InstrumentDetail.md
+docs/InstrumentEtfReference.md
+docs/InstrumentHit.md
 docs/InvestorControllerApi.md
 docs/IssuanceControllerApi.md
 docs/IssuanceDetailResponse.md
 docs/IssuanceSummaryResponse.md
 docs/IssuedClientView.md
 docs/IssuedWebhookView.md
+docs/LoadResult.md
 docs/LoginRequest.md
 docs/MeResponse.md
 docs/MyOrderResponse.md
@@ -113,6 +123,7 @@ docs/RegisterWebhookResponse.md
 docs/ResponseMeta.md
 docs/RiskProfileRequest.md
 docs/RiskProfileResponse.md
+docs/RunResult.md
 docs/SignupRequest.md
 docs/SignupResponse.md
 docs/SubscribeRequest.md
@@ -130,6 +141,7 @@ docs/WebhookDeliveryView.md
 docs/WebhookView.md
 package.json
 src/apis/AdminAiControllerApi.ts
+src/apis/AdminBatchControllerApi.ts
 src/apis/AdminIssuanceControllerApi.ts
 src/apis/AdminSubscriptionControllerApi.ts
 src/apis/AiControllerApi.ts
@@ -137,6 +149,7 @@ src/apis/AssetControllerApi.ts
 src/apis/AuthControllerApi.ts
 src/apis/CashControllerApi.ts
 src/apis/DefaultApi.ts
+src/apis/InstrumentControllerApi.ts
 src/apis/InvestorControllerApi.ts
 src/apis/IssuanceControllerApi.ts
 src/apis/SubscriptionControllerApi.ts
@@ -154,6 +167,7 @@ src/models/ApiResponseDashboardView.ts
 src/models/ApiResponseDevPortalAskResponse.ts
 src/models/ApiResponseFinalizeResult.ts
 src/models/ApiResponseIndexResult.ts
+src/models/ApiResponseInstrumentDetail.ts
 src/models/ApiResponseIssuanceDetailResponse.ts
 src/models/ApiResponseIssuedClientView.ts
 src/models/ApiResponseIssuedWebhookView.ts
@@ -161,6 +175,7 @@ src/models/ApiResponseListCallLogView.ts
 src/models/ApiResponseListCashTransactionResponse.ts
 src/models/ApiResponseListClientView.ts
 src/models/ApiResponseListExecutionResponse.ts
+src/models/ApiResponseListInstrumentHit.ts
 src/models/ApiResponseListIssuanceSummaryResponse.ts
 src/models/ApiResponseListMyOrderResponse.ts
 src/models/ApiResponseListMySubscriptionResponse.ts
@@ -169,6 +184,7 @@ src/models/ApiResponseListOrderResponse.ts
 src/models/ApiResponseListTokenSummaryResponse.ts
 src/models/ApiResponseListWebhookDeliveryView.ts
 src/models/ApiResponseListWebhookView.ts
+src/models/ApiResponseLoadResult.ts
 src/models/ApiResponseMapStringObject.ts
 src/models/ApiResponseMeResponse.ts
 src/models/ApiResponseOpenApiBalanceResponse.ts
@@ -181,6 +197,7 @@ src/models/ApiResponseProspectusAskResponse.ts
 src/models/ApiResponseProspectusUploadResponse.ts
 src/models/ApiResponseRegisterWebhookResponse.ts
 src/models/ApiResponseRiskProfileResponse.ts
+src/models/ApiResponseRunResult.ts
 src/models/ApiResponseSignupResponse.ts
 src/models/ApiResponseSubscribeResponse.ts
 src/models/ApiResponseSuitabilityAckResponse.ts
@@ -216,10 +233,14 @@ src/models/ExecutionSummary.ts
 src/models/FinalizeResult.ts
 src/models/Holding.ts
 src/models/IndexResult.ts
+src/models/InstrumentDetail.ts
+src/models/InstrumentEtfReference.ts
+src/models/InstrumentHit.ts
 src/models/IssuanceDetailResponse.ts
 src/models/IssuanceSummaryResponse.ts
 src/models/IssuedClientView.ts
 src/models/IssuedWebhookView.ts
+src/models/LoadResult.ts
 src/models/LoginRequest.ts
 src/models/MeResponse.ts
 src/models/MyOrderResponse.ts
@@ -244,6 +265,7 @@ src/models/RegisterWebhookResponse.ts
 src/models/ResponseMeta.ts
 src/models/RiskProfileRequest.ts
 src/models/RiskProfileResponse.ts
+src/models/RunResult.ts
 src/models/SignupRequest.ts
 src/models/SignupResponse.ts
 src/models/SubscribeRequest.ts

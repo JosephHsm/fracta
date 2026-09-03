@@ -33,8 +33,9 @@ import * as React from "react";
 import { AppShell } from "@/components/app-shell";
 import { OrderBook } from "@/components/order-book";
 import { OrderForm } from "@/components/order-form";
+import { DualPremium } from "@/components/dual-premium";
 import { UnderlyingChart } from "@/components/underlying-chart";
-import { useCandles, useExecutions, useIssuances } from "@/lib/queries";
+import { useCandles, useExecutions, useInstrument, useIssuances } from "@/lib/queries";
 
 /**
  * 종목 상세 — 이 프로젝트의 얼굴 화면 (FSD §11.2).
@@ -47,6 +48,9 @@ export default function TokenDetailPage() {
   const { data: issuances } = useIssuances();
   const { data: executions, isLoading: executionsLoading } = useExecutions(symbol, 20);
   const { data: candles, isLoading: candlesLoading } = useCandles(symbol);
+  // 기초자산이 ETF면 증권사가 계산한 괴리율이 함께 온다 → 이중 괴리율을 그릴 수 있다.
+  // 분할비율은 차트와 같은 값을 써야 두 화면의 기준선이 어긋나지 않는다.
+  const { data: instrument } = useInstrument(candles?.brokerTicker, candles?.splitRatio ?? 100);
 
   // 사용자가 직접 입력하기 전에는 null — 그동안은 최근 체결가(없으면 발행가)를 보여준다.
   // effect에서 setState로 초기값을 넣으면 렌더가 한 번 더 돌고 값이 늦게 채워진다.
@@ -137,6 +141,9 @@ export default function TokenDetailPage() {
           </div>
 
           <div className="flex flex-col gap-4 lg:col-span-4">
+            {instrument?.etf ? (
+              <DualPremium etf={instrument.etf} fractionPremium={latest?.premiumRate} />
+            ) : null}
             <Card>
               <CardHeader>
                 <CardTitle>발행 정보</CardTitle>

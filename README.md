@@ -97,6 +97,7 @@ ETF는 LP가 괴리를 좁혀줍니다. **조각투자 플랫폼에는 유동성
 | [`CLAUDE.md`](CLAUDE.md) | AI 개발 에이전트용 프로젝트 규칙 |
 | [`docs/reference/plug-error-codes.md`](docs/reference/plug-error-codes.md) | namuh PLUG 게이트웨이 오류코드와 처리 정책 |
 | [`docs/reference/plug-support-matrix.md`](docs/reference/plug-support-matrix.md) | 증권사 API **도메인별 지원 범위 실측** — 모의는 REST 시세만 차단(WS는 연결됨), ETF NAV·괴리율 필드 |
+| [`docs/reference/etf-as-reference.md`](docs/reference/etf-as-reference.md) | **ETF를 기초자산으로 쓰는 설계** — 3층 시드, 이중 괴리율, 종목 검색 구조 |
 | [`docs/appendix/risk-profile-questions.md`](docs/appendix/risk-profile-questions.md) | 투자성향 진단 8문항·배점표 |
 | [`docs/ai/guardrail-design.md`](docs/ai/guardrail-design.md) | 금소법 대응 매핑, 3단계 가드레일, **실제 우회 사례** |
 | [`docs/ai/provider-comparison.md`](docs/ai/provider-comparison.md) | Claude ↔ 폐쇄망 비교 — 측정 방법과 현재 상태 |

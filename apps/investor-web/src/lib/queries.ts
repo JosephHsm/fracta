@@ -2,6 +2,7 @@
 
 import type {
   CandlesResponse,
+  InstrumentDetail,
   ExecutionResponse,
   IssuanceSummaryResponse,
   ListIssuancesStatusEnum,
@@ -97,6 +98,24 @@ export function useCandles(tokenSymbol: string, days = 90) {
         tokenSymbol,
         candles: [],
       },
+  });
+}
+
+/**
+ * 기초자산 상세 — ETF면 증권사가 계산한 NAV·괴리율이 함께 온다.
+ *
+ * <p>이게 있어야 **이중 괴리율**을 보여줄 수 있다. 증권사 괴리율은 유동성공급자(LP)가
+ * 좁혀준 결과고, 우리 조각 괴리율은 LP가 없는 시장의 결과다. 두 숫자를 나란히 놓으면
+ * 유동성이 얕다는 게 말이 아니라 데이터로 보인다.
+ */
+export function useInstrument(code: string | null | undefined, splitRatio: number) {
+  const { client, token } = useSession();
+  return useQuery<InstrumentDetail | null>({
+    queryKey: ["instrument", code, splitRatio],
+    enabled: Boolean(token) && Boolean(code),
+    staleTime: 60 * 1000,
+    queryFn: async () =>
+      (await client.instrument.getInstrument({ code: code as string, splitRatio })).data ?? null,
   });
 }
 
