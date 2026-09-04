@@ -49,25 +49,42 @@ public class NamuhPlugMarketDataAdapter implements MarketDataPort {
     private final MockMarketDataAdapter fallback;
     private final MarketHours marketHours;
 
-    /** 장 마감 후 반환할 마지막 시세. */
+    /** 장 마감 후 반환할 마지막 시세. 장중에는 짧은 TTL 캐시로도 쓴다. */
     private final Map<String, Quote> lastQuotes = new ConcurrentHashMap<>();
 
+    /**
+     * 장중 현재가 캐시 유효시간.
+     *
+     * <p>괴리율 산출이 <b>체결 1건마다</b> 현재가를 부르는데, 이 호출은 종목별 매칭 스레드
+     * 안에서 동기로 일어난다. 캐시가 없으면 연속 체결이 그대로 증권사 왕복 횟수가 되고,
+     * 그동안 그 파티션에 걸린 다른 종목의 매칭까지 멈춘다. 쿼터도 체결량에 비례해 태운다.
+     *
+     * <p>괴리율 임계치는 10%·20%다. 몇 초 된 시세로도 판정이 뒤집히지 않는다.
+     */
+    private final java.time.Duration quoteTtl;
+
     public NamuhPlugMarketDataAdapter(PlugApiClient client, BrokerProperties properties,
-                                      MockMarketDataAdapter fallback, MarketHours marketHours) {
+                                      MockMarketDataAdapter fallback, MarketHours marketHours,
+                                      @org.springframework.beans.factory.annotation.Value(
+                                              "${broker.quote-cache-ttl:3s}")
+                                      java.time.Duration quoteTtl) {
         this.client = client;
         this.properties = properties;
         this.fallback = fallback;
         this.marketHours = marketHours;
+        this.quoteTtl = quoteTtl;
     }
 
     @Override
     public Quote getCurrentPrice(String ticker) {
-        // 장 시간 외에는 폴링하지 않고 마지막 종가 캐시를 쓴다
+        Quote cached = lastQuotes.get(ticker);
+        // 장 시간 외에는 폴링하지 않고 마지막 종가를 그대로 쓴다
         if (!marketHours.isOpen()) {
-            Quote cached = lastQuotes.get(ticker);
             if (cached != null) {
                 return cached;
             }
+        } else if (isFresh(cached)) {
+            return cached;
         }
         if (!properties.supportedOnCurrentEnv(EP_CURRENT_PRICE)) {
             return fallbackQuote(ticker, "설정상 모의 도메인 미지원");
@@ -150,6 +167,14 @@ public class NamuhPlugMarketDataAdapter implements MarketDataPort {
     }
 
     // ── 폴백 ────────────────────────────────────────────────
+
+    /** 캐시된 시세가 아직 TTL 안인가. TTL이 0 이하면 캐시를 끈 것으로 본다. */
+    private boolean isFresh(Quote cached) {
+        if (cached == null || quoteTtl.isZero() || quoteTtl.isNegative()) {
+            return false;
+        }
+        return cached.at().isAfter(Instant.now().minus(quoteTtl));
+    }
 
     private boolean isUnsupported(BrokerApiException e) {
         Object code = e.details().get("rspCd");
