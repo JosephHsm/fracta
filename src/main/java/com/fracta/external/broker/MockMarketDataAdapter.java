@@ -18,8 +18,15 @@ import com.fracta.common.money.Money;
  * 랜덤워크 시세 시뮬레이터. Phase 1~4 및 CI 전 구간의 기본 어댑터
  * (Phase 5에서 NamuhPlugMarketDataAdapter가 주력으로 추가된다).
  *
- * <p>기준가는 티커에 포함된 숫자(예: "MOCK-4200" → 4,200원), 숫자가 없으면 10,000원.
- * 호출마다 ±1% 이내로 움직인다 — 테스트가 기준가를 티커로 제어할 수 있다.
+ * <p><b>기준가는 종목마스터의 전일종가를 먼저 본다.</b> 실제 종목코드(예: {@code 069500})면
+ * 진짜 ETF 가격 근처에서 출발하므로, mock 으로 만든 시드를 plug 프로파일에서 열거나 그 반대로
+ * 해도 괴리율이 터지지 않는다. 예전에는 티커 숫자만 봐서 {@code 365550} 이 365,550원이 됐고,
+ * 실제 3,000원대인 종목과 100배 넘게 벌어져 기동하자마자 자동 거래중단이 걸렸다.
+ *
+ * <p>마스터에 없는 티커는 예전 규칙을 그대로 쓴다 — 숫자가 있으면 그 값(예: "MOCK-4200" →
+ * 4,200원), 없으면 10,000원. 테스트가 기준가를 티커로 제어하는 경로는 유지된다.
+ *
+ * <p>어느 쪽이든 호출마다 ±1% 이내로 움직인다.
  */
 @Component
 public class MockMarketDataAdapter implements MarketDataPort {
@@ -28,6 +35,28 @@ public class MockMarketDataAdapter implements MarketDataPort {
     private static final long DEFAULT_BASE_PRICE = 10_000;
 
     private final ConcurrentHashMap<String, Long> lastPrices = new ConcurrentHashMap<>();
+
+    /**
+     * 종목마스터 조회. 마스터가 적재되지 않은 환경(단위 테스트 등)에서도 동작해야 하므로
+     * 지연 참조로 받는다 — 없으면 티커 숫자 규칙으로 떨어진다.
+     */
+    private final org.springframework.beans.factory.ObjectProvider<
+            com.fracta.external.broker.instrument.InstrumentMasterRepository> instrumentMasters;
+
+    @org.springframework.beans.factory.annotation.Autowired
+    public MockMarketDataAdapter(
+            org.springframework.beans.factory.ObjectProvider<
+                    com.fracta.external.broker.instrument.InstrumentMasterRepository> instrumentMasters) {
+        this.instrumentMasters = instrumentMasters;
+    }
+
+    /**
+     * 종목마스터 없이 쓰는 생성자 — 기준가는 티커 숫자 규칙만 따른다.
+     * 마스터를 띄우지 않는 단위 테스트가 쓴다.
+     */
+    public MockMarketDataAdapter() {
+        this(null);
+    }
 
     @Override
     public Quote getCurrentPrice(String ticker) {
@@ -87,6 +116,10 @@ public class MockMarketDataAdapter implements MarketDataPort {
     }
 
     private long basePriceOf(String ticker) {
+        Long fromMaster = prevCloseOf(ticker);
+        if (fromMaster != null && fromMaster > 0) {
+            return fromMaster;
+        }
         Matcher m = DIGITS.matcher(ticker);
         if (m.find()) {
             try {
@@ -99,5 +132,24 @@ public class MockMarketDataAdapter implements MarketDataPort {
             }
         }
         return DEFAULT_BASE_PRICE;
+    }
+
+    /** 종목마스터의 전일종가. 마스터가 없거나 종목이 없으면 null. */
+    private Long prevCloseOf(String ticker) {
+        if (instrumentMasters == null) {
+            return null;
+        }
+        var repository = instrumentMasters.getIfAvailable();
+        if (repository == null) {
+            return null;
+        }
+        try {
+            return repository.findById(ticker)
+                    .map(com.fracta.external.broker.instrument.InstrumentMaster::prevClose)
+                    .orElse(null);
+        } catch (RuntimeException e) {
+            // 마스터 조회 실패가 시세 시뮬레이터를 멈추게 두지 않는다
+            return null;
+        }
     }
 }
