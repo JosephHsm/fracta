@@ -22,7 +22,6 @@ class PlugPathPolicyTest {
             "/krstock/quote/inquire-daily-price",
             "krstock/quote/inquire-price",           // 선행 슬래시 없음
             "/krstock/quote/inquire-price?iem_cd=005930",
-            "/n2/acctinfo",
     })
     @DisplayName("조회 경로는 통과한다")
     void allowsQuotePaths(String path) {
@@ -33,6 +32,7 @@ class PlugPathPolicyTest {
     @ValueSource(strings = {
             "/krstock/order/cash",
             "/n2/order",
+            "/n2/acctinfo",          // 읽기지만 쓰지 않으므로 화이트리스트에서 뺐다
             "/",
             "/krstock/quotefoo",                     // 접두사가 경계에서 안 맞는다
     })

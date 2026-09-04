@@ -88,7 +88,8 @@ broker:
   # 엔드포인트 경로는 하드코딩하지 않는다 (phase-05 §6-3).
   # 출처: https://www.nhplug.com/openapi-docs/krstock/openapi.json (scripts/plug/spec/)
   endpoints:
-    accountInfo: /n2/acctinfo
+    # 계좌 조회(/n2/acctinfo)는 두지 않는다 — 쓰지 않는 경로를 화이트리스트에 열어 두면
+    # "시세만 조회한다"는 보증이 그만큼 약해진다 (PlugPathPolicy)
     currentPrice: /krstock/quote/v1/currentPrice
     currentDaily: /krstock/quote/v1/currentDaily
     period: /krstock/quote/v1/period

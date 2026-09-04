@@ -69,7 +69,10 @@ class NoBrokerOrderPathTest {
     void policyRejectsOrderPaths() {
         assertThat(PlugPathPolicy.isAllowed("/krstock/quote/v1/currentPrice")).isTrue();
         assertThat(PlugPathPolicy.isAllowed("/krstock/quote/v1/etfCurrent")).isTrue();
-        assertThat(PlugPathPolicy.isAllowed("/n2/acctinfo")).isTrue();
+
+        // 계좌 조회는 읽기지만 쓰지 않으므로 화이트리스트에서 뺐다.
+        // 부르지 않는 경로를 열어 두면 "시세만 조회한다"는 보증이 그만큼 약해진다.
+        assertThat(PlugPathPolicy.isAllowed("/n2/acctinfo")).isFalse();
 
         // 주문·잔고 변경 계열
         assertThat(PlugPathPolicy.isAllowed("/krstock/order/v1/cashBuy")).isFalse();
