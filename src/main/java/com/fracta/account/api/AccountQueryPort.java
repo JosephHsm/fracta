@@ -16,6 +16,9 @@ public interface AccountQueryPort {
     /** 전체 투자자 예치금 잔액 합 (INV-6 검증용). */
     long sumCashBalances();
 
+    /** 현금 잔고가 음수인 투자자 수 (INV-3). 0이어야 한다. */
+    long countNegativeCashBalances();
+
     /** 외부 순유입 = Σ DEPOSIT − Σ WITHDRAW. 내부 이동(증거금 홀드/환불/정산)은 제외한다 (INV-6). */
     long externalNetDeposits();
 

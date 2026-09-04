@@ -40,6 +40,10 @@ public interface InvestorRepository extends JpaRepository<Investor, Long> {
     @Query("SELECT COALESCE(SUM(i.cashBalance), 0) FROM Investor i")
     long sumCashBalance();
 
+    /** INV-3 — 음수 현금 잔고는 존재해서는 안 된다. */
+    @Query("SELECT COUNT(i) FROM Investor i WHERE i.cashBalance < 0")
+    long countNegativeCashBalance();
+
     /**
      * INV-6 위반 시 원인 추적용 — 투자자별 (id, 외부 순유입, 현재 잔액, 기록으로 설명되지 않는 차액).
      *

@@ -57,6 +57,12 @@ public class AccountQueryService implements AccountQueryPort {
 
     @Override
     @Transactional(readOnly = true)
+    public long countNegativeCashBalances() {
+        return investors.countNegativeCashBalance();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public long externalNetDeposits() {
         return cashTransactions.sumByType(com.fracta.account.domain.CashTransaction.Type.DEPOSIT)
                 - cashTransactions.sumByType(com.fracta.account.domain.CashTransaction.Type.WITHDRAW);

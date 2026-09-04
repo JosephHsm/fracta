@@ -1,5 +1,7 @@
 package com.fracta.batch.application;
 
+import com.fracta.common.invariant.ReconciliationCheck;
+
 import java.math.BigDecimal;
 import java.time.LocalDate;
 

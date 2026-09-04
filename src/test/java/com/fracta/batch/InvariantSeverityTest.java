@@ -7,8 +7,8 @@ import java.math.BigInteger;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-import com.fracta.batch.application.ReconciliationCheck;
-import com.fracta.batch.application.ReconciliationCheck.Severity;
+import com.fracta.common.invariant.ReconciliationCheck;
+import com.fracta.common.invariant.ReconciliationCheck.Severity;
 
 /**
  * 불변식 위반의 폭발 반경 분류 (FSD §8.1).

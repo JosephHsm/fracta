@@ -1,8 +1,15 @@
-package com.fracta.batch.application;
+package com.fracta.common.invariant;
 
 import java.math.BigInteger;
 
-/** INV-1~6 한 항목의 검증 결과. 값은 합계 오버플로우를 피하려고 BigInteger로 유지한다. */
+/**
+ * INV-1~6 한 항목의 검증 결과. 값은 합계 오버플로우를 피하려고 BigInteger로 유지한다.
+ *
+ * <p><b>공용 타입이다.</b> 불변식을 소유한 모듈(ledger·subscription)이 직접 이 결과를
+ * 만들고, 배치는 그것을 모아 기록·경보만 한다. 예전에는 배치가 같은 검증을 SQL로 따로
+ * 구현해 두 벌이 존재했고, 한쪽만 고치면 검증기가 서로 다른 답을 냈다 —
+ * 실제로 INV-6에 매수 홀드 항을 추가할 때 그 일이 일어났다.
+ */
 public record ReconciliationCheck(
         String invariantCode,
         String tokenSymbol,
