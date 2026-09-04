@@ -119,6 +119,7 @@ public class IssuanceAllotmentService implements IssuanceAllotmentPort {
     private IssuanceInfo toInfo(Issuance i) {
         return new IssuanceInfo(i.id(), i.tokenSymbol(), i.totalUnits(), i.remainingUnits(),
                 i.unitPrice(), i.status().name(), i.allotmentMethod().name(), i.riskGrade(),
+                i.equalAllotmentPercent(),
                 i.subscriptionStartAt(), i.subscriptionEndAt(), assets.findIssuerId(i.assetId()));
     }
 }

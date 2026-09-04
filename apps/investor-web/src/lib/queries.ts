@@ -128,6 +128,21 @@ export function useMyOrders() {
   });
 }
 
+/**
+ * 내 보유 포지션 — 평가금액·손익 포함.
+ *
+ * <p>금액은 전부 서버가 산출한 값이다. 화면에서 보유 수량 × 현재가를 곱하지 않는다
+ * (FSD §11.2 금액 재계산 금지). 기준가 출처는 `priceSource`로 함께 내려온다.
+ */
+export function useMyPositions() {
+  const { client, token } = useSession();
+  return useQuery({
+    queryKey: ["my-positions"],
+    enabled: Boolean(token),
+    queryFn: async () => (await client.trading.listMyPositions()).data ?? [],
+  });
+}
+
 export function useMySubscriptions() {
   const { client, token } = useSession();
   return useQuery({

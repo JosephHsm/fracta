@@ -17,6 +17,7 @@ import com.fracta.ledger.api.LedgerPort;
 import com.fracta.ledger.api.OwnerId;
 import com.fracta.ledger.api.RefType;
 import com.fracta.ledger.api.TxRef;
+import com.fracta.subscription.domain.HybridAllocator;
 import com.fracta.subscription.domain.ProportionalAllocator;
 import com.fracta.subscription.domain.ProportionalAllocator.AllotmentInput;
 import com.fracta.subscription.domain.SubscriptionOrder;
@@ -133,6 +134,10 @@ public class SubscriptionAllotmentService {
         List<AllotmentInput> inputs = deposited.stream()
                 .map(o -> new AllotmentInput(o.id(), o.requestedUnits(), o.appliedAt()))
                 .toList();
+        if (info.hybrid()) {
+            // 총량 일부를 균등 배분한 뒤 나머지를 안분한다 — 소액 청약자가 0주를 받지 않게
+            return HybridAllocator.allocate(inputs, info.totalUnits(), info.equalAllotmentPercent());
+        }
         return ProportionalAllocator.allocate(inputs, info.totalUnits());
     }
 }

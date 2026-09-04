@@ -8,6 +8,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import com.fracta.issuance.api.TokenListedEvent;
+import com.fracta.issuance.api.TokenSuspendedEvent;
 import com.fracta.subscription.api.SubscriptionAllottedEvent;
 import com.fracta.trading.api.TradeEvents;
 
@@ -38,5 +39,23 @@ class WebhookOwnershipTest {
     void publicTokenEventsAreNotOwnerScoped() {
         assertThat(WebhookDispatcher.belongsToOwner(owner2,
                 new TokenListedEvent(1, "FR-T-001", 100, 1_000))).isTrue();
+        assertThat(WebhookDispatcher.belongsToOwner(owner2,
+                new TokenSuspendedEvent("FR-T-001", "괴리율 초과"))).isTrue();
+    }
+
+    @Test
+    @DisplayName("분류되지 않은 페이로드는 내보내지 않는다 — 빠뜨린 이벤트가 전체 공개되면 안 된다")
+    void unclassifiedPayloadIsNotBroadcast() {
+        // 새 개인 이벤트를 추가하면서 분류를 빠뜨린 상황. 예전 구현은 default 가 엔드포인트
+        // 소유자를 그대로 돌려줘 항상 참이 됐고, 그 이벤트는 조용히 모두에게 나갔다.
+        record UnknownPrivateEvent(long investorId, String secret) {
+        }
+
+        assertThat(WebhookDispatcher.belongsToOwner(owner2,
+                new UnknownPrivateEvent(2L, "남의 정보"))).isFalse();
+        assertThat(WebhookDispatcher.belongsToOwner(owner2,
+                new UnknownPrivateEvent(99L, "남의 정보"))).isFalse();
+        assertThat(WebhookDispatcher.belongsToOwner(owner2, "문자열 페이로드")).isFalse();
+        assertThat(WebhookDispatcher.belongsToOwner(owner2, null)).isFalse();
     }
 }

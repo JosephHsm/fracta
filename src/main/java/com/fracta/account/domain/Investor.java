@@ -59,6 +59,10 @@ public class Investor {
     @Column(name = "risk_grade_expires_at")
     private Instant riskGradeExpiresAt;
 
+    /** 현재 성향 진단이 발급된 시각. 이보다 먼저 한 부적합 서명은 무효다. */
+    @Column(name = "risk_grade_issued_at")
+    private Instant riskGradeIssuedAt;
+
     @Column(name = "cash_balance", nullable = false)
     private long cashBalance;
 
@@ -119,8 +123,23 @@ public class Investor {
         return RiskGrade.fromLevel(riskGrade);
     }
 
-    public void applyRiskProfile(RiskGrade grade, Instant expiresAt) {
+    /**
+     * 성향 진단 결과 반영. 발급 시각을 함께 남긴다 — 이 시각보다 먼저 이뤄진 부적합 확인
+     * 서명은 효력을 잃는다. 등급이 더 보수적으로 바뀌었는데 옛 서명이 살아 있으면 안 된다.
+     */
+    public void applyRiskProfile(RiskGrade grade, Instant issuedAt, Instant expiresAt) {
         this.riskGrade = grade.level();
+        this.riskGradeIssuedAt = issuedAt;
         this.riskGradeExpiresAt = expiresAt;
+    }
+
+    /** 현재 성향 진단 발급 시각. 진단이 없으면 null. */
+    public Instant riskGradeIssuedAt() {
+        return riskGradeIssuedAt;
+    }
+
+    /** 현재 성향 진단 만료 시각. 부적합 확인 서명도 이 시점까지만 유효하다. */
+    public Instant riskGradeExpiresAt() {
+        return riskGradeExpiresAt;
     }
 }

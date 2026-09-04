@@ -18,21 +18,35 @@ import com.fracta.openapi.auth.OpenApiExceptions;
  * 멱등성 처리 (OA-06, FSD §8.5).
  *
  * <pre>
- * SETNX idem:{clientId}:{key} = PROCESSING (TTL 24h)
- *   성공 → 실제 처리 후 응답 저장
+ * SETNX idem:{clientId}:{key} = PROCESSING (TTL 2분)
+ *   성공 → 실제 처리 후 응답 저장 (TTL 24시간)
  *   실패 → 저장된 값이 PROCESSING 이면 409, 응답이면 그대로 재생
  * 같은 키인데 본문이 다르면 → 422
  * </pre>
  *
- * <p><b>처리 중 예외가 나면 PROCESSING 키를 반드시 지운다.</b> 안 지우면 24시간 동안
- * 재시도가 막힌다 (phase-07 §흔한 실수 1 — 가장 흔한 버그).
+ * <p><b>처리 중 예외가 나면 PROCESSING 키를 반드시 지운다</b>
+ * (phase-07 §흔한 실수 1 — 가장 흔한 버그). 예외를 못 잡고 프로세스가 죽는 경우까지
+ * 대비해 PROCESSING 은 짧은 TTL 로 따로 둔다 — {@link #PROCESSING_TTL} 참조.
  *
  * <p>본문 해시는 JSON을 정규화한 뒤 계산한다. 공백이나 키 순서 차이로 오탐이 나지 않게 한다.
  */
 @Service
 public class IdempotencyService {
 
+    /** 완료된 응답 보관 기간 — 이 기간 안의 재요청은 같은 결과를 받는다. */
     static final Duration TTL = Duration.ofHours(24);
+
+    /**
+     * "처리 중" 표시의 유효시간. <b>완료 응답과 같은 24시간을 쓰면 안 된다.</b>
+     *
+     * <p>{@link #abort}가 예외 경로를 정리하지만, 프로세스가 그 전에 죽으면(OOM·파드 강제
+     * 종료·전원 차단) PROCESSING 키만 남는다. TTL이 24시간이면 그 키는 하루 내내 409를
+     * 뱉어 정상 재시도까지 막는다 — 멱등성은 재시도를 <b>돕는</b> 장치인데 반대로 작동한다.
+     *
+     * <p>단일 요청 처리 시간보다 넉넉하되 사람이 기다릴 만한 값으로 잡는다.
+     */
+    static final Duration PROCESSING_TTL = Duration.ofMinutes(2);
+
     static final String PROCESSING = "PROCESSING";
     private static final String SEPARATOR = "\n";
 
@@ -60,7 +74,7 @@ public class IdempotencyService {
         String requestHash = requestHash(method, path, rawBody);
 
         Boolean acquired = redis.opsForValue()
-                .setIfAbsent(redisKey, PROCESSING + SEPARATOR + requestHash, TTL);
+                .setIfAbsent(redisKey, PROCESSING + SEPARATOR + requestHash, PROCESSING_TTL);
         if (Boolean.TRUE.equals(acquired)) {
             return Optional.empty();
         }
@@ -70,7 +84,7 @@ public class IdempotencyService {
             // SETNX 실패 직후 기존 키가 만료될 수 있다. 무조건 SET하면 다른 재시도 요청과
             // 동시에 처리 주체가 되므로 반드시 SETNX로 다시 경쟁한다.
             Boolean reacquired = redis.opsForValue()
-                    .setIfAbsent(redisKey, PROCESSING + SEPARATOR + requestHash, TTL);
+                    .setIfAbsent(redisKey, PROCESSING + SEPARATOR + requestHash, PROCESSING_TTL);
             if (Boolean.TRUE.equals(reacquired)) {
                 return Optional.empty();
             }

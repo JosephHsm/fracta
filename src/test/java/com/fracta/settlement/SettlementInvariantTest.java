@@ -15,6 +15,7 @@ import org.springframework.boot.test.mock.mockito.SpyBean;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 import com.fracta.account.api.AccountQueryPort;
+import com.fracta.account.api.InsufficientCashException;
 import com.fracta.account.api.InvestorId;
 import com.fracta.account.application.CashService;
 import com.fracta.common.money.Money;
@@ -26,8 +27,11 @@ import com.fracta.subscription.application.SubscriptionInvariantService;
 import com.fracta.support.IntegrationTestBase;
 import com.fracta.support.TradingTestSupport;
 import com.fracta.trading.application.TradingService;
+import com.fracta.trading.domain.OrderBook;
 import com.fracta.trading.domain.OrderSide;
+import com.fracta.trading.domain.OrderStatus;
 import com.fracta.trading.domain.OrderType;
+import com.fracta.trading.domain.TradeOrder;
 
 /** DvP 원자성 — 중간 실패 시 증권·대금·잠금이 전부 원복돼야 한다 (FSD §15.1). */
 class SettlementInvariantTest extends IntegrationTestBase {
@@ -129,7 +133,54 @@ class SettlementInvariantTest extends IntegrationTestBase {
     }
 
     @Test
-    @DisplayName("매수자 잔액 부족 → 매수 주문 REJECTED, 매도 잠금은 유지된다")
+    @DisplayName("결제 불능인 걸린 매수는 호가창에서 빠진다 — 이후 매도를 막지 않는다")
+    void unsettleableRestingBuyIsEvictedFromBook() {
+        var market = support.listedMarket(null, 100);
+        long seller = support.investor(0);
+        long buyer = support.investor(10_000_000);
+        support.giveUnits(market, seller, 50);
+
+        // 매수가 먼저 호가창에 걸린다. 홀드는 1,000 × 50 + 수수료 10 = 50,010
+        // (요율로는 7원이지만 최소수수료 10원이 걸린다)
+        var buyOrder = trading.place(market.tokenSymbol(), InvestorId.of(buyer), OrderSide.BUY,
+                OrderType.LIMIT, 1_000L, 50, support.newKey());
+        long buyerCashHeld = accounts.cashBalanceOf(InvestorId.of(buyer)).amount();
+        assertThat(buyerCashHeld).isEqualTo(10_000_000 - 50_010);
+
+        // 그 매수의 결제를 잔액 부족으로 실패시킨다 — 원인은 걸려 있던 매수 쪽이다
+        doThrow(new InsufficientCashException(50_010))
+                .when(cashService).tradeDebit(any(), any());
+
+        var sellOrder = trading.place(market.tokenSymbol(), InvestorId.of(seller), OrderSide.SELL,
+                OrderType.LIMIT, 1_000L, 50, support.newKey());
+
+        // 원인 주문은 거절되고 호가창에서 빠진다.
+        // 예전에는 되살아나 최우선 호가에 박힌 채 이후 매도를 전부 실패시켰다.
+        assertThat(statusOf(buyer, buyOrder.orderId())).isEqualTo(OrderStatus.REJECTED);
+        assertThat(trading.depth(market.tokenSymbol(), OrderSide.BUY, 10)).isEmpty();
+        // 묶여 있던 홀드는 풀려 돌아온다
+        assertThat(accounts.cashBalanceOf(InvestorId.of(buyer)).amount()).isEqualTo(10_000_000);
+
+        // 잘못이 없는 매도는 유령이 되지 않는다 — 호가창에 정상으로 남는다.
+        // 예전에는 DB에만 미체결로 남고 오더북에서는 사라져 영영 체결되지 않았다.
+        assertThat(sellOrder.status()).isEqualTo(OrderStatus.OPEN.name());
+        assertThat(trading.depth(market.tokenSymbol(), OrderSide.SELL, 10))
+                .containsExactly(new OrderBook.PriceLevel(1_000, 50));
+
+        var inv6 = invariants.verifyInv6();
+        assertThat(inv6.valid()).as("%s mismatches=%s", inv6, inv6.mismatches()).isTrue();
+    }
+
+    private OrderStatus statusOf(long investorId, long orderId) {
+        return trading.ordersOf(InvestorId.of(investorId)).stream()
+                .filter(o -> o.id() == orderId)
+                .map(TradeOrder::status)
+                .findFirst()
+                .orElseThrow();
+    }
+
+    @Test
+    @DisplayName("매수자 잔액 부족 → 접수 단계에서 막힌다, 매도 잠금은 유지된다 (ST-02)")
     void insufficientCashRejectsBuyKeepsSellLock() {
         var market = support.listedMarket(null, 100);
         long seller = support.investor(0);
@@ -138,11 +189,16 @@ class SettlementInvariantTest extends IntegrationTestBase {
 
         trading.place(market.tokenSymbol(), InvestorId.of(seller), OrderSide.SELL,
                 OrderType.LIMIT, 1_000L, 50, support.newKey());
-        var result = trading.place(market.tokenSymbol(), InvestorId.of(poorBuyer), OrderSide.BUY,
-                OrderType.LIMIT, 1_000L, 50, support.newKey());
 
-        assertThat(result.status()).isEqualTo("REJECTED");
-        assertThat(result.filledUnits()).isZero();
+        // 예전에는 주문이 만들어져 호가창에 올라간 뒤 결제 단계에서 REJECTED 가 됐다.
+        // 이제는 접수 시점에 대금을 홀드하므로 여기서 끊긴다 — 결제 불가능한 주문이
+        // 호가창에 남아 이후 매도를 계속 실패시키던 경로 자체가 없어졌다.
+        assertThatThrownBy(() -> trading.place(market.tokenSymbol(), InvestorId.of(poorBuyer),
+                OrderSide.BUY, OrderType.LIMIT, 1_000L, 50, support.newKey()))
+                .isInstanceOf(InsufficientCashException.class);
+
+        assertThat(trading.ordersOf(InvestorId.of(poorBuyer))).isEmpty();
+        assertThat(trading.depth(market.tokenSymbol(), OrderSide.BUY, 10)).isEmpty();
         // 매도 주문은 살아 있다
         assertThat(ledger.balanceOf(market.tokenSymbol(), OwnerId.of(seller)).lockedUnits())
                 .isEqualTo(Units.of(50));

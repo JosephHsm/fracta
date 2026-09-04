@@ -122,6 +122,17 @@
         },
         "type" : "object"
       },
+      "ApiResponseInstrumentDetail" : {
+        "properties" : {
+          "data" : {
+            "$ref" : "#/components/schemas/InstrumentDetail"
+          },
+          "meta" : {
+            "$ref" : "#/components/schemas/ResponseMeta"
+          }
+        },
+        "type" : "object"
+      },
       "ApiResponseIssuanceDetailResponse" : {
         "properties" : {
           "data" : {
@@ -211,6 +222,20 @@
         },
         "type" : "object"
       },
+      "ApiResponseListInstrumentHit" : {
+        "properties" : {
+          "data" : {
+            "items" : {
+              "$ref" : "#/components/schemas/InstrumentHit"
+            },
+            "type" : "array"
+          },
+          "meta" : {
+            "$ref" : "#/components/schemas/ResponseMeta"
+          }
+        },
+        "type" : "object"
+      },
       "ApiResponseListIssuanceSummaryResponse" : {
         "properties" : {
           "data" : {
@@ -281,6 +306,20 @@
         },
         "type" : "object"
       },
+      "ApiResponseListPosition" : {
+        "properties" : {
+          "data" : {
+            "items" : {
+              "$ref" : "#/components/schemas/Position"
+            },
+            "type" : "array"
+          },
+          "meta" : {
+            "$ref" : "#/components/schemas/ResponseMeta"
+          }
+        },
+        "type" : "object"
+      },
       "ApiResponseListTokenSummaryResponse" : {
         "properties" : {
           "data" : {
@@ -316,6 +355,17 @@
               "$ref" : "#/components/schemas/WebhookView"
             },
             "type" : "array"
+          },
+          "meta" : {
+            "$ref" : "#/components/schemas/ResponseMeta"
+          }
+        },
+        "type" : "object"
+      },
+      "ApiResponseLoadResult" : {
+        "properties" : {
+          "data" : {
+            "$ref" : "#/components/schemas/LoadResult"
           },
           "meta" : {
             "$ref" : "#/components/schemas/ResponseMeta"
@@ -451,6 +501,17 @@
         "properties" : {
           "data" : {
             "$ref" : "#/components/schemas/RiskProfileResponse"
+          },
+          "meta" : {
+            "$ref" : "#/components/schemas/ResponseMeta"
+          }
+        },
+        "type" : "object"
+      },
+      "ApiResponseRunResult" : {
+        "properties" : {
+          "data" : {
+            "$ref" : "#/components/schemas/RunResult"
           },
           "meta" : {
             "$ref" : "#/components/schemas/ResponseMeta"
@@ -1100,6 +1161,84 @@
         },
         "type" : "object"
       },
+      "InstrumentDetail" : {
+        "properties" : {
+          "code" : {
+            "type" : "string"
+          },
+          "etf" : {
+            "$ref" : "#/components/schemas/InstrumentEtfReference"
+          },
+          "kind" : {
+            "enum" : [ "ETF", "REIT", "STOCK" ],
+            "type" : "string"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "referencePrice" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "splitRatio" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "underlyingPrice" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        },
+        "type" : "object"
+      },
+      "InstrumentEtfReference" : {
+        "properties" : {
+          "lpAskUnits" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "lpBidUnits" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "nav" : {
+            "type" : "number"
+          },
+          "premiumRate" : {
+            "type" : "number"
+          },
+          "trackingError" : {
+            "type" : "number"
+          }
+        },
+        "type" : "object"
+      },
+      "InstrumentHit" : {
+        "properties" : {
+          "code" : {
+            "type" : "string"
+          },
+          "kind" : {
+            "enum" : [ "ETF", "REIT", "STOCK" ],
+            "type" : "string"
+          },
+          "market" : {
+            "type" : "string"
+          },
+          "matchedBy" : {
+            "enum" : [ "TEXT", "SEMANTIC" ],
+            "type" : "string"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "prevClose" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        },
+        "type" : "object"
+      },
       "IssuanceDetailResponse" : {
         "properties" : {
           "issuanceId" : {
@@ -1134,7 +1273,7 @@
       "IssuanceSummaryResponse" : {
         "properties" : {
           "allotmentMethod" : {
-            "enum" : [ "FCFS", "PRORATA" ],
+            "enum" : [ "FCFS", "PRORATA", "HYBRID" ],
             "type" : "string"
           },
           "assetName" : {
@@ -1220,6 +1359,27 @@
           },
           "webhookSecret" : {
             "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "LoadResult" : {
+        "properties" : {
+          "etf" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "reit" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "stock" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "total" : {
+            "format" : "int32",
+            "type" : "integer"
           }
         },
         "type" : "object"
@@ -1567,6 +1727,41 @@
         },
         "type" : "object"
       },
+      "Position" : {
+        "properties" : {
+          "costBasis" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "lockedUnits" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "marketValue" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "priceSource" : {
+            "type" : "string"
+          },
+          "profitLoss" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "referencePrice" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "tokenSymbol" : {
+            "type" : "string"
+          },
+          "units" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        },
+        "type" : "object"
+      },
       "PremiumResponse" : {
         "properties" : {
           "lastExecutedPrice" : {
@@ -1716,6 +1911,23 @@
         },
         "type" : "object"
       },
+      "RunResult" : {
+        "properties" : {
+          "exitCode" : {
+            "type" : "string"
+          },
+          "jobStatus" : {
+            "type" : "string"
+          },
+          "requestedAt" : {
+            "type" : "string"
+          },
+          "runDate" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
       "SignupRequest" : {
         "properties" : {
           "email" : {
@@ -1786,9 +1998,16 @@
             "maximum" : 5,
             "minimum" : 1,
             "type" : "integer"
+          },
+          "scopeId" : {
+            "type" : "string"
+          },
+          "scopeType" : {
+            "enum" : [ "ISSUANCE", "TOKEN" ],
+            "type" : "string"
           }
         },
-        "required" : [ "productGrade" ],
+        "required" : [ "productGrade", "scopeId", "scopeType" ],
         "type" : "object"
       },
       "SuitabilityAckResponse" : {
@@ -1796,9 +2015,19 @@
           "acked" : {
             "type" : "boolean"
           },
+          "expiresAt" : {
+            "type" : "string"
+          },
           "productGrade" : {
             "format" : "int32",
             "type" : "integer"
+          },
+          "scopeId" : {
+            "type" : "string"
+          },
+          "scopeType" : {
+            "enum" : [ "ISSUANCE", "TOKEN" ],
+            "type" : "string"
           }
         },
         "type" : "object"
@@ -1984,6 +2213,44 @@
           }
         },
         "tags" : [ "admin-ai-controller" ]
+      }
+    },
+    "/api/v1/admin/batch/reconciliation" : {
+      "post" : {
+        "operationId" : "runReconciliationNow",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseRunResult"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "summary" : "일일 대사 즉시 실행",
+        "tags" : [ "admin-batch-controller" ]
+      }
+    },
+    "/api/v1/admin/instruments/refresh" : {
+      "post" : {
+        "operationId" : "refreshInstrumentMaster",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseLoadResult"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "summary" : "종목마스터 재적재",
+        "tags" : [ "instrument-controller" ]
       }
     },
     "/api/v1/admin/issuances/{id}/approve" : {
@@ -2614,6 +2881,86 @@
         "tags" : [ "개발자 포털" ]
       }
     },
+    "/api/v1/instruments" : {
+      "get" : {
+        "operationId" : "searchInstruments",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "q",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "kind",
+          "required" : false,
+          "schema" : {
+            "enum" : [ "ETF", "REIT", "STOCK" ],
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "limit",
+          "required" : false,
+          "schema" : {
+            "default" : 20,
+            "format" : "int32",
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseListInstrumentHit"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "summary" : "기초자산 검색 (이름·코드)",
+        "tags" : [ "instrument-controller" ]
+      }
+    },
+    "/api/v1/instruments/{code}" : {
+      "get" : {
+        "operationId" : "getInstrument",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "code",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "splitRatio",
+          "required" : false,
+          "schema" : {
+            "default" : 1000,
+            "format" : "int64",
+            "type" : "integer"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseInstrumentDetail"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "summary" : "기초자산 상세 + 조각 참조가",
+        "tags" : [ "instrument-controller" ]
+      }
+    },
     "/api/v1/investors/me" : {
       "get" : {
         "operationId" : "me",
@@ -2744,6 +3091,21 @@
           "schema" : {
             "format" : "int32",
             "type" : "integer"
+          }
+        }, {
+          "in" : "query",
+          "name" : "scopeType",
+          "required" : true,
+          "schema" : {
+            "enum" : [ "ISSUANCE", "TOKEN" ],
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "scopeId",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
           }
         } ],
         "responses" : {
@@ -3059,6 +3421,25 @@
           }
         },
         "summary" : "주문 취소",
+        "tags" : [ "trading-controller" ]
+      }
+    },
+    "/api/v1/positions/me" : {
+      "get" : {
+        "operationId" : "listMyPositions",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseListPosition"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "summary" : "내 보유 포지션",
         "tags" : [ "trading-controller" ]
       }
     },

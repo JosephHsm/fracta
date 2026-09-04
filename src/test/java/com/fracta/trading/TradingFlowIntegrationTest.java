@@ -94,9 +94,10 @@ class TradingFlowIntegrationTest extends IntegrationTestBase {
         assertThat(ledger.balanceOf(market.tokenSymbol(), OwnerId.of(seller)).lockedUnits())
                 .isEqualTo(Units.ZERO);
 
-        // 대금 이동 — 체결금액 50,000, 수수료 각 7원 (50,000 × 0.00015 = 7.5 → 절사 7)
+        // 대금 이동 — 체결금액 50,000. 요율로는 7원(50,000 × 0.00015 = 7.5 절사)이지만
+        // 최소수수료 10원이 걸린다 (ST-03)
         long amount = 50_000;
-        long fee = 7;
+        long fee = 10;
         assertThat(accounts.cashBalanceOf(InvestorId.of(buyer)).amount())
                 .isEqualTo(buyerCashBefore - amount - fee);
         assertThat(accounts.cashBalanceOf(InvestorId.of(seller)).amount())

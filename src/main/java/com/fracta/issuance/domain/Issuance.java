@@ -48,7 +48,14 @@ public class Issuance {
     @Column(name = "prospectus_file_key")
     private String prospectusFileKey;
 
-    public enum AllotmentMethod { FCFS, PRORATA }
+    /**
+     * 배정 방식.
+     *
+     * <p>{@code HYBRID}는 총량의 일부를 참여자에게 균등 배분한 뒤 나머지를 안분비례한다.
+     * 순수 안분({@code PRORATA})은 경쟁률이 높으면 소액 청약자가 0주를 받는데, 조각투자의
+     * 존재 이유가 소액 접근성이라 상품 컨셉과 어긋난다.
+     */
+    public enum AllotmentMethod { FCFS, PRORATA, HYBRID }
 
     @Enumerated(EnumType.STRING)
     @Column(name = "allotment_method", nullable = false)
@@ -87,6 +94,22 @@ public class Issuance {
 
     public void attachProspectus(String fileKey) {
         this.prospectusFileKey = fileKey;
+    }
+
+    /** HYBRID 에서 균등 배분에 쓸 총량 비율(%). 다른 방식에서는 쓰이지 않는다. */
+    @Column(name = "equal_allotment_percent", nullable = false)
+    private int equalAllotmentPercent = 50;
+
+    public int equalAllotmentPercent() {
+        return equalAllotmentPercent;
+    }
+
+    /** 균등 배분 비율 조정. HYBRID 가 아니면 값이 남아 있어도 무시된다. */
+    public void adjustEqualAllotmentPercent(int percent) {
+        if (percent < 0 || percent > 100) {
+            throw IssuanceValidationException.equalAllotmentPercentOutOfRange(percent);
+        }
+        this.equalAllotmentPercent = percent;
     }
 
     public void configureAllotment(AllotmentMethod method, int riskGrade) {

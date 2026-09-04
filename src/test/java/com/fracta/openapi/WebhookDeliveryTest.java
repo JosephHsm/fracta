@@ -34,6 +34,9 @@ import com.github.tomakehurst.wiremock.WireMockServer;
 /** 웹훅 실제 HTTP 발송·HMAC 원문 서명·5회 재시도·DLQ 검증. */
 class WebhookDeliveryTest {
 
+    /** WebhookDispatcher.MAX_ATTEMPTS 와 같은 값. 상수가 패키지 밖으로 열려 있지 않다. */
+    private static final int MAX_ATTEMPTS = 5;
+
     private WireMockServer receiver;
     private WebhookEndpointRepository endpoints;
     private WebhookDeliveryRepository deliveries;
@@ -64,10 +67,10 @@ class WebhookDeliveryTest {
         when(endpoints.findById(7L)).thenReturn(Optional.of(endpoint));
         when(deliveries.save(delivery)).thenReturn(delivery);
 
-        WebhookDelivery result = dispatcher(1_000).deliverWithRetry(1L);
+        WebhookDelivery result = dispatcher(1_000).attemptDelivery(1L);
 
         assertThat(result.status()).isEqualTo(WebhookDelivery.Status.DELIVERED);
-        assertThat(result.attempts()).isBetween(1, 5);
+        assertThat(result.attempts()).isEqualTo(1);
         verify(deliveries).save(delivery);
         var request = receiver.getAllServeEvents().getFirst().getRequest();
         assertThat(request.getBodyAsString()).isEqualTo(rawBody);
@@ -76,23 +79,87 @@ class WebhookDeliveryTest {
     }
 
     @Test
-    @DisplayName("수신 실패 → 지수 백오프 5회 재시도 후 DEAD(DLQ) 기록")
-    void retriesFiveTimesThenMovesToDlq() {
+    @DisplayName("수신 실패 → 재시도를 그 자리에서 기다리지 않고 다음 시도 시각만 예약한다")
+    void schedulesRetryInsteadOfSleeping() {
         receiver.stubFor(post("/hook").willReturn(aResponse().withStatus(500)));
-        WebhookDelivery delivery = new WebhookDelivery(7L, WebhookEvent.TOKEN_LISTED.value(), "{}");
+        WebhookDelivery delivery = deliveryFor(WebhookEvent.TOKEN_LISTED);
+        stubRepositories(delivery);
+
+        Instant before = Instant.now();
+        WebhookDelivery result = dispatcher(50).attemptDelivery(1L);
+        long elapsedMillis = java.time.Duration.between(before, Instant.now()).toMillis();
+
+        // 아직 살아 있고, 다음 시도는 미래로 예약됐다
+        assertThat(result.status()).isEqualTo(WebhookDelivery.Status.PENDING);
+        assertThat(result.attempts()).isEqualTo(1);
+        assertThat(result.nextAttemptAt()).isAfter(before);
+        assertThat(result.lastError()).isNotBlank();
+        // 수신 측에는 딱 한 번만 갔다 — 한 호출에서 5회를 몰아치지 않는다
+        receiver.verify(1, postRequestedFor(urlEqualTo("/hook")));
+        // 백오프를 워커 스레드에서 기다렸다면 이보다 훨씬 오래 걸린다
+        assertThat(elapsedMillis)
+                .as("재시도 대기를 워커 스레드에서 잡고 있다 (%dms)", elapsedMillis)
+                .isLessThan(1_000);
+    }
+
+    @Test
+    @DisplayName("5회를 소진하면 DEAD(DLQ)로 남는다")
+    void movesToDlqAfterFiveAttempts() {
+        receiver.stubFor(post("/hook").willReturn(aResponse().withStatus(500)));
+        WebhookDelivery delivery = deliveryFor(WebhookEvent.TOKEN_LISTED);
+        stubRepositories(delivery);
+        WebhookDispatcher dispatcher = dispatcher(50);
+
+        for (int i = 0; i < MAX_ATTEMPTS; i++) {
+            dispatcher.attemptDelivery(1L);
+        }
+
+        assertThat(delivery.status()).isEqualTo(WebhookDelivery.Status.DEAD);
+        assertThat(delivery.attempts()).isEqualTo(5);
+        assertThat(delivery.lastError()).isNotBlank();
+        receiver.verify(5, postRequestedFor(urlEqualTo("/hook")));
+    }
+
+    @Test
+    @DisplayName("DEAD 가 된 건은 더 시도하지 않는다")
+    void deadDeliveryIsNotRetried() {
+        receiver.stubFor(post("/hook").willReturn(aResponse().withStatus(500)));
+        WebhookDelivery delivery = deliveryFor(WebhookEvent.TOKEN_LISTED);
+        stubRepositories(delivery);
+        WebhookDispatcher dispatcher = dispatcher(50);
+
+        for (int i = 0; i < MAX_ATTEMPTS + 3; i++) {
+            dispatcher.attemptDelivery(1L);
+        }
+
+        assertThat(delivery.attempts()).isEqualTo(5);
+        receiver.verify(5, postRequestedFor(urlEqualTo("/hook")));
+    }
+
+    @Test
+    @DisplayName("엔드포인트가 삭제됐으면 재시도 없이 곧바로 DEAD")
+    void missingEndpointGoesStraightToDlq() {
+        WebhookDelivery delivery = deliveryFor(WebhookEvent.TOKEN_LISTED);
+        when(deliveries.findById(1L)).thenReturn(Optional.of(delivery));
+        when(endpoints.findById(7L)).thenReturn(Optional.empty());
+        when(deliveries.save(delivery)).thenReturn(delivery);
+
+        WebhookDelivery result = dispatcher(50).attemptDelivery(1L);
+
+        assertThat(result.status()).isEqualTo(WebhookDelivery.Status.DEAD);
+        assertThat(result.attempts()).isEqualTo(1);
+    }
+
+    private WebhookDelivery deliveryFor(WebhookEvent event) {
+        return new WebhookDelivery(7L, event.value(), "{}");
+    }
+
+    private void stubRepositories(WebhookDelivery delivery) {
         WebhookEndpoint endpoint = new WebhookEndpoint("cli_test", 2L, receiver.baseUrl() + "/hook",
                 "whsec_retry", Set.of(WebhookEvent.TOKEN_LISTED));
         when(deliveries.findById(1L)).thenReturn(Optional.of(delivery));
         when(endpoints.findById(7L)).thenReturn(Optional.of(endpoint));
         when(deliveries.save(delivery)).thenReturn(delivery);
-
-        WebhookDelivery result = dispatcher(50).deliverWithRetry(1L);
-
-        assertThat(result.status()).isEqualTo(WebhookDelivery.Status.DEAD);
-        assertThat(result.attempts()).isEqualTo(5);
-        assertThat(result.lastError()).isNotBlank();
-        verify(deliveries).save(delivery);
-        receiver.verify(5, postRequestedFor(urlEqualTo("/hook")));
     }
 
     private WebhookDispatcher dispatcher(long timeoutMillis) {

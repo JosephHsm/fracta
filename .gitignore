@@ -89,3 +89,7 @@ scripts/ai/results/
 
 # PLUG 실제 응답 캡처 (계좌번호 등 포함)
 scripts/plug/captured/
+
+# openapi-generator-cli가 실행 디렉터리마다 만드는 버전 핀. 루트 openapitools.json이 정본이다
+openapitools.json
+!/openapitools.json

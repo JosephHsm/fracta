@@ -3,7 +3,10 @@ package com.fracta.trading;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
+import java.util.function.Function;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -215,5 +218,175 @@ class OrderBookTest {
         // 남은 매수 잔량 10은 큐에 들어간다
         assertThat(book.depth(OrderSide.BUY, 10))
                 .containsExactly(new OrderBook.PriceLevel(1_150, 10));
+    }
+
+    // -- 결제 실패 경로 (SettleOutcome) -----------------------
+
+    /** 지정한 주문이 낀 체결만 실패시키는 결제자. 실패 사유는 호출자가 정한다. */
+    private static Function<Match, OrderBook.SettleOutcome> failingOn(
+            Set<Long> faultyOrderIds, OrderBook.SettleOutcome outcome, List<Match> attempted) {
+        return match -> {
+            attempted.add(match);
+            boolean faulty = faultyOrderIds.contains(match.buyOrderId())
+                    || faultyOrderIds.contains(match.sellOrderId());
+            return faulty ? outcome : OrderBook.SettleOutcome.OK;
+        };
+    }
+
+    @Test
+    @DisplayName("REJECT_RESTING — 결제 못 하는 걸린 주문은 호가창에서 빠지고 다음 호가로 계속 체결된다")
+    void rejectRestingEvictsAndContinues() {
+        OrderBook book = new OrderBook("FR-TEST-001");
+        book.submit(limit(1, 11, OrderSide.BUY, 1_000, 10, 0));   // 최우선 매수 — 잔고 없음
+        book.submit(limit(2, 12, OrderSide.BUY, 900, 10, 1));     // 그 다음 매수 — 정상
+
+        List<Match> attempted = new ArrayList<>();
+        OrderBook.MatchResult result = book.submit(limit(3, 20, OrderSide.SELL, 900, 20, 2),
+                failingOn(Set.of(1L), OrderBook.SettleOutcome.REJECT_RESTING, attempted));
+
+        // 1번에서 한 번 실패했지만 거기서 멈추지 않고 2번과 체결됐다
+        assertThat(attempted).hasSize(2);
+        assertThat(result.matches()).hasSize(1);
+        assertThat(result.matches().getFirst().buyOrderId()).isEqualTo(2);
+        assertThat(result.evictedRestingOrderIds()).containsExactly(1L);
+        assertThat(result.incomingRejected()).isFalse();
+
+        // 결제 불가 주문은 호가창에서 사라졌다 — 남아 있으면 이후 매도를 계속 막는다
+        assertThat(book.depth(OrderSide.BUY, 10)).isEmpty();
+        // 매도 잔량 10은 정상적으로 호가창에 올라간다
+        assertThat(book.depth(OrderSide.SELL, 10))
+                .containsExactly(new OrderBook.PriceLevel(900, 10));
+    }
+
+    @Test
+    @DisplayName("REJECT_RESTING — 되돌린 뒤 걸린 주문의 잔량이 원래대로 복구된다")
+    void rejectRestingRevertsFill() {
+        OrderBook book = new OrderBook("FR-TEST-001");
+        BookOrder resting = limit(1, 11, OrderSide.BUY, 1_000, 10, 0);
+        book.submit(resting);
+
+        List<Match> attempted = new ArrayList<>();
+        book.submit(limit(2, 20, OrderSide.SELL, 1_000, 4, 1),
+                failingOn(Set.of(1L), OrderBook.SettleOutcome.REJECT_RESTING, attempted));
+
+        // 체결이 롤백됐으므로 인메모리 잔량도 원복돼야 한다 (DB와 어긋나면 안 된다)
+        assertThat(resting.filledUnits()).isZero();
+        assertThat(resting.remaining()).isEqualTo(10);
+    }
+
+    @Test
+    @DisplayName("REJECT_INCOMING — 걸린 주문은 제자리에 남고 들어온 주문은 호가창에 올라가지 않는다")
+    void rejectIncomingKeepsRestingAndDropsIncoming() {
+        OrderBook book = new OrderBook("FR-TEST-001");
+        book.submit(limit(1, 11, OrderSide.SELL, 1_000, 10, 0));
+
+        List<Match> attempted = new ArrayList<>();
+        OrderBook.MatchResult result = book.submit(limit(2, 20, OrderSide.BUY, 1_000, 30, 1),
+                failingOn(Set.of(2L), OrderBook.SettleOutcome.REJECT_INCOMING, attempted));
+
+        assertThat(result.matches()).isEmpty();
+        assertThat(result.evictedRestingOrderIds()).isEmpty();
+        assertThat(result.incomingRejected()).isTrue();
+
+        // 걸려 있던 매도는 잔량 그대로 제자리
+        assertThat(book.depth(OrderSide.SELL, 10))
+                .containsExactly(new OrderBook.PriceLevel(1_000, 10));
+        // 잔량이 남았어도 들어온 주문은 큐에 넣지 않는다 — 호출자가 DB에서 거절 처리한다
+        assertThat(book.depth(OrderSide.BUY, 10)).isEmpty();
+    }
+
+    @Test
+    @DisplayName("REJECT_INCOMING — 앞서 성사된 체결은 유지된다")
+    void rejectIncomingKeepsEarlierMatches() {
+        OrderBook book = new OrderBook("FR-TEST-001");
+        book.submit(limit(1, 11, OrderSide.SELL, 1_000, 10, 0));
+        book.submit(limit(2, 12, OrderSide.SELL, 1_100, 10, 1));
+
+        List<Match> attempted = new ArrayList<>();
+        OrderBook.MatchResult result = book.submit(limit(3, 20, OrderSide.BUY, 1_200, 20, 2),
+                failingOn(Set.of(2L), OrderBook.SettleOutcome.REJECT_INCOMING, attempted));
+
+        // 1번과는 체결됐고 2번에서 멈췄다
+        assertThat(result.matches()).hasSize(1);
+        assertThat(result.matches().getFirst().sellOrderId()).isEqualTo(1);
+        assertThat(result.incomingRejected()).isTrue();
+        assertThat(book.depth(OrderSide.SELL, 10))
+                .containsExactly(new OrderBook.PriceLevel(1_100, 10));
+    }
+
+    @Test
+    @DisplayName("결제가 계속 실패해도 매칭 루프는 반드시 끝난다 — 호가를 하나씩 소진한다")
+    void rejectRestingTerminates() {
+        OrderBook book = new OrderBook("FR-TEST-001");
+        for (int i = 1; i <= 5; i++) {
+            book.submit(limit(i, 10 + i, OrderSide.BUY, 1_000, 10, i));
+        }
+
+        List<Match> attempted = new ArrayList<>();
+        OrderBook.MatchResult result = book.submit(limit(99, 20, OrderSide.SELL, 1_000, 50, 10),
+                failingOn(Set.of(1L, 2L, 3L, 4L, 5L), OrderBook.SettleOutcome.REJECT_RESTING,
+                        attempted));
+
+        assertThat(result.matches()).isEmpty();
+        assertThat(result.evictedRestingOrderIds()).containsExactly(1L, 2L, 3L, 4L, 5L);
+        assertThat(book.depth(OrderSide.BUY, 10)).isEmpty();
+        // 매수가 전부 빠졌으므로 매도 잔량 50이 호가창에 남는다
+        assertThat(book.depth(OrderSide.SELL, 10))
+                .containsExactly(new OrderBook.PriceLevel(1_000, 50));
+    }
+
+    // -- 시장가 홀드 추정 (sweepCost) -------------------------
+
+    @Test
+    @DisplayName("sweepCost — 여러 호가에 걸쳐 우선순위대로 예상 체결금액을 계산한다")
+    void sweepCostWalksLevelsInPriority() {
+        OrderBook book = new OrderBook("FR-TEST-001");
+        book.submit(limit(1, 11, OrderSide.SELL, 1_000, 10, 0));
+        book.submit(limit(2, 12, OrderSide.SELL, 1_200, 10, 1));
+        book.submit(limit(3, 13, OrderSide.SELL, 1_100, 10, 2));
+
+        // 25주 시장가 매수 = 1,000×10 + 1,100×10 + 1,200×5 = 27,000
+        OrderBook.SweepEstimate estimate = book.sweepCost(OrderSide.BUY, 25, 10);
+
+        assertThat(estimate.amount()).isEqualTo(27_000);
+        assertThat(estimate.coveredUnits()).isEqualTo(25);
+    }
+
+    @Test
+    @DisplayName("sweepCost — 호가가 모자라면 채울 수 있는 만큼만 돌려준다")
+    void sweepCostStopsWhenBookIsThin() {
+        OrderBook book = new OrderBook("FR-TEST-001");
+        book.submit(limit(1, 11, OrderSide.SELL, 1_000, 10, 0));
+
+        OrderBook.SweepEstimate estimate = book.sweepCost(OrderSide.BUY, 100, 10);
+
+        assertThat(estimate.amount()).isEqualTo(10_000);
+        assertThat(estimate.coveredUnits()).isEqualTo(10);
+    }
+
+    @Test
+    @DisplayName("sweepCost — 훑는 호가 단계를 넘어가면 거기서 멈춘다")
+    void sweepCostRespectsLevelCap() {
+        OrderBook book = new OrderBook("FR-TEST-001");
+        book.submit(limit(1, 11, OrderSide.SELL, 1_000, 10, 0));
+        book.submit(limit(2, 12, OrderSide.SELL, 1_100, 10, 1));
+        book.submit(limit(3, 13, OrderSide.SELL, 1_200, 10, 2));
+
+        // 1호가만 본다 — 10주 × 1,000
+        OrderBook.SweepEstimate estimate = book.sweepCost(OrderSide.BUY, 30, 1);
+
+        assertThat(estimate.amount()).isEqualTo(10_000);
+        assertThat(estimate.coveredUnits()).isEqualTo(10);
+    }
+
+    @Test
+    @DisplayName("sweepCost — 빈 오더북이면 0원 0주")
+    void sweepCostOnEmptyBook() {
+        OrderBook book = new OrderBook("FR-TEST-001");
+
+        OrderBook.SweepEstimate estimate = book.sweepCost(OrderSide.BUY, 10, 10);
+
+        assertThat(estimate.amount()).isZero();
+        assertThat(estimate.coveredUnits()).isZero();
     }
 }

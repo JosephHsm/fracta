@@ -46,10 +46,13 @@ public class RiskProfileService {
 
         int score = RiskProfileScoring.score(answers);
         RiskGrade grade = RiskProfileScoring.gradeOf(score);
-        Instant expiresAt = Instant.now().plus(VALIDITY_DAYS, ChronoUnit.DAYS);
+        Instant issuedAt = Instant.now();
+        Instant expiresAt = issuedAt.plus(VALIDITY_DAYS, ChronoUnit.DAYS);
 
         results.save(new RiskProfileResult(investorId.value(), toJson(answers), score, grade.level(), expiresAt));
-        investor.applyRiskProfile(grade, expiresAt);
+        // 발급 시각이 갱신되면 이전 부적합 확인 서명은 전부 효력을 잃는다.
+        // 재진단으로 등급이 더 보수적으로 바뀌었는데 옛 서명이 살아 있는 게 제일 위험하다.
+        investor.applyRiskProfile(grade, issuedAt, expiresAt);
         return new ProfileResult(score, grade, expiresAt);
     }
 

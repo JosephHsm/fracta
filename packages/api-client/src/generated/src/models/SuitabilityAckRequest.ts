@@ -23,13 +23,34 @@ export interface SuitabilityAckRequest {
      * 
      */
     productGrade: number;
+    /**
+     * 
+     */
+    scopeId: string;
+    /**
+     * 
+     */
+    scopeType: SuitabilityAckRequestScopeTypeEnum;
 }
+
+
+/**
+ * @export
+ */
+export const SuitabilityAckRequestScopeTypeEnum = {
+    Issuance: 'ISSUANCE',
+    Token: 'TOKEN',
+} as const;
+export type SuitabilityAckRequestScopeTypeEnum = typeof SuitabilityAckRequestScopeTypeEnum[keyof typeof SuitabilityAckRequestScopeTypeEnum];
+
 
 /**
  * Check if a given object implements the SuitabilityAckRequest interface.
  */
 export function instanceOfSuitabilityAckRequest(value: object): value is SuitabilityAckRequest {
     if (!('productGrade' in value) || value['productGrade'] === undefined) return false;
+    if (!('scopeId' in value) || value['scopeId'] === undefined) return false;
+    if (!('scopeType' in value) || value['scopeType'] === undefined) return false;
     return true;
 }
 
@@ -44,6 +65,8 @@ export function SuitabilityAckRequestFromJSONTyped(json: any, ignoreDiscriminato
     return {
         
         'productGrade': json['productGrade'],
+        'scopeId': json['scopeId'],
+        'scopeType': json['scopeType'],
     };
 }
 
@@ -59,6 +82,8 @@ export function SuitabilityAckRequestToJSONTyped(value?: SuitabilityAckRequest |
     return {
         
         'productGrade': value['productGrade'],
+        'scopeId': value['scopeId'],
+        'scopeType': value['scopeType'],
     };
 }
 

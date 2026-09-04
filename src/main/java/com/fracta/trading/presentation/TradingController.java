@@ -21,6 +21,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.fracta.account.api.InvestorId;
 import com.fracta.common.response.ApiResponse;
 import com.fracta.trading.application.MarketChartService;
+import com.fracta.trading.application.PositionService;
 import com.fracta.trading.application.TradingService;
 import com.fracta.trading.domain.OrderSide;
 import com.fracta.trading.domain.OrderStatus;
@@ -86,10 +87,13 @@ public class TradingController {
 
     private final TradingService tradingService;
     private final MarketChartService marketChart;
+    private final PositionService positionService;
 
-    public TradingController(TradingService tradingService, MarketChartService marketChart) {
+    public TradingController(TradingService tradingService, MarketChartService marketChart,
+                             PositionService positionService) {
         this.tradingService = tradingService;
         this.marketChart = marketChart;
+        this.positionService = positionService;
     }
 
     @PostMapping("/api/v1/tokens/{tokenSymbol}/orders")
@@ -110,6 +114,18 @@ public class TradingController {
     public ApiResponse<TradingService.PlaceResult> cancel(@AuthenticationPrincipal Jwt jwt,
                                                           @PathVariable("orderId") long orderId) {
         return ApiResponse.of(tradingService.cancel(orderId, investorIdOf(jwt)));
+    }
+
+    /**
+     * 내 보유 포지션 — 평가금액·손익 포함 (FSD §11.2).
+     *
+     * <p>금액은 전부 서버가 산출한다. 화면이 보유수량 × 현재가를 곱하면 금액 재계산 금지
+     * 원칙에 걸린다. {@code priceSource}로 기준가 출처를 함께 내려 화면이 근거를 밝힐 수 있게 한다.
+     */
+    @Operation(operationId = "listMyPositions", summary = "내 보유 포지션")
+    @GetMapping("/api/v1/positions/me")
+    public ApiResponse<List<PositionService.Position>> myPositions(@AuthenticationPrincipal Jwt jwt) {
+        return ApiResponse.of(positionService.positionsOf(investorIdOf(jwt)));
     }
 
     @Operation(operationId = "listMyOrders", summary = "내 주문 내역")

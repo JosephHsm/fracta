@@ -12,6 +12,13 @@ export interface MoneyProps extends React.HTMLAttributes<HTMLSpanElement> {
   /** 서버가 준 원 단위 정수. 프론트에서 만들어낸 값이면 안 된다. */
   amount: number | null | undefined;
   size?: "sm" | "md" | "lg" | "xl";
+  /**
+   * 부호 있는 금액(평가손익 등)으로 표시한다. 부호를 붙이고 등락 색을 입힌다.
+   *
+   * <p>색은 국내 관행을 따른다 — 이익은 적색, 손실은 청색. 0은 무채색이다.
+   * 색만으로 구분되게 두지 않고 부호(+/−)를 함께 쓴다(WCAG 1.4.1).
+   */
+  signed?: boolean;
 }
 
 const SIZE = {
@@ -21,10 +28,21 @@ const SIZE = {
   xl: "text-3xl font-semibold tracking-tight",
 } as const;
 
-export function Money({ amount, size = "md", className, ...props }: MoneyProps) {
+export function Money({ amount, size = "md", signed = false, className, ...props }: MoneyProps) {
+  const tone =
+    !signed || amount == null || amount === 0
+      ? undefined
+      : amount > 0
+        ? "text-price-up"
+        : "text-price-down";
+  const text =
+    signed && amount != null && amount > 0 ? `+${formatWon(amount)}` : formatWon(amount);
   return (
-    <span className={cn("fr-numeric whitespace-nowrap", SIZE[size], className)} {...props}>
-      {formatWon(amount)}
+    <span
+      className={cn("fr-numeric whitespace-nowrap", SIZE[size], tone, className)}
+      {...props}
+    >
+      {text}
     </span>
   );
 }

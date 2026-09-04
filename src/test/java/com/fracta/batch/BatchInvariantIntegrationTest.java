@@ -35,6 +35,9 @@ import com.fracta.subscription.application.SubscriptionService;
 import com.fracta.support.IntegrationTestBase;
 import com.fracta.support.SubscriptionTestSupport;
 import com.fracta.support.TradingTestSupport;
+import com.fracta.trading.application.TradingService;
+import com.fracta.trading.domain.OrderSide;
+import com.fracta.trading.domain.OrderType;
 
 import io.micrometer.core.instrument.MeterRegistry;
 
@@ -44,6 +47,7 @@ class BatchInvariantIntegrationTest extends IntegrationTestBase {
     @Autowired JobLauncher launcher;
     @Autowired JdbcTemplate jdbc;
     @Autowired TradingTestSupport tradingSupport;
+    @Autowired TradingService trading;
     @Autowired SubscriptionTestSupport subscriptionSupport;
     @Autowired SubscriptionService subscriptions;
     @Autowired SubscriptionAllotmentService allotment;
@@ -231,6 +235,23 @@ class BatchInvariantIntegrationTest extends IntegrationTestBase {
         } finally {
             adminJdbc().update("UPDATE investor SET cash_balance = cash_balance - 1 WHERE id = ?", investor);
         }
+    }
+
+    @Test
+    @DisplayName("호가창에 걸린 매수 주문의 대금 홀드는 INV-6 위반이 아니다")
+    void restingBuyHoldIsNotInv6Violation() throws Exception {
+        var market = tradingSupport.listedMarket(null, 100);
+        long buyer = tradingSupport.investor(1_000_000);
+
+        // 홀드는 투자자 잔액에서 빠져 주문에 묶인다. 보존식이 이 항을 안 세면
+        // 매수 주문이 호가창에 있는 동안 야간 배치가 매번 위반을 올린다.
+        trading.place(market.tokenSymbol(), InvestorId.of(buyer), OrderSide.BUY,
+                OrderType.LIMIT, 1_000L, 40, tradingSupport.newKey());
+
+        JobExecution execution = run(reconciliationJob, uniqueParameters());
+        assertThat(valid(execution, "INV-6", "*"))
+                .as("미체결 매수 홀드를 INV-6 위반으로 오판했다")
+                .isTrue();
     }
 
     @Test
