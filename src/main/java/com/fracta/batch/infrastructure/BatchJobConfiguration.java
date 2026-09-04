@@ -32,6 +32,7 @@ import com.fracta.batch.application.BatchJobNames;
 import com.fracta.batch.application.BatchRetryExecutor;
 import com.fracta.batch.application.InvariantViolationHandler;
 import com.fracta.batch.application.ReconciliationCheck;
+import com.fracta.batch.application.ReconciliationReader;
 import com.fracta.batch.application.ReconciliationResultStore;
 import com.fracta.batch.application.SettlementReportBatchService;
 import com.fracta.external.broker.api.BrokerTokenRefreshPort;
@@ -70,8 +71,9 @@ public class BatchJobConfiguration {
 
     @Bean
     ItemProcessor<String, List<ReconciliationCheck>> reconciliationProcessor(
-            BatchReconciliationQuery query) {
-        return query::checkToken;
+            ReconciliationReader reader) {
+        // 한 종목의 발행량·잔고·배정을 한 스냅샷에서 읽는다 (ReconciliationReader javadoc)
+        return reader::readToken;
     }
 
     @Bean
@@ -111,14 +113,15 @@ public class BatchJobConfiguration {
 
     @Bean
     Step reconciliationGlobalStep(JobRepository jobs, PlatformTransactionManager transactions,
-                                  BatchReconciliationQuery query,
+                                  ReconciliationReader reader,
                                   ReconciliationResultStore store,
                                   InvariantViolationHandler violationHandler) {
         return new StepBuilder("reconciliationGlobalStep", jobs)
                 .tasklet((contribution, context) -> {
                     JobExecution execution = contribution.getStepExecution().getJobExecution();
                     LocalDate runDate = runDate(execution);
-                    for (ReconciliationCheck check : query.checkGlobal()) {
+                    // 세 합계를 한 스냅샷에서 — 나눠 읽으면 자금 이동 중 오탐이 난다
+                    for (ReconciliationCheck check : reader.readGlobal()) {
                         store.save(execution.getId(), runDate, check);
                         violationHandler.handle(BatchJobNames.DAILY_RECONCILIATION,
                                 execution.getId(), check);
