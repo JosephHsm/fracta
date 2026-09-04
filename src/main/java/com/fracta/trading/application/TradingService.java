@@ -579,6 +579,37 @@ public class TradingService {
         return orders.findByInvestorIdOrderByIdDesc(investorId.value());
     }
 
+    /**
+     * 이 종목의 주문 가격 규칙 (TR-09/10).
+     *
+     * <p>서버가 판정하는 값을 그대로 내려준다. 화면이나 시드 스크립트가 호가단위·제한폭을
+     * 각자 계산하면 서버가 거부하는 기준과 어긋나 "왜 막혔는지 알 수 없는" 주문이 생긴다.
+     */
+    @Transactional(readOnly = true)
+    public PriceRuleView priceRulesOf(String tokenSymbol) {
+        var token = listedTokens.findByTokenSymbol(tokenSymbol)
+                .orElseThrow(() -> new IllegalArgumentException("종목이 없다: " + tokenSymbol));
+        var reference = referencePrices.of(token).orElse(null);
+        if (reference == null) {
+            // 체결도 없고 발행가도 없다 — 제한을 걸 근거가 없다
+            return new PriceRuleView(tokenSymbol, null, null, null, null, null);
+        }
+        long price = reference.price();
+        return new PriceRuleView(tokenSymbol, price, reference.source().name(),
+                PriceRules.tickSizeOf(price),
+                PriceRules.lowerLimit(price, dailyLimitPercent),
+                PriceRules.upperLimit(price, dailyLimitPercent));
+    }
+
+    /**
+     * 주문 가격 규칙. 기준가를 구할 수 없으면 모든 값이 null 이고 제한도 걸리지 않는다.
+     *
+     * @param tickSize 이 가격대의 호가단위. 지정가는 이 배수여야 한다
+     */
+    public record PriceRuleView(String tokenSymbol, Long referencePrice, String priceSource,
+                                Long tickSize, Long lowerLimit, Long upperLimit) {
+    }
+
     /** 호가창 N호가 (TR-05). */
     public List<com.fracta.trading.domain.OrderBook.PriceLevel> depth(String tokenSymbol,
                                                                      OrderSide side, int levels) {

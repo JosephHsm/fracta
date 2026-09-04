@@ -45,6 +45,7 @@ docs/ApiResponseOrderBookResponse.md
 docs/ApiResponsePlaceOrderResponse.md
 docs/ApiResponsePlaceResult.md
 docs/ApiResponsePremiumResponse.md
+docs/ApiResponsePriceRuleView.md
 docs/ApiResponseProspectusAskResponse.md
 docs/ApiResponseProspectusUploadResponse.md
 docs/ApiResponseRegisterWebhookResponse.md
@@ -117,6 +118,7 @@ docs/PlaceOrderResponse.md
 docs/PlaceResult.md
 docs/Position.md
 docs/PremiumResponse.md
+docs/PriceRuleView.md
 docs/ProspectusAskResponse.md
 docs/ProspectusUploadResponse.md
 docs/QuotaView.md
@@ -196,6 +198,7 @@ src/models/ApiResponseOrderBookResponse.ts
 src/models/ApiResponsePlaceOrderResponse.ts
 src/models/ApiResponsePlaceResult.ts
 src/models/ApiResponsePremiumResponse.ts
+src/models/ApiResponsePriceRuleView.ts
 src/models/ApiResponseProspectusAskResponse.ts
 src/models/ApiResponseProspectusUploadResponse.ts
 src/models/ApiResponseRegisterWebhookResponse.ts
@@ -261,6 +264,7 @@ src/models/PlaceOrderResponse.ts
 src/models/PlaceResult.ts
 src/models/Position.ts
 src/models/PremiumResponse.ts
+src/models/PriceRuleView.ts
 src/models/ProspectusAskResponse.ts
 src/models/ProspectusUploadResponse.ts
 src/models/QuotaView.ts

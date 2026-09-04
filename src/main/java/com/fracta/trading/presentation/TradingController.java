@@ -148,6 +148,19 @@ public class TradingController {
                 levels(tokenSymbol, OrderSide.SELL, levels)));
     }
 
+    /**
+     * 주문 가격 규칙 (TR-09/10) — 호가단위와 가격제한폭.
+     *
+     * <p>주문 화면이 입력을 검증하고 허용 범위를 보여줄 수 있게 서버가 내려준다.
+     * 화면이 규칙을 자기가 계산하면 서버가 거부하는 기준과 어긋난다.
+     */
+    @Operation(operationId = "getPriceRules", summary = "주문 가격 규칙")
+    @GetMapping("/api/v1/tokens/{tokenSymbol}/price-rules")
+    public ApiResponse<TradingService.PriceRuleView> priceRules(
+            @PathVariable("tokenSymbol") String tokenSymbol) {
+        return ApiResponse.of(tradingService.priceRulesOf(tokenSymbol));
+    }
+
     /** 체결 내역 페이징 (TR-06). */
     @Operation(operationId = "listExecutions", summary = "체결 내역")
     @GetMapping("/api/v1/tokens/{tokenSymbol}/executions")

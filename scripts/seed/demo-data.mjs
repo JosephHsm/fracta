@@ -315,17 +315,46 @@ async function placeOrder(user, tokenSymbol, side, orderType, price, units) {
  * 일부가 매도호가를 때려 체결을 만든다. 체결가로 괴리율 단계(정상/경고/중단)를 만든다.
  */
 async function buildMarket(sellers, buyers, tokenSymbol, { askLevels, bidLevels, takePrice, takeUnits }) {
+  // 호가단위·가격제한폭은 서버가 정한다. 시드가 자기 규칙으로 값을 만들면 서버가 거부하는
+  // 기준과 어긋나 주문이 통째로 실패한다 — 규칙을 물어보고 거기에 맞춘다.
+  const rules = await priceRulesOf(tokenSymbol, sellers[0]);
+
   for (const [price, units, sellerIndex] of askLevels) {
-    await placeOrder(sellers[sellerIndex], tokenSymbol, "SELL", "LIMIT", price, units);
+    await placeOrder(sellers[sellerIndex], tokenSymbol, "SELL", "LIMIT", snapPrice(price, rules), units);
   }
   for (const [index, [price, units]] of bidLevels.entries()) {
-    await placeOrder(buyers[index % buyers.length], tokenSymbol, "BUY", "LIMIT", price, units);
+    await placeOrder(buyers[index % buyers.length], tokenSymbol, "BUY", "LIMIT", snapPrice(price, rules), units);
   }
   const results = [];
+  const take = snapPrice(takePrice, rules);
   for (const [index, units] of takeUnits.entries()) {
-    results.push(await placeOrder(buyers[index % buyers.length], tokenSymbol, "BUY", "LIMIT", takePrice, units));
+    results.push(await placeOrder(buyers[index % buyers.length], tokenSymbol, "BUY", "LIMIT", take, units));
   }
   return results;
+}
+
+/** 서버가 정한 주문 가격 규칙. 조회에 실패하면 규칙 없이 진행한다(구버전 서버 호환). */
+async function priceRulesOf(tokenSymbol, actor) {
+  return api(`/api/v1/tokens/${tokenSymbol}/price-rules`, { token: actor.token }).catch(() => null);
+}
+
+/**
+ * 가격을 서버 규칙에 맞춘다 — 호가단위로 내림하고 가격제한폭 안으로 당긴다.
+ *
+ * <p>내림인 이유는 서버와 같다: 조용히 올리면 의도보다 비싸게 사거나 싸게 팔게 된다.
+ * 제한폭을 넘으면 경계값으로 당긴다 — 시드는 그 근처를 보여주는 게 목적이지
+ * 정확히 그 가격이어야 하는 건 아니다.
+ */
+function snapPrice(price, rules) {
+  if (!rules?.tickSize) return price;
+  let snapped = Math.max(rules.tickSize, price - (price % rules.tickSize));
+  if (rules.upperLimit && snapped > rules.upperLimit) {
+    snapped = rules.upperLimit - (rules.upperLimit % rules.tickSize);
+  }
+  if (rules.lowerLimit && snapped < rules.lowerLimit) {
+    snapped = rules.lowerLimit + (rules.tickSize - (rules.lowerLimit % rules.tickSize)) % rules.tickSize;
+  }
+  return snapped;
 }
 
 // ── 메인 ────────────────────────────────────────────────
@@ -422,6 +451,8 @@ async function main() {
     // 발행가는 참조가에 맞춘다. 체결가를 premium 배수로 띄워 괴리율 상태를 만든다.
     const unitPrice = Math.max(100, Math.round(detail.referencePrice));
     const take = Math.round(unitPrice * asset.premium);
+    // 호가 간격은 화면에 단계가 보이게 하려는 것이다. 실제 호가단위 보정은
+    // buildMarket 이 서버 규칙(price-rules)으로 다시 맞춘다.
     const tick = Math.max(1, Math.round(unitPrice * 0.01));
 
     markets.push({
