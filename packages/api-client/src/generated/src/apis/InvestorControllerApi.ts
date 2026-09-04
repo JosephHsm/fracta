@@ -56,6 +56,14 @@ export interface CheckSuitabilityRequest {
      * 
      */
     productGrade: number;
+    /**
+     * 
+     */
+    scopeType: CheckSuitabilityScopeTypeEnum;
+    /**
+     * 
+     */
+    scopeId: string;
 }
 
 export interface SubmitRiskProfileRequest {
@@ -134,10 +142,32 @@ export class InvestorControllerApi extends runtime.BaseAPI {
             );
         }
 
+        if (requestParameters['scopeType'] == null) {
+            throw new runtime.RequiredError(
+                'scopeType',
+                'Required parameter "scopeType" was null or undefined when calling checkSuitability().'
+            );
+        }
+
+        if (requestParameters['scopeId'] == null) {
+            throw new runtime.RequiredError(
+                'scopeId',
+                'Required parameter "scopeId" was null or undefined when calling checkSuitability().'
+            );
+        }
+
         const queryParameters: any = {};
 
         if (requestParameters['productGrade'] != null) {
             queryParameters['productGrade'] = requestParameters['productGrade'];
+        }
+
+        if (requestParameters['scopeType'] != null) {
+            queryParameters['scopeType'] = requestParameters['scopeType'];
+        }
+
+        if (requestParameters['scopeId'] != null) {
+            queryParameters['scopeId'] = requestParameters['scopeId'];
         }
 
         const headerParameters: runtime.HTTPHeaders = {};
@@ -274,3 +304,12 @@ export class InvestorControllerApi extends runtime.BaseAPI {
     }
 
 }
+
+/**
+ * @export
+ */
+export const CheckSuitabilityScopeTypeEnum = {
+    Issuance: 'ISSUANCE',
+    Token: 'TOKEN',
+} as const;
+export type CheckSuitabilityScopeTypeEnum = typeof CheckSuitabilityScopeTypeEnum[keyof typeof CheckSuitabilityScopeTypeEnum];

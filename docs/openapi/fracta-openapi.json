@@ -306,6 +306,20 @@
         },
         "type" : "object"
       },
+      "ApiResponseListPosition" : {
+        "properties" : {
+          "data" : {
+            "items" : {
+              "$ref" : "#/components/schemas/Position"
+            },
+            "type" : "array"
+          },
+          "meta" : {
+            "$ref" : "#/components/schemas/ResponseMeta"
+          }
+        },
+        "type" : "object"
+      },
       "ApiResponseListTokenSummaryResponse" : {
         "properties" : {
           "data" : {
@@ -1713,6 +1727,41 @@
         },
         "type" : "object"
       },
+      "Position" : {
+        "properties" : {
+          "costBasis" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "lockedUnits" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "marketValue" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "priceSource" : {
+            "type" : "string"
+          },
+          "profitLoss" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "referencePrice" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "tokenSymbol" : {
+            "type" : "string"
+          },
+          "units" : {
+            "format" : "int64",
+            "type" : "integer"
+          }
+        },
+        "type" : "object"
+      },
       "PremiumResponse" : {
         "properties" : {
           "lastExecutedPrice" : {
@@ -1949,9 +1998,16 @@
             "maximum" : 5,
             "minimum" : 1,
             "type" : "integer"
+          },
+          "scopeId" : {
+            "type" : "string"
+          },
+          "scopeType" : {
+            "enum" : [ "ISSUANCE", "TOKEN" ],
+            "type" : "string"
           }
         },
-        "required" : [ "productGrade" ],
+        "required" : [ "productGrade", "scopeId", "scopeType" ],
         "type" : "object"
       },
       "SuitabilityAckResponse" : {
@@ -1959,9 +2015,19 @@
           "acked" : {
             "type" : "boolean"
           },
+          "expiresAt" : {
+            "type" : "string"
+          },
           "productGrade" : {
             "format" : "int32",
             "type" : "integer"
+          },
+          "scopeId" : {
+            "type" : "string"
+          },
+          "scopeType" : {
+            "enum" : [ "ISSUANCE", "TOKEN" ],
+            "type" : "string"
           }
         },
         "type" : "object"
@@ -3026,6 +3092,21 @@
             "format" : "int32",
             "type" : "integer"
           }
+        }, {
+          "in" : "query",
+          "name" : "scopeType",
+          "required" : true,
+          "schema" : {
+            "enum" : [ "ISSUANCE", "TOKEN" ],
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "scopeId",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
         } ],
         "responses" : {
           "200" : {
@@ -3340,6 +3421,25 @@
           }
         },
         "summary" : "주문 취소",
+        "tags" : [ "trading-controller" ]
+      }
+    },
+    "/api/v1/positions/me" : {
+      "get" : {
+        "operationId" : "listMyPositions",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseListPosition"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "summary" : "내 보유 포지션",
         "tags" : [ "trading-controller" ]
       }
     },

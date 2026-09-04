@@ -29,6 +29,11 @@ import {
     ApiResponseListMyOrderResponseToJSON,
 } from '../models/ApiResponseListMyOrderResponse';
 import {
+    type ApiResponseListPosition,
+    ApiResponseListPositionFromJSON,
+    ApiResponseListPositionToJSON,
+} from '../models/ApiResponseListPosition';
+import {
     type ApiResponseOrderBookResponse,
     ApiResponseOrderBookResponseFromJSON,
     ApiResponseOrderBookResponseToJSON,
@@ -321,6 +326,51 @@ export class TradingControllerApi extends runtime.BaseAPI {
      */
     async listMyOrders(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ApiResponseListMyOrderResponse> {
         const response = await this.listMyOrdersRaw(initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for listMyPositions without sending the request
+     */
+    async listMyPositionsRequestOpts(): Promise<runtime.RequestOpts> {
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            const token = this.configuration.accessToken;
+            const tokenString = await token("bearerAuth", []);
+
+            if (tokenString) {
+                headerParameters["Authorization"] = `Bearer ${tokenString}`;
+            }
+        }
+
+        let urlPath = `/api/v1/positions/me`;
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * 내 보유 포지션
+     */
+    async listMyPositionsRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ApiResponseListPosition>> {
+        const requestOptions = await this.listMyPositionsRequestOpts();
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => ApiResponseListPositionFromJSON(jsonValue));
+    }
+
+    /**
+     * 내 보유 포지션
+     */
+    async listMyPositions(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ApiResponseListPosition> {
+        const response = await this.listMyPositionsRaw(initOverrides);
         return await response.value();
     }
 

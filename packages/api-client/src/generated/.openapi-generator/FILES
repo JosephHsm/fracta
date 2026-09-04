@@ -32,6 +32,7 @@ docs/ApiResponseListMyOrderResponse.md
 docs/ApiResponseListMySubscriptionResponse.md
 docs/ApiResponseListOpenApiExecutionResponse.md
 docs/ApiResponseListOrderResponse.md
+docs/ApiResponseListPosition.md
 docs/ApiResponseListTokenSummaryResponse.md
 docs/ApiResponseListWebhookDeliveryView.md
 docs/ApiResponseListWebhookView.md
@@ -114,6 +115,7 @@ docs/OrderResponse.md
 docs/PlaceOrderRequest.md
 docs/PlaceOrderResponse.md
 docs/PlaceResult.md
+docs/Position.md
 docs/PremiumResponse.md
 docs/ProspectusAskResponse.md
 docs/ProspectusUploadResponse.md
@@ -181,6 +183,7 @@ src/models/ApiResponseListMyOrderResponse.ts
 src/models/ApiResponseListMySubscriptionResponse.ts
 src/models/ApiResponseListOpenApiExecutionResponse.ts
 src/models/ApiResponseListOrderResponse.ts
+src/models/ApiResponseListPosition.ts
 src/models/ApiResponseListTokenSummaryResponse.ts
 src/models/ApiResponseListWebhookDeliveryView.ts
 src/models/ApiResponseListWebhookView.ts
@@ -256,6 +259,7 @@ src/models/OrderResponse.ts
 src/models/PlaceOrderRequest.ts
 src/models/PlaceOrderResponse.ts
 src/models/PlaceResult.ts
+src/models/Position.ts
 src/models/PremiumResponse.ts
 src/models/ProspectusAskResponse.ts
 src/models/ProspectusUploadResponse.ts

@@ -26,8 +26,31 @@ export interface SuitabilityAckResponse {
     /**
      * 
      */
+    expiresAt?: string;
+    /**
+     * 
+     */
     productGrade?: number;
+    /**
+     * 
+     */
+    scopeId?: string;
+    /**
+     * 
+     */
+    scopeType?: SuitabilityAckResponseScopeTypeEnum;
 }
+
+
+/**
+ * @export
+ */
+export const SuitabilityAckResponseScopeTypeEnum = {
+    Issuance: 'ISSUANCE',
+    Token: 'TOKEN',
+} as const;
+export type SuitabilityAckResponseScopeTypeEnum = typeof SuitabilityAckResponseScopeTypeEnum[keyof typeof SuitabilityAckResponseScopeTypeEnum];
+
 
 /**
  * Check if a given object implements the SuitabilityAckResponse interface.
@@ -47,7 +70,10 @@ export function SuitabilityAckResponseFromJSONTyped(json: any, ignoreDiscriminat
     return {
         
         'acked': json['acked'] == null ? undefined : json['acked'],
+        'expiresAt': json['expiresAt'] == null ? undefined : json['expiresAt'],
         'productGrade': json['productGrade'] == null ? undefined : json['productGrade'],
+        'scopeId': json['scopeId'] == null ? undefined : json['scopeId'],
+        'scopeType': json['scopeType'] == null ? undefined : json['scopeType'],
     };
 }
 
@@ -63,7 +89,10 @@ export function SuitabilityAckResponseToJSONTyped(value?: SuitabilityAckResponse
     return {
         
         'acked': value['acked'],
+        'expiresAt': value['expiresAt'],
         'productGrade': value['productGrade'],
+        'scopeId': value['scopeId'],
+        'scopeType': value['scopeType'],
     };
 }
 
