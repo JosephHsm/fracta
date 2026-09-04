@@ -53,6 +53,21 @@ public interface TradeOrderRepository extends JpaRepository<TradeOrder, Long> {
     List<TradeOrder> findOpenOrdersOfSymbol(@Param("symbol") String symbol,
                                             @Param("statuses") List<OrderStatus> statuses);
 
+    /**
+     * 유효기간이 지난 미체결 주문. 오래된 것부터 가져온다.
+     *
+     * <p>남아 있는 동안 매도는 원장 수량을, 매수는 예치금을 계속 묶는다 — 잊힌 주문이
+     * 자산을 잠그고 있는 상태를 정상으로 두지 않는다.
+     */
+    @Query("""
+            SELECT o FROM TradeOrder o
+            WHERE o.status IN :statuses AND o.createdAt < :cutoff
+            ORDER BY o.createdAt ASC
+            """)
+    List<TradeOrder> findStaleOpenOrders(@Param("statuses") List<OrderStatus> statuses,
+                                         @Param("cutoff") java.time.Instant cutoff,
+                                         org.springframework.data.domain.Limit limit);
+
     /** INV-6: 아직 환급되지 않은 매수 대금 홀드 합계. 미결제 증거금과 같은 항으로 더한다. */
     @Query("SELECT COALESCE(SUM(o.heldAmount), 0) FROM TradeOrder o WHERE o.heldAmount > 0")
     long sumHeldAmount();

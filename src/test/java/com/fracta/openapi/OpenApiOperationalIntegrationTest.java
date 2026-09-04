@@ -95,7 +95,7 @@ class OpenApiOperationalIntegrationTest extends IntegrationTestBase {
 
         String orderKey = UUID.randomUUID().toString();
         String orderBody = """
-                {"tokenSymbol":"%s","side":"BUY","orderType":"LIMIT","price":100,"units":1}
+                {"tokenSymbol":"%s","side":"BUY","orderType":"LIMIT","price":1000,"units":1}
                 """.formatted(market.tokenSymbol()).trim();
         ResponseEntity<String> placed = rest.exchange("/open/v1/orders", HttpMethod.POST,
                 new HttpEntity<>(orderBody,

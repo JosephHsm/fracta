@@ -39,6 +39,7 @@ import com.fracta.trading.domain.OrderBook;
 import com.fracta.trading.domain.OrderSide;
 import com.fracta.trading.domain.OrderStatus;
 import com.fracta.trading.domain.OrderType;
+import com.fracta.trading.domain.PriceRules;
 import com.fracta.trading.domain.TradeExecution;
 import com.fracta.trading.domain.TradeOrder;
 import com.fracta.trading.domain.TradingExceptions;
@@ -77,7 +78,10 @@ public class TradingService {
     private final SettlementService settlement;
     private final OrderBookExecutor executor;
     private final PremiumRateMonitor premiumMonitor;
+    private final ReferencePriceService referencePrices;
+    private final TradingHours tradingHours;
     private final int sweepLevels;
+    private final int dailyLimitPercent;
     private final Counter matchedCounter;
     private final org.springframework.context.ApplicationEventPublisher events;
     private final org.springframework.beans.factory.ObjectProvider<TradingService> selfProvider;
@@ -86,7 +90,9 @@ public class TradingService {
                           LedgerPort ledger, CashPort cash, SuitabilityPort suitability,
                           ListedTokenPort listedTokens, SettlementService settlement,
                           OrderBookExecutor executor, PremiumRateMonitor premiumMonitor,
+                          ReferencePriceService referencePrices, TradingHours tradingHours,
                           @Value("${trading.market-buy-sweep-levels:20}") int sweepLevels,
+                          @Value("${trading.daily-price-limit-percent:30}") int dailyLimitPercent,
                           MeterRegistry meterRegistry,
                           org.springframework.context.ApplicationEventPublisher events,
                           org.springframework.beans.factory.ObjectProvider<TradingService> selfProvider) {
@@ -99,7 +105,10 @@ public class TradingService {
         this.settlement = settlement;
         this.executor = executor;
         this.premiumMonitor = premiumMonitor;
+        this.referencePrices = referencePrices;
+        this.tradingHours = tradingHours;
         this.sweepLevels = sweepLevels;
+        this.dailyLimitPercent = dailyLimitPercent;
         this.matchedCounter = Counter.builder("fracta.order.matched")
                 .description("체결된 주문 건수").register(meterRegistry);
         this.events = events;
@@ -293,6 +302,11 @@ public class TradingService {
             throw new TradingExceptions.NotTradableException(tokenSymbol, token.status());
         }
 
+        if (!tradingHours.isOpen()) {
+            throw new TradingExceptions.MarketClosedException(tradingHours.describe());
+        }
+        requirePriceRules(token, orderType, price);
+
         // 매수는 적합성 판정을 거친다 (매도는 보유분 처분이라 대상이 아니다)
         if (side == OrderSide.BUY) {
             requireSuitable(investorId, tokenSymbol, token.riskGrade());
@@ -312,6 +326,32 @@ public class TradingService {
             order.holdFunds(holdAmount);
         }
         return new AcceptedOrder(orders.saveAndFlush(order).toBookOrder(), token);
+    }
+
+    /**
+     * 지정가의 호가단위·가격제한폭 검증 (TR-01).
+     *
+     * <p>시장가는 가격을 직접 정하지 않으므로 이 검증의 대상이 아니다 — 대신 호가창을 훑어
+     * 담기 때문에 상대 호가가 제한폭 안에 있다는 사실로 간접 보호된다.
+     *
+     * <p>기준가를 구할 수 없으면(체결도 없고 발행가도 0) 제한을 걸 근거가 없어 통과시킨다.
+     */
+    private void requirePriceRules(ListedTokenPort.ListedToken token, OrderType orderType,
+                                   Long price) {
+        if (orderType != OrderType.LIMIT || price == null) {
+            return;
+        }
+        if (!PriceRules.isOnTick(price)) {
+            throw new TradingExceptions.InvalidTickException(price, PriceRules.tickSizeOf(price));
+        }
+        referencePrices.of(token).ifPresent(reference -> {
+            if (!PriceRules.isWithinDailyLimit(price, reference.price(), dailyLimitPercent)) {
+                throw new TradingExceptions.PriceOutOfLimitException(price,
+                        PriceRules.lowerLimit(reference.price(), dailyLimitPercent),
+                        PriceRules.upperLimit(reference.price(), dailyLimitPercent),
+                        reference.source().name());
+            }
+        });
     }
 
     /** 상품 위험등급은 발행 정보(ListedToken)에서 온다. Phase 4 청약과 같은 규칙이다. */
@@ -502,6 +542,29 @@ public class TradingService {
         events.publishEvent(new TradeEvents.OrderCancelled(orderId, order.tokenSymbol(),
                 order.investorId(), remaining));
         return new PlaceResult(orderId, order.status().name(), order.filledUnits(), List.of(), false);
+    }
+
+    /**
+     * 유효기간이 지난 주문을 취소한다 (TR-03 확장).
+     *
+     * <p>투자자 본인 취소와 같은 경로다 — 오더북에서 빼고 잠금·홀드를 되돌린다. 다만
+     * 소유자 확인을 하지 않는다. 시스템이 정책으로 거두는 것이지 누가 요청한 게 아니다.
+     * 이미 끝난 주문은 조용히 넘어간다(동시에 사용자가 취소했을 수 있다).
+     */
+    @Transactional
+    @Auditable(action = "ORDER_EXPIRE", targetType = "TRADE_ORDER", targetId = "#p0")
+    public void cancelExpired(long orderId, java.time.Duration ttl) {
+        TradeOrder order = orders.findById(orderId).orElse(null);
+        if (order == null || !order.status().isOpenOnBook()) {
+            return;
+        }
+        long remaining = order.remaining();
+        executor.runOnPartition(order.tokenSymbol(), book -> book.remove(orderId));
+        releaseAllHoldsOf(order);
+        order.cancel();
+        events.publishEvent(new TradeEvents.OrderCancelled(orderId, order.tokenSymbol(),
+                order.investorId(), remaining));
+        log.info("유효기간({}) 만료로 주문 취소: orderId={} 잔량={}", ttl, orderId, remaining);
     }
 
     private void releaseLock(TradeOrder order, long units) {

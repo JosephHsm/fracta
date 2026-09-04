@@ -28,9 +28,8 @@ import com.fracta.trading.infrastructure.TradeExecutionRepository;
  * 개념이 도메인에 없어서</b>였다. 원장은 수량만 갖고 있고, 조각을 얻는 경로가 청약과 매매로
  * 갈려 있어 "얼마에 샀는지"를 어느 테이블도 혼자 답하지 못한다.
  *
- * <p><b>평가 기준가는 2단</b>이다 — 마지막 체결가 → 없으면 발행 단가. 둘 다 <b>실제로 거래된
- * 가격</b>이다. 조각 참조가(원자산 ÷ 분할비율)는 파생값이라 쓰지 않는다. 종목이 상장만 되고
- * 한 번도 체결되지 않았다면 시장이 매긴 값이 없으므로 청약가가 가장 정직한 기준이다.
+ * <p>평가 기준가는 {@link ReferencePriceService}가 정한다 — 주문의 가격제한폭도 같은 값을
+ * 쓴다. 두 곳에서 따로 정의하면 화면에 보이는 기준가와 주문이 거부되는 기준이 어긋난다.
  *
  * <p>수량은 <b>원장 잔고를 그대로</b> 쓴다. 재생 결과와 다르면 재생 쪽이 아니라 원장이 옳다 —
  * 원장이 수량의 단일 진실 공급원이다. 재생은 원가를 구하는 용도로만 쓴다.
@@ -58,13 +57,16 @@ public class PositionService {
     private final ListedTokenPort listedTokens;
     private final TradeExecutionRepository executions;
     private final AllottedLotPort allottedLots;
+    private final ReferencePriceService referencePrices;
 
     public PositionService(LedgerPort ledger, ListedTokenPort listedTokens,
-                           TradeExecutionRepository executions, AllottedLotPort allottedLots) {
+                           TradeExecutionRepository executions, AllottedLotPort allottedLots,
+                           ReferencePriceService referencePrices) {
         this.ledger = ledger;
         this.listedTokens = listedTokens;
         this.executions = executions;
         this.allottedLots = allottedLots;
+        this.referencePrices = referencePrices;
     }
 
     @Transactional(readOnly = true)
@@ -88,20 +90,12 @@ public class PositionService {
     private Position toPosition(ListedTokenPort.ListedToken token, long units, long lockedUnits,
                                 List<Lot> lots) {
         long costBasis = PositionCalculator.replay(lots).costBasis();
-        Optional<Long> lastPrice = executions.findLastPrice(token.tokenSymbol());
+        var reference = referencePrices.of(token);
 
-        Long referencePrice;
-        String priceSource;
-        if (lastPrice.isPresent()) {
-            referencePrice = lastPrice.get();
-            priceSource = "LAST_EXECUTION";
-        } else if (token.unitPrice() > 0) {
-            referencePrice = token.unitPrice();
-            priceSource = "ISSUE_PRICE";
-        } else {
-            referencePrice = null;
-            priceSource = null;
-        }
+        Long referencePrice = reference.map(ReferencePriceService.ReferencePrice::price).orElse(null);
+        String priceSource = reference
+                .map(r -> r.source().name())
+                .orElse(null);
 
         Long marketValue = referencePrice == null ? null : Math.multiplyExact(referencePrice, units);
         Long profitLoss = marketValue == null ? null : marketValue - costBasis;
