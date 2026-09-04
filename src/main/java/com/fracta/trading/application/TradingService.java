@@ -20,6 +20,7 @@ import com.fracta.account.api.RiskProfileRequiredException;
 import com.fracta.account.api.SuitabilityMismatchException;
 import com.fracta.account.api.SuitabilityPort;
 import com.fracta.account.api.SuitabilityResult;
+import com.fracta.account.api.SuitabilityScope;
 import com.fracta.audit.api.Auditable;
 import com.fracta.common.money.InsufficientUnitsException;
 import com.fracta.common.money.Money;
@@ -294,7 +295,7 @@ public class TradingService {
 
         // 매수는 적합성 판정을 거친다 (매도는 보유분 처분이라 대상이 아니다)
         if (side == OrderSide.BUY) {
-            requireSuitable(investorId, token.riskGrade());
+            requireSuitable(investorId, tokenSymbol, token.riskGrade());
         }
 
         TradeOrder order = new TradeOrder(tokenSymbol, investorId.value(), side, orderType,
@@ -314,9 +315,10 @@ public class TradingService {
     }
 
     /** 상품 위험등급은 발행 정보(ListedToken)에서 온다. Phase 4 청약과 같은 규칙이다. */
-    private void requireSuitable(InvestorId investorId, int productRiskGrade) {
+    private void requireSuitable(InvestorId investorId, String tokenSymbol, int productRiskGrade) {
         RiskGrade grade = RiskGrade.fromLevel(productRiskGrade);
-        SuitabilityResult result = suitability.check(investorId, grade);
+        SuitabilityResult result = suitability.check(investorId, grade,
+                SuitabilityScope.token(tokenSymbol));
         switch (result.decision()) {
             case BLOCKED_NO_PROFILE -> throw new RiskProfileRequiredException(investorId);
             case BLOCKED_MISMATCH -> throw new SuitabilityMismatchException(grade, result.investorGrade());

@@ -117,12 +117,17 @@ export default function SubscriptionPage() {
   const acknowledgeAndRetry = async () => {
     if (!blocked) return;
     try {
+      // 서명은 이 발행 건에만 적용된다. 다른 상품에는 다시 서명해야 한다
       await client.investor.acknowledge({
-        suitabilityAckRequest: { productGrade: blocked.productGrade },
+        suitabilityAckRequest: {
+          productGrade: blocked.productGrade,
+          scopeType: "ISSUANCE",
+          scopeId: String(issuanceId),
+        },
       });
       toast.show({
         title: "부적합 확인 서명이 등록되었습니다",
-        description: "같은 위험등급 상품에 다시 청약할 수 있습니다.",
+        description: "이 발행 건에 한해 청약할 수 있습니다. 다른 상품은 다시 확인이 필요합니다.",
         tone: "info",
       });
       setBlocked(null);

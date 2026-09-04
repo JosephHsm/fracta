@@ -13,6 +13,7 @@ import com.fracta.account.api.RiskProfileRequiredException;
 import com.fracta.account.api.SuitabilityMismatchException;
 import com.fracta.account.api.SuitabilityPort;
 import com.fracta.account.api.SuitabilityResult;
+import com.fracta.account.api.SuitabilityScope;
 import com.fracta.audit.api.Auditable;
 import com.fracta.common.money.Money;
 import com.fracta.issuance.api.IssuanceAllotmentPort;
@@ -110,7 +111,8 @@ public class SubscriptionService {
 
         // 적합성 판정 — 증거금 차감 이전에 수행한다 (차단 시 환불 로직 자체가 없도록)
         RiskGrade productGrade = RiskGrade.fromLevel(info.riskGrade());
-        SuitabilityResult suitabilityResult = suitability.check(investorId, productGrade);
+        SuitabilityResult suitabilityResult = suitability.check(investorId, productGrade,
+                SuitabilityScope.issuance(issuanceId));
         switch (suitabilityResult.decision()) {
             case BLOCKED_NO_PROFILE -> throw new RiskProfileRequiredException(investorId);
             case BLOCKED_MISMATCH ->
