@@ -48,6 +48,15 @@ public class WebhookDelivery {
     @Column(name = "delivered_at")
     private Instant deliveredAt;
 
+    /**
+     * 다음 시도 시각. 워커는 이 시각이 지난 PENDING 건만 다시 집는다.
+     *
+     * <p>재시도를 워커 스레드에서 {@code sleep} 으로 기다리면 그동안 다른 엔드포인트의
+     * 발송이 전부 밀린다. 대기를 시각으로 적어 두고 워커는 바로 다음 건으로 넘어간다.
+     */
+    @Column(name = "next_attempt_at", nullable = false)
+    private Instant nextAttemptAt = Instant.now();
+
     protected WebhookDelivery() {
     }
 
@@ -61,6 +70,11 @@ public class WebhookDelivery {
         this.attempts++;
         this.lastError = error == null ? null
                 : error.substring(0, Math.min(500, error.length()));
+    }
+
+    /** 다음 시도를 예약한다. 그때까지 워커는 이 건을 집지 않는다. */
+    public void scheduleRetryAt(Instant at) {
+        this.nextAttemptAt = at;
     }
 
     public void markDelivered() {
@@ -82,6 +96,7 @@ public class WebhookDelivery {
         this.status = Status.PENDING;
         this.lastError = null;
         this.deliveredAt = null;
+        this.nextAttemptAt = Instant.now();
     }
 
     public Long id() {
@@ -118,5 +133,9 @@ public class WebhookDelivery {
 
     public Instant deliveredAt() {
         return deliveredAt;
+    }
+
+    public Instant nextAttemptAt() {
+        return nextAttemptAt;
     }
 }
