@@ -24,6 +24,12 @@ public class IssuanceValidationException extends DomainException {
                 Map.of("unitPrice", unitPrice));
     }
 
+    public static IssuanceValidationException equalAllotmentPercentOutOfRange(int percent) {
+        return new IssuanceValidationException(ErrorCode.VALID_INVALID_INPUT,
+                "균등 배분 비율은 0% 이상 100% 이하여야 합니다: " + percent,
+                Map.of("equalAllotmentPercent", percent));
+    }
+
     public static IssuanceValidationException totalAmountExceeded(long totalUnits, long unitPrice) {
         return new IssuanceValidationException(ErrorCode.VALID_INVALID_INPUT,
                 "발행 총액은 100억원을 초과할 수 없습니다.",

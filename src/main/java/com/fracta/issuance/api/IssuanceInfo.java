@@ -10,8 +10,10 @@ public record IssuanceInfo(
         long remainingUnits,
         long unitPrice,
         String status,
-        String allotmentMethod,   // FCFS | PRORATA
+        String allotmentMethod,   // FCFS | PRORATA | HYBRID
         int riskGrade,
+        /** HYBRID 에서 균등 배분에 쓸 총량 비율(%). 다른 방식에서는 무시된다. */
+        int equalAllotmentPercent,
         Instant subscriptionStartAt,
         Instant subscriptionEndAt,
         long issuerId
@@ -23,5 +25,10 @@ public record IssuanceInfo(
 
     public boolean fcfs() {
         return "FCFS".equals(allotmentMethod);
+    }
+
+    /** 균등 + 비례 혼합 배정인가. */
+    public boolean hybrid() {
+        return "HYBRID".equals(allotmentMethod);
     }
 }

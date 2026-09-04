@@ -1273,7 +1273,7 @@
       "IssuanceSummaryResponse" : {
         "properties" : {
           "allotmentMethod" : {
-            "enum" : [ "FCFS", "PRORATA" ],
+            "enum" : [ "FCFS", "PRORATA", "HYBRID" ],
             "type" : "string"
           },
           "assetName" : {

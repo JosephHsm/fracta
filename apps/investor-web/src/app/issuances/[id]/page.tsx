@@ -39,6 +39,7 @@ import { useSession } from "@/lib/session";
 const ALLOTMENT_METHOD: Record<IssuanceSummaryResponseAllotmentMethodEnum, string> = {
   FCFS: "선착순",
   PRORATA: "비례배분",
+  HYBRID: "균등 + 비례배분",
 };
 
 /**

@@ -76,6 +76,7 @@ export interface IssuanceSummaryResponse {
 export const IssuanceSummaryResponseAllotmentMethodEnum = {
     Fcfs: 'FCFS',
     Prorata: 'PRORATA',
+    Hybrid: 'HYBRID',
 } as const;
 export type IssuanceSummaryResponseAllotmentMethodEnum = typeof IssuanceSummaryResponseAllotmentMethodEnum[keyof typeof IssuanceSummaryResponseAllotmentMethodEnum];
 
