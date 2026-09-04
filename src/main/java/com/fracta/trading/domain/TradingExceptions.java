@@ -37,6 +37,21 @@ public final class TradingExceptions {
         }
     }
 
+    /**
+     * 이미 쓴 멱등성 키가 다른 요청에 다시 왔다 — 다른 투자자거나 주문 내용이 다르다.
+     *
+     * <p>재생(replay)은 <b>같은 사람이 같은 주문을 다시 보냈을 때만</b> 성립한다.
+     * 확인 없이 돌려주면 남의 주문 상태가 새어 나가고, 내용이 달라도 최초 결과를 돌려줘
+     * 클라이언트는 넣지도 않은 주문이 들어간 줄 안다.
+     */
+    public static class IdempotencyConflictException extends DomainException {
+        public IdempotencyConflictException(String idempotencyKey) {
+            super(ErrorCode.IDEM_KEY_CONFLICT,
+                    "동일 Idempotency-Key가 다른 요청에 이미 사용됐습니다.",
+                    Map.of("idempotencyKey", idempotencyKey));
+        }
+    }
+
     /** 시장가 주문인데 반대편 호가가 없어 체결 불가. */
     public static class NoLiquidityException extends DomainException {
         public NoLiquidityException(String tokenSymbol) {

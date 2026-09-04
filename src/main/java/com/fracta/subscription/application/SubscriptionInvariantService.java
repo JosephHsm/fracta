@@ -12,6 +12,7 @@ import com.fracta.issuance.api.IssuanceAllotmentPort;
 import com.fracta.issuance.api.IssuanceInfo;
 import com.fracta.subscription.domain.SubscriptionOrder;
 import com.fracta.subscription.infrastructure.SubscriptionOrderRepository;
+import com.fracta.trading.api.TradeHoldPort;
 
 /** INV-5(배정 총량)·INV-6(예치금 보존) 검증 (FSD §8.1). */
 @Service
@@ -21,23 +22,32 @@ public class SubscriptionInvariantService {
     }
 
     public record Inv6Result(boolean valid, long externalNet, long cashBalanceSum, long outstandingMargin,
-                             List<String> mismatches, Map<String, Long> cashFlowByType) {
+                             long outstandingTradeHold, List<String> mismatches,
+                             Map<String, Long> cashFlowByType) {
+
+        /** 보존식의 좌변 — 잔액 + 아직 환급되지 않은 내부 홀드 전부. */
+        public long heldTotal() {
+            return cashBalanceSum + outstandingMargin + outstandingTradeHold;
+        }
 
         public long gap() {
-            return cashBalanceSum + outstandingMargin - externalNet;
+            return heldTotal() - externalNet;
         }
     }
 
     private final SubscriptionOrderRepository orders;
     private final IssuanceAllotmentPort issuances;
     private final AccountQueryPort accounts;
+    private final TradeHoldPort tradeHolds;
 
     public SubscriptionInvariantService(SubscriptionOrderRepository orders,
                                         IssuanceAllotmentPort issuances,
-                                        AccountQueryPort accounts) {
+                                        AccountQueryPort accounts,
+                                        TradeHoldPort tradeHolds) {
         this.orders = orders;
         this.issuances = issuances;
         this.accounts = accounts;
+        this.tradeHolds = tradeHolds;
     }
 
     /** INV-5: Σ allotted_units == min(total_units, Σ requested). 완판이면 total_units와 일치. */
@@ -51,17 +61,21 @@ public class SubscriptionInvariantService {
     }
 
     /**
-     * INV-6: Σ investor.cash_balance + Σ 미결제 증거금 == 총입금 − 총출금.
-     * 증거금 홀드/환불/정산은 내부 이동이라 외부 순유입에 포함되지 않는다.
+     * INV-6: Σ investor.cash_balance + Σ 미결제 증거금 + Σ 미환급 매수 홀드 == 총입금 − 총출금.
+     * 증거금 홀드/환불/정산·매수 대금 홀드는 모두 내부 이동이라 외부 순유입에 포함되지 않는다.
+     *
+     * <p>매수 홀드 항이 빠지면, 매수 주문이 오더북에 올라 있는 동안 홀드액만큼 INV-6이
+     * 깨진 것으로 보인다 — 실제로는 투자자 잔액에서 빠져 주문에 묶여 있을 뿐이다.
      */
     @Transactional(readOnly = true)
     public Inv6Result verifyInv6() {
         long externalNet = accounts.externalNetDeposits();
         long cashSum = accounts.sumCashBalances();
         long outstanding = orders.sumDepositAmountByStatus(SubscriptionOrder.Status.DEPOSITED);
-        boolean valid = cashSum + outstanding == externalNet;
+        long tradeHold = tradeHolds.outstandingHeldAmount();
+        boolean valid = cashSum + outstanding + tradeHold == externalNet;
         // 위반 시에만 분해한다 (FSD §8.1: 상세 로그). 자동 복구는 시도하지 않는다.
-        return new Inv6Result(valid, externalNet, cashSum, outstanding,
+        return new Inv6Result(valid, externalNet, cashSum, outstanding, tradeHold,
                 valid ? List.of() : mismatchingInvestors(),
                 valid ? Map.of() : accounts.cashFlowByType());
     }

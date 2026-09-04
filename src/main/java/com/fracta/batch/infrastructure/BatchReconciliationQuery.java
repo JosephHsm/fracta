@@ -72,11 +72,18 @@ public class BatchReconciliationQuery {
                 SELECT COALESCE(SUM(deposit_amount), 0)
                 FROM subscription_order WHERE status = 'DEPOSITED'
                 """);
-        BigInteger accounted = cashSum.add(outstandingMargin);
+        // 매수 주문이 잡고 있는 대금 홀드도 내부 이동이다 — 투자자 잔액에서 빠져 주문에 묶여
+        // 있을 뿐이라 보존식의 한 항으로 더해야 한다. 빠뜨리면 매수 주문이 호가창에 올라 있는
+        // 동안 야간 정합성 배치가 매번 INV-6 위반을 올린다.
+        BigInteger outstandingTradeHold = number("""
+                SELECT COALESCE(SUM(held_amount), 0)
+                FROM trade_order WHERE held_amount > 0
+                """);
+        BigInteger accounted = cashSum.add(outstandingMargin).add(outstandingTradeHold);
         ReconciliationCheck inv6 = ReconciliationCheck.amounts(
                 "INV-6", ReconciliationCheck.GLOBAL_SCOPE, externalNet, accounted,
-                "externalNet=%s, cashBalanceSum=%s, outstandingMargin=%s"
-                        .formatted(externalNet, cashSum, outstandingMargin));
+                "externalNet=%s, cashBalanceSum=%s, outstandingMargin=%s, outstandingTradeHold=%s"
+                        .formatted(externalNet, cashSum, outstandingMargin, outstandingTradeHold));
         return List.of(inv3, inv6);
     }
 
