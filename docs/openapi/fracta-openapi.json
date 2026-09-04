@@ -464,6 +464,17 @@
         },
         "type" : "object"
       },
+      "ApiResponsePriceRuleView" : {
+        "properties" : {
+          "data" : {
+            "$ref" : "#/components/schemas/PriceRuleView"
+          },
+          "meta" : {
+            "$ref" : "#/components/schemas/ResponseMeta"
+          }
+        },
+        "type" : "object"
+      },
       "ApiResponseProspectusAskResponse" : {
         "properties" : {
           "data" : {
@@ -1777,6 +1788,33 @@
           },
           "tokenSymbol" : {
             "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "PriceRuleView" : {
+        "properties" : {
+          "lowerLimit" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "priceSource" : {
+            "type" : "string"
+          },
+          "referencePrice" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "tickSize" : {
+            "format" : "int64",
+            "type" : "integer"
+          },
+          "tokenSymbol" : {
+            "type" : "string"
+          },
+          "upperLimit" : {
+            "format" : "int64",
+            "type" : "integer"
           }
         },
         "type" : "object"
@@ -3646,6 +3684,33 @@
             "description" : "Created"
           }
         },
+        "tags" : [ "trading-controller" ]
+      }
+    },
+    "/api/v1/tokens/{tokenSymbol}/price-rules" : {
+      "get" : {
+        "operationId" : "getPriceRules",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "tokenSymbol",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponsePriceRuleView"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "summary" : "주문 가격 규칙",
         "tags" : [ "trading-controller" ]
       }
     },

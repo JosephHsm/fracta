@@ -44,6 +44,11 @@ import {
     ApiResponsePlaceResultToJSON,
 } from '../models/ApiResponsePlaceResult';
 import {
+    type ApiResponsePriceRuleView,
+    ApiResponsePriceRuleViewFromJSON,
+    ApiResponsePriceRuleViewToJSON,
+} from '../models/ApiResponsePriceRuleView';
+import {
     type PlaceOrderRequest,
     PlaceOrderRequestFromJSON,
     PlaceOrderRequestToJSON,
@@ -54,6 +59,13 @@ export interface CancelMyOrderRequest {
      * 
      */
     orderId: number;
+}
+
+export interface GetPriceRulesRequest {
+    /**
+     * 
+     */
+    tokenSymbol: string;
 }
 
 export interface ListCandlesRequest {
@@ -163,6 +175,59 @@ export class TradingControllerApi extends runtime.BaseAPI {
      */
     async cancelMyOrder(requestParameters: CancelMyOrderRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ApiResponsePlaceResult> {
         const response = await this.cancelMyOrderRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for getPriceRules without sending the request
+     */
+    async getPriceRulesRequestOpts(requestParameters: GetPriceRulesRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['tokenSymbol'] == null) {
+            throw new runtime.RequiredError(
+                'tokenSymbol',
+                'Required parameter "tokenSymbol" was null or undefined when calling getPriceRules().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            const token = this.configuration.accessToken;
+            const tokenString = await token("bearerAuth", []);
+
+            if (tokenString) {
+                headerParameters["Authorization"] = `Bearer ${tokenString}`;
+            }
+        }
+
+        let urlPath = `/api/v1/tokens/{tokenSymbol}/price-rules`;
+        urlPath = urlPath.replace('{tokenSymbol}', encodeURIComponent(String(requestParameters['tokenSymbol'])));
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * 주문 가격 규칙
+     */
+    async getPriceRulesRaw(requestParameters: GetPriceRulesRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ApiResponsePriceRuleView>> {
+        const requestOptions = await this.getPriceRulesRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => ApiResponsePriceRuleViewFromJSON(jsonValue));
+    }
+
+    /**
+     * 주문 가격 규칙
+     */
+    async getPriceRules(requestParameters: GetPriceRulesRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ApiResponsePriceRuleView> {
+        const response = await this.getPriceRulesRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
