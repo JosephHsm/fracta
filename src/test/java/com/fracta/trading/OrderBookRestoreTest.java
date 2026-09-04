@@ -93,7 +93,7 @@ class OrderBookRestoreTest extends IntegrationTestBase {
         trading.place(market.tokenSymbol(), InvestorId.of(seller), OrderSide.SELL,
                 OrderType.LIMIT, 1_000L, 40, support.newKey());
         trading.place(market.tokenSymbol(), InvestorId.of(seller), OrderSide.SELL,
-                OrderType.LIMIT, 2_000L, 20, support.newKey());
+                OrderType.LIMIT, 1_200L, 20, support.newKey());
 
         executor.runOnPartition(market.tokenSymbol(), OrderBook::drainAll);
         var report = restorer.restore();

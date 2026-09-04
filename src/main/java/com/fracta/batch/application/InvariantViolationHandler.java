@@ -1,5 +1,7 @@
 package com.fracta.batch.application;
 
+import com.fracta.common.invariant.ReconciliationCheck;
+
 import java.time.Instant;
 
 import org.slf4j.Logger;

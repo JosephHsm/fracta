@@ -31,7 +31,7 @@ import com.fracta.batch.application.BatchExecutionListener;
 import com.fracta.batch.application.BatchJobNames;
 import com.fracta.batch.application.BatchRetryExecutor;
 import com.fracta.batch.application.InvariantViolationHandler;
-import com.fracta.batch.application.ReconciliationCheck;
+import com.fracta.common.invariant.ReconciliationCheck;
 import com.fracta.batch.application.ReconciliationReader;
 import com.fracta.batch.application.ReconciliationResultStore;
 import com.fracta.batch.application.SettlementReportBatchService;

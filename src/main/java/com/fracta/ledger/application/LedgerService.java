@@ -75,4 +75,11 @@ public class LedgerService implements LedgerPort {
     public InvariantResult verifyInvariant(String tokenSymbol) {
         return adapter.verifyInvariant(tokenSymbol);
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public java.util.List<com.fracta.common.invariant.ReconciliationCheck> checkTokenInvariants(
+            String tokenSymbol) {
+        return adapter.checkTokenInvariants(tokenSymbol);
+    }
 }

@@ -21,10 +21,15 @@ import java.util.List;
  */
 public final class PlugPathPolicy {
 
-    /** 조회 전용 경로. 여기 없는 경로는 부를 수 없다. */
+    /**
+     * 조회 전용 경로. 여기 없는 경로는 부를 수 없다.
+     *
+     * <p><b>실제로 부르는 것만 남긴다.</b> 예전에는 계좌 조회(`/n2/acctinfo`)도 열려 있었는데
+     * 설정에만 있고 코드에서 한 번도 호출하지 않았다. 방어선에 쓰지 않는 구멍을 열어 두면
+     * "시세만 조회한다"는 설명이 그만큼 약해진다.
+     */
     private static final List<String> ALLOWED_PREFIXES = List.of(
-            "/krstock/quote/",
-            "/n2/acctinfo");
+            "/krstock/quote/");
 
     private PlugPathPolicy() {
     }

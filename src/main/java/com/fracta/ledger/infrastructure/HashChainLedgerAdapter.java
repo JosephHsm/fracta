@@ -1,5 +1,6 @@
 package com.fracta.ledger.infrastructure;
 
+import java.math.BigInteger;
 import java.sql.PreparedStatement;
 import java.time.Instant;
 import java.time.OffsetDateTime;
@@ -13,6 +14,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import com.fracta.common.config.AdvisoryLockIds;
+import com.fracta.common.invariant.ReconciliationCheck;
 import com.fracta.common.money.InsufficientUnitsException;
 import com.fracta.common.money.Units;
 import com.fracta.ledger.api.Balance;
@@ -233,34 +235,50 @@ public class HashChainLedgerAdapter implements LedgerPort {
         return ChainVerifyResult.ok(fromSeq, toSeq, state.checked);
     }
 
+    /**
+     * 토큰 단위 불변식 검증 — <b>이 프로젝트에서 INV-1·2·3의 유일한 정의다.</b>
+     *
+     * <p>{@link #verifyInvariant}와 야간 대사 배치가 모두 여기를 거친다. 예전에는 배치가
+     * 같은 검증을 자기 SQL로 따로 갖고 있어, 정의가 바뀌면 두 곳을 고쳐야 했다.
+     */
+    @Override
+    public List<ReconciliationCheck> checkTokenInvariants(String tokenSymbol) {
+        BigInteger issued = BigInteger.valueOf(totalIssued(tokenSymbol).value());
+        BigInteger balanceSum = BigInteger.valueOf(count(
+                "SELECT COALESCE(SUM(units), 0) FROM ledger_balance WHERE token_symbol = ?",
+                tokenSymbol));
+
+        long lockViolations = count(
+                "SELECT COUNT(*) FROM ledger_balance WHERE token_symbol = ? AND locked_units > units",
+                tokenSymbol);
+
+        long negatives = count(
+                "SELECT COUNT(*) FROM ledger_balance"
+                        + " WHERE token_symbol = ? AND (units < 0 OR locked_units < 0)",
+                tokenSymbol);
+
+        return List.of(
+                ReconciliationCheck.amounts("INV-1", tokenSymbol, issued, balanceSum,
+                        "totalIssued=%s, 잔고 합계=%s".formatted(issued, balanceSum)),
+                ReconciliationCheck.count("INV-2", tokenSymbol, lockViolations,
+                        "locked_units > units 잔고 %d건".formatted(lockViolations)),
+                ReconciliationCheck.count("INV-3", tokenSymbol, negatives,
+                        "음수 잔고 %d건".formatted(negatives)));
+    }
+
+    /** 위반 문구 목록 형태. 검증 자체는 {@link #checkTokenInvariants}가 한다. */
     @Override
     public InvariantResult verifyInvariant(String tokenSymbol) {
-        List<String> violations = new ArrayList<>();
-
-        long issued = totalIssued(tokenSymbol).value();
-        Long balanceSum = jdbc.queryForObject(
-                "SELECT COALESCE(SUM(units), 0) FROM ledger_balance WHERE token_symbol = ?",
-                Long.class, tokenSymbol);
-        long sum = balanceSum == null ? 0 : balanceSum;
-        if (issued != sum) {
-            violations.add("INV-1 위반: totalIssued=%d, 잔고 합계=%d".formatted(issued, sum));
-        }
-
-        Long lockViolations = jdbc.queryForObject(
-                "SELECT COUNT(*) FROM ledger_balance WHERE token_symbol = ? AND locked_units > units",
-                Long.class, tokenSymbol);
-        if (lockViolations != null && lockViolations > 0) {
-            violations.add("INV-2 위반: locked_units > units 잔고 %d건".formatted(lockViolations));
-        }
-
-        Long negatives = jdbc.queryForObject(
-                "SELECT COUNT(*) FROM ledger_balance WHERE token_symbol = ? AND (units < 0 OR locked_units < 0)",
-                Long.class, tokenSymbol);
-        if (negatives != null && negatives > 0) {
-            violations.add("INV-3 위반: 음수 잔고 %d건".formatted(negatives));
-        }
-
+        List<String> violations = checkTokenInvariants(tokenSymbol).stream()
+                .filter(check -> !check.valid())
+                .map(check -> "%s 위반: %s".formatted(check.invariantCode(), check.detail()))
+                .toList();
         return InvariantResult.of(tokenSymbol, violations);
+    }
+
+    private long count(String sql, Object... args) {
+        Long value = jdbc.queryForObject(sql, Long.class, args);
+        return value == null ? 0 : value;
     }
 
     // ── 내부 ────────────────────────────────────────────────────

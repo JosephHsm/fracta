@@ -52,6 +52,39 @@ public final class TradingExceptions {
         }
     }
 
+    /** 호가단위에 맞지 않는 가격. */
+    public static class InvalidTickException extends DomainException {
+        public InvalidTickException(long price, long tickSize) {
+            super(ErrorCode.VALID_INVALID_INPUT,
+                    "가격은 %d원 단위로 입력해 주세요. 입력값: %d원".formatted(tickSize, price),
+                    Map.of("price", price, "tickSize", tickSize));
+        }
+    }
+
+    /**
+     * 가격제한폭을 벗어난 주문.
+     *
+     * <p>사전 방어다. 이게 없으면 괴리율 자동 거래중단(TR-08)이 유일한 가격 안전장치가 되는데,
+     * 그건 체결이 일어난 뒤에야 도는 사후 조치이고 되돌리는 비용이 훨씬 크다.
+     */
+    public static class PriceOutOfLimitException extends DomainException {
+        public PriceOutOfLimitException(long price, long lower, long upper, String priceSource) {
+            super(ErrorCode.VALID_INVALID_INPUT,
+                    "주문 가격이 가격제한폭을 벗어났습니다. 허용 범위: %d원 ~ %d원".formatted(lower, upper),
+                    Map.of("price", price, "lowerLimit", lower, "upperLimit", upper,
+                            "referenceSource", priceSource));
+        }
+    }
+
+    /** 거래 시간이 아닐 때의 주문. */
+    public static class MarketClosedException extends DomainException {
+        public MarketClosedException(String tradingHours) {
+            super(ErrorCode.STATE_NOT_TRADABLE,
+                    "지금은 거래 시간이 아닙니다. 운영 시간: " + tradingHours,
+                    Map.of("tradingHours", tradingHours));
+        }
+    }
+
     /** 시장가 주문인데 반대편 호가가 없어 체결 불가. */
     public static class NoLiquidityException extends DomainException {
         public NoLiquidityException(String tokenSymbol) {

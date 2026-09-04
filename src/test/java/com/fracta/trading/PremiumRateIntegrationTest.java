@@ -27,6 +27,12 @@ import com.fracta.trading.domain.TradingExceptions;
  * 괴리율 산출·경보 (TR-07, TR-08).
  * Mock 어댑터는 티커에 든 숫자를 기준가로 쓴다 — 이 성질로 괴리율을 원하는 값에 맞춘다.
  */
+// 이 테스트의 주제는 TR-08(괴리율)이지 가격제한폭이 아니다. 기본 밴드(±30%)로는 원자산 대비
+// +50% 괴리를 한 번에 만들 수 없어 — 그게 가격제한폭의 목적이다 — 시나리오 자체가 성립하지
+// 않는다. 실제로는 원자산이 움직이거나 여러 세션에 걸쳐 벌어져 도달하는 상태를,
+// 여기서는 밴드를 열어 한 번에 재현한다.
+@org.springframework.test.context.TestPropertySource(
+        properties = "trading.daily-price-limit-percent=99")
 class PremiumRateIntegrationTest extends IntegrationTestBase {
 
     @Autowired
@@ -123,9 +129,10 @@ class PremiumRateIntegrationTest extends IntegrationTestBase {
         long buyer = support.investor(100_000_000);
         support.giveUnits(market, seller, 200);
 
-        // 먼저 체결되지 않을 미체결 매도를 하나 걸어둔다 (거래 중단 시 취소 대상)
+        // 먼저 체결되지 않을 미체결 매도를 하나 걸어둔다 (거래 중단 시 취소 대상).
+        // 아래 1,500 매수와 교차하지 않을 만큼 높되 가격제한폭 안이어야 한다
         trading.place(market.tokenSymbol(), InvestorId.of(seller), OrderSide.SELL,
-                OrderType.LIMIT, 9_000L, 50, support.newKey());
+                OrderType.LIMIT, 1_900L, 50, support.newKey());
         assertThat(ledger.balanceOf(market.tokenSymbol(), OwnerId.of(seller)).lockedUnits())
                 .isEqualTo(Units.of(50));
 

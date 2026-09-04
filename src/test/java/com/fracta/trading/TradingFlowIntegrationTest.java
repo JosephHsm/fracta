@@ -195,12 +195,12 @@ class TradingFlowIntegrationTest extends IntegrationTestBase {
         support.giveUnits(market, seller, 100);
 
         trading.place(market.tokenSymbol(), InvestorId.of(seller), OrderSide.SELL,
-                OrderType.LIMIT, 2_000L, 30, support.newKey());
+                OrderType.LIMIT, 1_200L, 30, support.newKey());
         trading.place(market.tokenSymbol(), InvestorId.of(buyer), OrderSide.BUY,
                 OrderType.LIMIT, 1_000L, 20, support.newKey());
 
         assertThat(trading.depth(market.tokenSymbol(), OrderSide.SELL, 10))
-                .containsExactly(new com.fracta.trading.domain.OrderBook.PriceLevel(2_000, 30));
+                .containsExactly(new com.fracta.trading.domain.OrderBook.PriceLevel(1_200, 30));
         assertThat(trading.depth(market.tokenSymbol(), OrderSide.BUY, 10))
                 .containsExactly(new com.fracta.trading.domain.OrderBook.PriceLevel(1_000, 20));
     }
