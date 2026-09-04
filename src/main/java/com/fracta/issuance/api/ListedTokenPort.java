@@ -22,6 +22,9 @@ public interface ListedTokenPort {
      * @param splitRatio 원자산 1주 = splitRatio 조각
      */
     record ListedToken(long issuanceId, String tokenSymbol, String status, boolean tradable,
-                       String brokerTicker, long splitRatio, int riskGrade) {
+                       String brokerTicker, long splitRatio, int riskGrade,
+                       long unitPrice,
+                       java.math.BigDecimal premiumWarnPercent,
+                       java.math.BigDecimal premiumSuspendPercent) {
     }
 }

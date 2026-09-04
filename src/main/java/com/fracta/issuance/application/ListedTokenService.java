@@ -73,6 +73,9 @@ public class ListedTokenService implements ListedTokenPort {
                 issuance.status() == IssuanceStatus.LISTED,
                 asset == null ? null : asset.brokerTicker(),
                 asset == null ? 1 : asset.splitRatio(),
-                issuance.riskGrade());
+                issuance.riskGrade(),
+                issuance.unitPrice(),
+                asset == null ? null : asset.premiumWarnPercent(),
+                asset == null ? null : asset.premiumSuspendPercent());
     }
 }
