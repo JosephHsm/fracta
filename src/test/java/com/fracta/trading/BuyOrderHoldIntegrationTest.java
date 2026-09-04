@@ -26,7 +26,7 @@ import com.fracta.trading.domain.OrderType;
  * 호가창에 올라가 결제 실패를 반복시킬 수 있었다. 접수 시점에 예상 체결금액 + 수수료를
  * 홀드하고 체결분만큼 환급한다.
  *
- * <p>수수료는 체결금액 × 0.015% 원 단위 절사다 (FeePolicy).
+ * <p>수수료는 체결금액 × 0.015% 원 단위 절사, <b>최소 10원</b>이다 (FeePolicy).
  *
  * <p>{@code outstandingHeldAmount()} 는 DB 전역 합계라 다른 테스트가 남긴 미체결 매수 주문이
  * 섞인다. 그래서 절대값이 아니라 <b>이 테스트가 만든 증감</b>만 본다.
@@ -85,13 +85,13 @@ class BuyOrderHoldIntegrationTest extends IntegrationTestBase {
         long buyer = support.investor(START_CASH);
         long held0 = tradeHolds.outstandingHeldAmount();
 
-        // 1,000 × 40 = 40,000, 수수료 = 40,000 × 0.00015 = 6 → 홀드 40,006
+        // 1,000 × 40 = 40,000, 요율 수수료 6원 → 최소수수료 10원 적용 → 홀드 40,010
         var placed = trading.place(market.tokenSymbol(), InvestorId.of(buyer), OrderSide.BUY,
                 OrderType.LIMIT, 1_000L, 40, support.newKey());
 
         assertThat(placed.status()).isEqualTo(OrderStatus.OPEN.name());
-        assertThat(cashOf(buyer)).isEqualTo(START_CASH - 40_006);
-        assertThat(heldSince(held0)).isEqualTo(40_006);
+        assertThat(cashOf(buyer)).isEqualTo(START_CASH - 40_010);
+        assertThat(heldSince(held0)).isEqualTo(40_010);
         // 홀드 중에도 예치금 보존식은 성립해야 한다 (잔액에서 빠졌을 뿐 사라진 게 아니다)
         assertThat(invariants.verifyInv6().valid()).isTrue();
 
@@ -115,17 +115,17 @@ class BuyOrderHoldIntegrationTest extends IntegrationTestBase {
         trading.place(market.tokenSymbol(), InvestorId.of(seller), OrderSide.SELL,
                 OrderType.LIMIT, 1_000L, 10, support.newKey());
 
-        // 매수 40주 — 홀드 40,006, 그중 10주만 체결된다
+        // 매수 40주 — 홀드 40,010, 그중 10주만 체결된다
         var placed = trading.place(market.tokenSymbol(), InvestorId.of(buyer), OrderSide.BUY,
                 OrderType.LIMIT, 1_000L, 40, support.newKey());
 
-        // 체결 원가 = 10,000 + 수수료 1(10,000 × 0.00015 = 1.5 절사) = 10,001
-        long paid = 10_001;
+        // 체결 원가 = 10,000 + 수수료 10(요율로는 1원, 최소수수료가 걸린다) = 10,010
+        long paid = 10_010;
         assertThat(placed.status()).isEqualTo(OrderStatus.PARTIALLY_FILLED.name());
         assertThat(placed.filledUnits()).isEqualTo(10);
-        assertThat(cashOf(buyer)).isEqualTo(START_CASH - 40_006);
+        assertThat(cashOf(buyer)).isEqualTo(START_CASH - 40_010);
         // 남은 30주 몫의 홀드만 남는다
-        assertThat(heldSince(held0)).isEqualTo(40_006 - paid);
+        assertThat(heldSince(held0)).isEqualTo(40_010 - paid);
         assertThat(invariants.verifyInv6().valid()).isTrue();
 
         trading.cancel(placed.orderId(), InvestorId.of(buyer));
@@ -152,9 +152,9 @@ class BuyOrderHoldIntegrationTest extends IntegrationTestBase {
         var placed = trading.place(market.tokenSymbol(), InvestorId.of(buyer), OrderSide.BUY,
                 OrderType.LIMIT, 1_000L, 10, support.newKey());
 
-        // 홀드는 1,000 기준(10,001)이었지만 결제는 900 기준(9,000 + 1)이다
+        // 홀드는 1,000 기준(10,010)이었지만 결제는 900 기준(9,000 + 10)이다
         assertThat(placed.status()).isEqualTo(OrderStatus.FILLED.name());
-        assertThat(cashOf(buyer)).isEqualTo(START_CASH - 9_001);
+        assertThat(cashOf(buyer)).isEqualTo(START_CASH - 9_010);
         // 차액이 홀드에 갇히면 안 된다
         assertThat(heldSince(held0)).isZero();
         assertThat(invariants.verifyInv6().valid()).isTrue();
@@ -179,10 +179,11 @@ class BuyOrderHoldIntegrationTest extends IntegrationTestBase {
         var placed = trading.place(market.tokenSymbol(), InvestorId.of(buyer), OrderSide.BUY,
                 OrderType.MARKET, null, 40, support.newKey());
 
-        // 10 × 1,000 = 10,000 (수수료 1) + 5 × 1,200 = 6,000 (수수료 0) = 16,001
+        // 10 × 1,000 = 10,000 + 5 × 1,200 = 6,000. 두 체결 모두 요율이 최소수수료에 못 미쳐
+        // 각각 10원이 붙는다 → 16,020
         assertThat(placed.filledUnits()).isEqualTo(15);
         assertThat(placed.status()).isEqualTo(OrderStatus.CANCELLED.name());
-        assertThat(cashOf(buyer)).isEqualTo(START_CASH - 16_001);
+        assertThat(cashOf(buyer)).isEqualTo(START_CASH - 16_020);
         assertThat(heldSince(held0)).isZero();
         assertThat(invariants.verifyInv6().valid()).isTrue();
     }
@@ -196,7 +197,7 @@ class BuyOrderHoldIntegrationTest extends IntegrationTestBase {
 
         trading.place(market.tokenSymbol(), InvestorId.of(buyer), OrderSide.BUY,
                 OrderType.LIMIT, 1_000L, 40, support.newKey());
-        assertThat(heldSince(held0)).isEqualTo(40_006);
+        assertThat(heldSince(held0)).isEqualTo(40_010);
 
         trading.cancelAllOpenOrders(market.tokenSymbol(), "테스트 중단");
 

@@ -140,14 +140,15 @@ class SettlementInvariantTest extends IntegrationTestBase {
         long buyer = support.investor(10_000_000);
         support.giveUnits(market, seller, 50);
 
-        // 매수가 먼저 호가창에 걸린다. 홀드는 1,000 × 50 + 수수료 7 = 50,007
+        // 매수가 먼저 호가창에 걸린다. 홀드는 1,000 × 50 + 수수료 10 = 50,010
+        // (요율로는 7원이지만 최소수수료 10원이 걸린다)
         var buyOrder = trading.place(market.tokenSymbol(), InvestorId.of(buyer), OrderSide.BUY,
                 OrderType.LIMIT, 1_000L, 50, support.newKey());
         long buyerCashHeld = accounts.cashBalanceOf(InvestorId.of(buyer)).amount();
-        assertThat(buyerCashHeld).isEqualTo(10_000_000 - 50_007);
+        assertThat(buyerCashHeld).isEqualTo(10_000_000 - 50_010);
 
         // 그 매수의 결제를 잔액 부족으로 실패시킨다 — 원인은 걸려 있던 매수 쪽이다
-        doThrow(new InsufficientCashException(50_007))
+        doThrow(new InsufficientCashException(50_010))
                 .when(cashService).tradeDebit(any(), any());
 
         var sellOrder = trading.place(market.tokenSymbol(), InvestorId.of(seller), OrderSide.SELL,

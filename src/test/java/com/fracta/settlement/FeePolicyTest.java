@@ -10,7 +10,7 @@ import com.fracta.common.money.AmountOverflowException;
 import com.fracta.common.money.Money;
 import com.fracta.settlement.domain.FeePolicy;
 
-/** 수수료 0.015%, 원 단위 절사 (ST-03). 부동소수점 금지. */
+/** 수수료 0.015%, 원 단위 절사, 최소 10원 (ST-03). 부동소수점 금지. */
 class FeePolicyTest {
 
     @Test
@@ -22,22 +22,35 @@ class FeePolicyTest {
     @Test
     @DisplayName("절사 경계 — 소수점 이하는 버린다 (반올림 아님)")
     void truncatesDown() {
-        // 6,666 × 0.00015 = 0.9999 → 0원
-        assertThat(FeePolicy.fee(Money.of(6_666))).isEqualTo(Money.ZERO);
-        // 6,667 × 0.00015 = 1.00005 → 1원
-        assertThat(FeePolicy.fee(Money.of(6_667))).isEqualTo(Money.of(1));
-        // 13,333 × 0.00015 = 1.99995 → 1원 (반올림이면 2원이 됐을 값)
-        assertThat(FeePolicy.fee(Money.of(13_333))).isEqualTo(Money.of(1));
-        // 13,334 × 0.00015 = 2.0001 → 2원
-        assertThat(FeePolicy.fee(Money.of(13_334))).isEqualTo(Money.of(2));
+        // 요율 계산이 최소수수료를 넘는 구간에서 절사 규칙을 본다.
+        // 66,666 × 0.00015 = 9.9999 → 9원이지만 최소 10원이 걸린다
+        assertThat(FeePolicy.fee(Money.of(66_666))).isEqualTo(Money.of(10));
+        // 73,333 × 0.00015 = 10.99995 → 10원 (반올림이면 11원이 됐을 값)
+        assertThat(FeePolicy.fee(Money.of(73_333))).isEqualTo(Money.of(10));
+        // 73,334 × 0.00015 = 11.0001 → 11원
+        assertThat(FeePolicy.fee(Money.of(73_334))).isEqualTo(Money.of(11));
     }
 
     @Test
-    @DisplayName("소액 체결 — 수수료가 0원이 될 수 있다")
-    void tinyAmountsYieldZeroFee() {
+    @DisplayName("소액 체결에도 최소수수료가 걸린다 — 분할 체결로 회피할 수 없다")
+    void smallAmountsPayMinimumFee() {
+        // 요율만 두면 6,666원 이하는 전부 0원이었다. 주문을 쪼개면 수수료가 사라졌다.
+        assertThat(FeePolicy.fee(Money.of(6_666))).isEqualTo(Money.of(FeePolicy.MIN_FEE_WON));
+        assertThat(FeePolicy.fee(Money.of(1_000))).isEqualTo(Money.of(FeePolicy.MIN_FEE_WON));
+        assertThat(FeePolicy.fee(Money.of(100))).isEqualTo(Money.of(FeePolicy.MIN_FEE_WON));
+
+        // 쪼개도 총액이 줄지 않는다 — 10,000원 한 번 vs 1,000원 열 번
+        assertThat(FeePolicy.fee(Money.of(10_000)).amount())
+                .isLessThanOrEqualTo(FeePolicy.fee(Money.of(1_000)).amount() * 10);
+    }
+
+    @Test
+    @DisplayName("수수료가 체결금액을 넘지 않는다")
+    void feeNeverExceedsExecutionAmount() {
         assertThat(FeePolicy.fee(Money.ZERO)).isEqualTo(Money.ZERO);
-        assertThat(FeePolicy.fee(Money.of(1))).isEqualTo(Money.ZERO);
-        assertThat(FeePolicy.fee(Money.of(6_665))).isEqualTo(Money.ZERO);
+        assertThat(FeePolicy.fee(Money.of(1))).isEqualTo(Money.of(1));
+        assertThat(FeePolicy.fee(Money.of(9))).isEqualTo(Money.of(9));
+        assertThat(FeePolicy.fee(Money.of(10))).isEqualTo(Money.of(10));
     }
 
     @Test
