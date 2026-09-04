@@ -64,8 +64,12 @@ public class BrokerSafetyValidator {
     }
 
     /**
-     * 로컬 스텁(WireMock) 주소만 예외로 허용한다. 실제 증권사 도메인은 여전히 moapi.* 만
-     * 통과하므로 실전 도메인 차단은 그대로다 — 루프백은 증권사가 아니다.
+     * 로컬 스텁(WireMock) 주소만 예외로 허용한다 — 루프백은 증권사가 아니다.
+     *
+     * <p>실제 증권사 도메인은 {@code .nhplug.com} 만 통과한다. (KIS 시절 주석이
+     * {@code moapi.*} 로 남아 있었는데, v1.1에서 NH로 바꾸면서 코드만 고쳐졌다.)
+     * 도메인 검사는 이제 보조 장치이고, 실주문 차단의 근거는 {@link PlugPathPolicy} 의
+     * 조회 전용 경로 화이트리스트다.
      */
     private boolean isLoopback(String host) {
         return "localhost".equals(host) || "127.0.0.1".equals(host) || "[::1]".equals(host);

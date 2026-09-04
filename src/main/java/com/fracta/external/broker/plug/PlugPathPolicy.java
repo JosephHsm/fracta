@@ -29,12 +29,66 @@ public final class PlugPathPolicy {
     private PlugPathPolicy() {
     }
 
+    /**
+     * 화이트리스트 통과 여부.
+     *
+     * <p><b>정규화 후에 비교한다.</b> 접두사만 문자열로 보면
+     * {@code /krstock/quote/../../order} 같은 경로가 통과한다 — 접두사는 맞지만 서버가
+     * {@code ..}를 풀면 주문 경로가 된다. 이 화이트리스트는 이 프로젝트에서 실주문을 막는
+     * 마지막 방어선이라 문자열 비교로 둘 수 없다.
+     */
     public static boolean isAllowed(String path) {
+        String normalized = normalize(path);
+        return normalized != null && ALLOWED_PREFIXES.stream().anyMatch(normalized::startsWith);
+    }
+
+    /**
+     * 경로를 비교 가능한 형태로 만든다. 판단할 수 없으면 null — 모르는 건 막는다.
+     *
+     * <p>쿼리·프래그먼트를 떼고, {@code .}/{@code ..}를 해소하고, 퍼센트 인코딩된
+     * {@code %2e%2e}로 정규화를 피해 가는 것도 막는다.
+     */
+    private static String normalize(String path) {
         if (path == null || path.isBlank()) {
-            return false;
+            return null;
         }
-        String normalized = path.startsWith("/") ? path : "/" + path;
-        return ALLOWED_PREFIXES.stream().anyMatch(normalized::startsWith);
+        String candidate = path;
+        // 인코딩으로 숨긴 구분자·상위 경로를 먼저 드러낸다
+        if (candidate.contains("%")) {
+            try {
+                candidate = java.net.URLDecoder.decode(candidate, java.nio.charset.StandardCharsets.UTF_8);
+            } catch (IllegalArgumentException e) {
+                return null;   // 깨진 인코딩 — 무엇을 부르는지 알 수 없다
+            }
+        }
+        // 역슬래시를 슬래시로 취급하는 서버가 있다
+        candidate = candidate.replace('\\', '/');
+        int cut = candidate.indexOf('?');
+        if (cut >= 0) {
+            candidate = candidate.substring(0, cut);
+        }
+        cut = candidate.indexOf('#');
+        if (cut >= 0) {
+            candidate = candidate.substring(0, cut);
+        }
+        if (candidate.isBlank()) {
+            return null;
+        }
+        if (!candidate.startsWith("/")) {
+            candidate = "/" + candidate;
+        }
+        String normalized;
+        try {
+            // 상대 경로 해소는 URI 에 맡긴다 — 직접 구현하면 반드시 구멍이 생긴다
+            normalized = java.net.URI.create(candidate).normalize().getPath();
+        } catch (IllegalArgumentException e) {
+            return null;
+        }
+        // normalize() 가 다 풀지 못한 잔여 ".." 는 통과시키지 않는다
+        if (normalized == null || normalized.contains("..")) {
+            return null;
+        }
+        return normalized;
     }
 
     /**
