@@ -27,9 +27,14 @@ public final class PlugPathPolicy {
      * <p><b>실제로 부르는 것만 남긴다.</b> 예전에는 계좌 조회(`/n2/acctinfo`)도 열려 있었는데
      * 설정에만 있고 코드에서 한 번도 호출하지 않았다. 방어선에 쓰지 않는 구멍을 열어 두면
      * "시세만 조회한다"는 설명이 그만큼 약해진다.
+     *
+     * <p>{@code /gbstock/quote/} 는 해외주식 시세다. 국내장이 닫힌 시간에도 시세가 살아 있어야
+     * 화면이 실제 주식 앱처럼 동작한다. 해외 주문 경로는 여전히 막힌다 — 화이트리스트에
+     * 조회 접두사만 있고, 주문 접두사는 여기 없다.
      */
     private static final List<String> ALLOWED_PREFIXES = List.of(
-            "/krstock/quote/");
+            "/krstock/quote/",
+            "/gbstock/quote/");
 
     private PlugPathPolicy() {
     }

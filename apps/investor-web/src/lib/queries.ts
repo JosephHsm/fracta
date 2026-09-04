@@ -134,6 +134,22 @@ export function useMyOrders() {
  * <p>금액은 전부 서버가 산출한 값이다. 화면에서 보유 수량 × 현재가를 곱하지 않는다
  * (FSD §11.2 금액 재계산 금지). 기준가 출처는 `priceSource`로 함께 내려온다.
  */
+/**
+ * 거래소 장 상태. 화면이 "지금 어느 시장이 도는지"를 항상 말할 수 있어야 한다.
+ *
+ * <p>장중에는 자주, 마감이면 드물게 갱신한다 — 닫힌 시장을 계속 물어볼 이유가 없다.
+ */
+export function useMarketSessions() {
+  const { client, token } = useSession();
+  return useQuery({
+    queryKey: ["market-sessions"],
+    enabled: Boolean(token),
+    queryFn: async () => (await client.instrument.getMarketSessions()).data ?? [],
+    refetchInterval: (query) =>
+      (query.state.data ?? []).some((s) => s.state === "OPEN") ? 10_000 : 60_000,
+  });
+}
+
 export function useMyPositions() {
   const { client, token } = useSession();
   return useQuery({

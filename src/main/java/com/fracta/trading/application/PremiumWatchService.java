@@ -13,7 +13,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.fracta.common.money.Money;
-import com.fracta.external.broker.plug.MarketHours;
+import com.fracta.external.broker.MarketSessionTracker;
+import com.fracta.external.broker.MarketVenue;
 import com.fracta.issuance.api.ListedTokenPort;
 import com.fracta.trading.domain.TradeExecution;
 import com.fracta.trading.infrastructure.TradeExecutionRepository;
@@ -30,9 +31,11 @@ import com.fracta.trading.infrastructure.TradeExecutionRepository;
  * 시장이 합의한 가격과 지금 원자산 환산가의 거리를 본다. 체결 이력이 없는 종목은 비교 대상이
  * 없어 건너뛴다.
  *
- * <p>장 시간 외에는 <b>중단시키지 않고 경보만</b> 남긴다. 그때 쓰는 원자산 시세는 마지막
- * 종가 캐시라, 자체 오더북이 24시간 열려 있는 지금 구조에서는 새벽 체결 하나로 자동 중단이
- * 걸릴 수 있다. 되돌리는 비용이 큰 조치를 신뢰할 수 없는 기준가로 실행하지 않는다.
+ * <p>어느 거래소도 열려 있지 않으면 <b>중단시키지 않고 경보만</b> 남긴다. 그때 쓰는 원자산
+ * 시세는 마지막 종가라, 자체 오더북이 24시간 열려 있는 지금 구조에서는 새벽 체결 하나로 자동
+ * 중단이 걸릴 수 있다. 되돌리는 비용이 큰 조치를 신뢰할 수 없는 기준가로 실행하지 않는다.
+ *
+ * <p>개장 여부는 {@link MarketSessionTracker} 가 거래소 응답으로 판정한다 — 시간표가 아니다.
  */
 @Service
 public class PremiumWatchService {
@@ -46,17 +49,17 @@ public class PremiumWatchService {
     private final ListedTokenPort listedTokens;
     private final TradeExecutionRepository executions;
     private final PremiumRateMonitor monitor;
-    private final MarketHours marketHours;
+    private final MarketSessionTracker sessions;
     private final boolean suspendOutsideMarketHours;
 
     public PremiumWatchService(ListedTokenPort listedTokens, TradeExecutionRepository executions,
-                               PremiumRateMonitor monitor, MarketHours marketHours,
+                               PremiumRateMonitor monitor, MarketSessionTracker sessions,
                                @Value("${trading.premium.suspend-outside-market-hours:false}")
                                boolean suspendOutsideMarketHours) {
         this.listedTokens = listedTokens;
         this.executions = executions;
         this.monitor = monitor;
-        this.marketHours = marketHours;
+        this.sessions = sessions;
         this.suspendOutsideMarketHours = suspendOutsideMarketHours;
     }
 
@@ -77,7 +80,10 @@ public class PremiumWatchService {
     /** 상장 종목을 한 바퀴 돌며 마지막 체결가 기준 괴리율을 본다. */
     @Transactional(readOnly = true)
     public WatchReport sweep() {
-        boolean allowSuspend = marketHours.isOpen() || suspendOutsideMarketHours;
+        // 거래소가 알려준 장 상태로 판단한다. 시간표를 코드에 박으면 공휴일·조기폐장을 놓치고,
+        // 해외 종목은 서머타임까지 있어 아예 맞출 수 없다.
+        boolean anyOpen = sessions.anyOpenVenue().isPresent();
+        boolean allowSuspend = anyOpen || suspendOutsideMarketHours;
         int examined = 0;
         int skipped = 0;
         int warned = 0;

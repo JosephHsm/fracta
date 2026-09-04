@@ -28,6 +28,7 @@ docs/ApiResponseListClientView.md
 docs/ApiResponseListExecutionResponse.md
 docs/ApiResponseListInstrumentHit.md
 docs/ApiResponseListIssuanceSummaryResponse.md
+docs/ApiResponseListMarketSessionResponse.md
 docs/ApiResponseListMyOrderResponse.md
 docs/ApiResponseListMySubscriptionResponse.md
 docs/ApiResponseListOpenApiExecutionResponse.md
@@ -102,6 +103,7 @@ docs/IssuedClientView.md
 docs/IssuedWebhookView.md
 docs/LoadResult.md
 docs/LoginRequest.md
+docs/MarketSessionResponse.md
 docs/MeResponse.md
 docs/MyOrderResponse.md
 docs/MySubscriptionResponse.md
@@ -181,6 +183,7 @@ src/models/ApiResponseListClientView.ts
 src/models/ApiResponseListExecutionResponse.ts
 src/models/ApiResponseListInstrumentHit.ts
 src/models/ApiResponseListIssuanceSummaryResponse.ts
+src/models/ApiResponseListMarketSessionResponse.ts
 src/models/ApiResponseListMyOrderResponse.ts
 src/models/ApiResponseListMySubscriptionResponse.ts
 src/models/ApiResponseListOpenApiExecutionResponse.ts
@@ -248,6 +251,7 @@ src/models/IssuedClientView.ts
 src/models/IssuedWebhookView.ts
 src/models/LoadResult.ts
 src/models/LoginRequest.ts
+src/models/MarketSessionResponse.ts
 src/models/MeResponse.ts
 src/models/MyOrderResponse.ts
 src/models/MySubscriptionResponse.ts

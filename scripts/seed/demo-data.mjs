@@ -429,11 +429,16 @@ async function main() {
   //
   // 주문 가격은 **참조가에서 파생**시킨다. 실시세가 매일 바뀌므로 고정 가격을 쓰면
   // 괴리율 상태(정상/경고/중단)가 재현되지 않는다.
+  //
+  // ④ 해외 종목 — 국내장이 닫힌 시간(밤)에도 시세가 도는 자산이다. 이게 없으면 장 마감 후
+  //    화면 전체가 멈춰 "실시간인 척"처럼 보인다. 금액 단위는 센트다(달러 소수점을 정수로 담는다).
   const REAL_ASSETS = [
     { label: "KODEX 200",           code: "069500", type: "ETF",  splitRatio: 100, premium: 1.02, totalUnits: 100_000, days: 7 },
     { label: "TIGER 미국나스닥100",  code: "133690", type: "ETF",  splitRatio: 100, premium: 1.16, totalUnits: 60_000,  days: 5 },
     { label: "ESR켄달스퀘어리츠",     code: "365550", type: "REIT", splitRatio: 10,  premium: 1.27, totalUnits: 40_000,  days: 3 },
     { label: "신한알파리츠",          code: "293940", type: "REIT", splitRatio: 10,  premium: 1.01, totalUnits: 50_000,  days: 6 },
+    { label: "Apple",               code: "AAPL",   type: "ETF",  splitRatio: 10,  premium: 1.03, totalUnits: 80_000,  days: 5 },
+    { label: "NVIDIA",              code: "NVDA",   type: "ETF",  splitRatio: 10,  premium: 1.12, totalUnits: 70_000,  days: 4 },
   ];
 
   const markets = [];
