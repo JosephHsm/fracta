@@ -250,6 +250,20 @@
         },
         "type" : "object"
       },
+      "ApiResponseListMarketSessionResponse" : {
+        "properties" : {
+          "data" : {
+            "items" : {
+              "$ref" : "#/components/schemas/MarketSessionResponse"
+            },
+            "type" : "array"
+          },
+          "meta" : {
+            "$ref" : "#/components/schemas/ResponseMeta"
+          }
+        },
+        "type" : "object"
+      },
       "ApiResponseListMyOrderResponse" : {
         "properties" : {
           "data" : {
@@ -1405,6 +1419,26 @@
           }
         },
         "required" : [ "email", "password" ],
+        "type" : "object"
+      },
+      "MarketSessionResponse" : {
+        "properties" : {
+          "label" : {
+            "type" : "string"
+          },
+          "lastQuotedAt" : {
+            "type" : "string"
+          },
+          "state" : {
+            "type" : "string"
+          },
+          "tradeDate" : {
+            "type" : "string"
+          },
+          "venue" : {
+            "type" : "string"
+          }
+        },
         "type" : "object"
       },
       "MeResponse" : {
@@ -3413,6 +3447,25 @@
           }
         },
         "tags" : [ "subscription-controller" ]
+      }
+    },
+    "/api/v1/market-sessions" : {
+      "get" : {
+        "operationId" : "getMarketSessions",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApiResponseListMarketSessionResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "summary" : "거래소 장 상태",
+        "tags" : [ "instrument-controller" ]
       }
     },
     "/api/v1/orders/me" : {

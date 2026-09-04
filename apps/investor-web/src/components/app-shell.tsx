@@ -7,6 +7,7 @@ import { usePathname, useRouter } from "next/navigation";
 import * as React from "react";
 
 import { ApiErrorBanner } from "@/components/api-error-banner";
+import { MarketSessionBadge } from "@/components/market-session-badge";
 import { AuthGuard } from "@/components/auth-guard";
 import { useSession } from "@/lib/session";
 import { useIssuances } from "@/lib/queries";
@@ -96,6 +97,7 @@ function Shell({ children }: { children: React.ReactNode }) {
           </nav>
 
           <div className="ml-auto flex items-center gap-3">
+            <MarketSessionBadge />
             <CommandHint />
             <ThemeToggle />
             {name && (

@@ -26,10 +26,13 @@ public class InstrumentController {
 
     private final InstrumentSearchService search;
     private final InstrumentMasterLoader loader;
+    private final com.fracta.external.broker.MarketSessionTracker sessions;
 
-    public InstrumentController(InstrumentSearchService search, InstrumentMasterLoader loader) {
+    public InstrumentController(InstrumentSearchService search, InstrumentMasterLoader loader,
+                                com.fracta.external.broker.MarketSessionTracker sessions) {
         this.search = search;
         this.loader = loader;
+        this.sessions = sessions;
     }
 
     @Operation(operationId = "searchInstruments", summary = "기초자산 검색 (이름·코드)")
@@ -39,6 +42,28 @@ public class InstrumentController {
             @RequestParam(value = "kind", required = false) AssetKind kind,
             @RequestParam(value = "limit", defaultValue = "20") int limit) {
         return ApiResponse.of(search.search(query, kind, limit));
+    }
+
+    /**
+     * 거래소별 장 상태 (국내·미국).
+     *
+     * <p>시간표를 코드에 박지 않고 <b>시세 응답의 체결일자·누적거래량</b>으로 판정한다.
+     * 화면이 "국내장 마감 · 15:34 기준 / 미국장 장중"처럼 사실대로 보여줄 수 있게 한다.
+     */
+    @Operation(operationId = "getMarketSessions", summary = "거래소 장 상태")
+    @GetMapping("/api/v1/market-sessions")
+    public com.fracta.common.response.ApiResponse<java.util.List<MarketSessionResponse>> marketSessions() {
+        var list = java.util.Arrays.stream(com.fracta.external.broker.MarketVenue.values())
+                .map(sessions::sessionOf)
+                .map(s -> new MarketSessionResponse(s.venue().name(), s.state().name(),
+                        s.describe(), s.lastQuotedAt(), s.tradeDate()))
+                .toList();
+        return com.fracta.common.response.ApiResponse.of(list);
+    }
+
+    /** 한 거래소의 장 상태. {@code label} 은 화면에 그대로 쓸 수 있는 문구다. */
+    public record MarketSessionResponse(String venue, String state, String label,
+                                        String lastQuotedAt, String tradeDate) {
     }
 
     /**

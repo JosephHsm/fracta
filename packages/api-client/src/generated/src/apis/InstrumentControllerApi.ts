@@ -24,6 +24,11 @@ import {
     ApiResponseListInstrumentHitToJSON,
 } from '../models/ApiResponseListInstrumentHit';
 import {
+    type ApiResponseListMarketSessionResponse,
+    ApiResponseListMarketSessionResponseFromJSON,
+    ApiResponseListMarketSessionResponseToJSON,
+} from '../models/ApiResponseListMarketSessionResponse';
+import {
     type ApiResponseLoadResult,
     ApiResponseLoadResultFromJSON,
     ApiResponseLoadResultToJSON,
@@ -114,6 +119,51 @@ export class InstrumentControllerApi extends runtime.BaseAPI {
      */
     async getInstrument(requestParameters: GetInstrumentRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ApiResponseInstrumentDetail> {
         const response = await this.getInstrumentRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for getMarketSessions without sending the request
+     */
+    async getMarketSessionsRequestOpts(): Promise<runtime.RequestOpts> {
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            const token = this.configuration.accessToken;
+            const tokenString = await token("bearerAuth", []);
+
+            if (tokenString) {
+                headerParameters["Authorization"] = `Bearer ${tokenString}`;
+            }
+        }
+
+        let urlPath = `/api/v1/market-sessions`;
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * 거래소 장 상태
+     */
+    async getMarketSessionsRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ApiResponseListMarketSessionResponse>> {
+        const requestOptions = await this.getMarketSessionsRequestOpts();
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => ApiResponseListMarketSessionResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * 거래소 장 상태
+     */
+    async getMarketSessions(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ApiResponseListMarketSessionResponse> {
+        const response = await this.getMarketSessionsRaw(initOverrides);
         return await response.value();
     }
 
